@@ -123,3 +123,6 @@ def create_app(config_name=None):
         return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER'], 'proofs'), filename)
     
     return app
+
+# Default application instance for WSGI servers (e.g. gunicorn app:app)
+app = create_app()
