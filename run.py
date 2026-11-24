@@ -76,7 +76,17 @@ if __name__ == '__main__':
             print(f"Unknown command: {cmd}")
             print("Available commands: init-db, seed-db, create-admin")
     else:
-        # Development server
+        # Auto-initialize DB on startup if needed
+        with app.app_context():
+            try:
+                db.create_all()
+                if not User.query.filter_by(role='admin').first():
+                    seed_db()
+            except Exception as e:
+                print(f"Startup notice: {e}")
+
+        # Development / Production server
         port = int(os.environ.get('PORT', 5000))
-        print(f"Starting Smart Civic Complaint System on http://127.0.0.1:{port}")
-        app.run(host='127.0.0.1', port=port, debug=True)
+        host = '0.0.0.0' if os.environ.get('PORT') else '127.0.0.1'
+        print(f"Starting Smart Civic Complaint System on http://{host}:{port}")
+        app.run(host=host, port=port, debug=False if os.environ.get('RENDER') else True)

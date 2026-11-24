@@ -18,17 +18,17 @@ class Config:
     DB_PORT = os.environ.get('DB_PORT', '3306')
     DB_NAME = os.environ.get('DB_NAME', 'smart_civic_complaints')
     
-    # Robust detection of Vercel serverless environment
-    IS_VERCEL = bool(os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'))
+    # Robust detection of cloud / serverless hosting environments (Vercel, Render, etc.)
+    IS_CLOUD = bool(os.environ.get('VERCEL') or os.environ.get('RENDER') or os.environ.get('VERCEL_ENV') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'))
 
-    # Priority: explicit DATABASE_URL -> fallback SQLite on Vercel -> constructed MySQL URL
+    # Priority: explicit DATABASE_URL -> fallback SQLite on Cloud -> constructed MySQL URL
     _explicit_db = os.environ.get('DATABASE_URL')
     if _explicit_db:
         if _explicit_db.startswith('postgres://'):
             _explicit_db = _explicit_db.replace('postgres://', 'postgresql://', 1)
         SQLALCHEMY_DATABASE_URI = _explicit_db
-    elif IS_VERCEL:
-        # Resilient SQLite database on Vercel serverless filesystem
+    elif IS_CLOUD:
+        # Resilient SQLite database on cloud filesystem if external database URL is not set
         SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/smart_civic.db'
     else:
         SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
@@ -47,7 +47,7 @@ class Config:
         }
     
     # Upload settings
-    if IS_VERCEL:
+    if IS_CLOUD:
         UPLOAD_FOLDER = '/tmp/uploads'
     else:
         UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
