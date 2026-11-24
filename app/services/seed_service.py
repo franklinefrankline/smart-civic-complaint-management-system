@@ -166,8 +166,8 @@ def seed_all():
             worker_record = Worker(
                 user_id=w_user.id,
                 department_id=dept_obj.id,
-                skills=skill,
-                status='available',
+                designation=skill,
+                is_available=True,
                 active_task_count=0
             )
             db.session.add(worker_record)
