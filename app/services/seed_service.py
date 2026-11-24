@@ -93,23 +93,7 @@ def seed_all():
         admin.set_password('Admin@123')
         db.session.add(admin)
 
-    # 5. Demo Citizen Account
-    citizen = User.query.filter_by(email="citizen@civic.gov").first()
-    if not citizen:
-        citizen = User(
-            role='citizen',
-            full_name='Arun Kumar (Citizen)',
-            email='citizen@civic.gov',
-            mobile_number='9800000002',
-            address='14 Anna Nagar West',
-            city='Coimbatore',
-            ward_number='3',
-            is_active=True
-        )
-        citizen.set_password('Citizen@123')
-        db.session.add(citizen)
-
-    # 6. Default Department Officers for all civic departments
+    # 5. Default Department Officers for all civic departments
     officers_seed = [
         ("WATER", "Suresh Raman (Water Officer)", "officer.water@civic.gov", "9840123451"),
         ("ELEC", "Rajesh K (Electricity Officer)", "officer.elec@civic.gov", "9840123452"),

@@ -709,6 +709,39 @@ def settings():
     settings_list = SystemSetting.query.all()
     return render_template('admin/settings.html', settings=settings_list)
 
+@admin_bp.route('/clean-demo-data', methods=['POST'])
+def clean_demo_data():
+    """Administrative action to purge all test complaints, assignments, notifications, and demo citizens from production."""
+    try:
+        from app.models.complaint import Complaint
+        from app.models.workflow import ComplaintAssignment, ComplaintStatusHistory
+        from app.models.attachment import ComplaintAttachment
+        from app.models.notification import Notification
+        from app.models.feedback import Feedback
+        from app.models.audit import AuditLog
+        from app.models.user import User
+
+        # Delete all test complaints and their associated records
+        ComplaintAssignment.query.delete()
+        ComplaintStatusHistory.query.delete()
+        ComplaintAttachment.query.delete()
+        Notification.query.delete()
+        Feedback.query.delete()
+        AuditLog.query.delete()
+        Complaint.query.delete()
+
+        # Delete demo citizen test accounts
+        demo_citizens = User.query.filter_by(role='citizen', email='citizen@civic.gov').all()
+        for c in demo_citizens:
+            db.session.delete(c)
+
+        db.session.commit()
+        flash("All test complaints, assignments, notifications, and demo citizen accounts have been removed from the live database.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error purging test data: {str(e)}", "danger")
+    return redirect(url_for('admin.settings'))
+
 @admin_bp.route('/notifications')
 def notifications():
     from app.models.notification import Notification
