@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="auth-page-wrapper">
+  <!-- Ambient Gradient Glow Orbs -->
+  <div class="auth-ambient-glow glow-1"></div>
+  <div class="auth-ambient-glow glow-2"></div>
+
+  <div class="auth-glass-container">
+    <div class="auth-slider-card auth-glass-card signin-active" id="authSliderCard">
+
+      <!-- ================= 1. SIGN IN FORM CONTAINER (Left) ================= -->
+      <div class="auth-form-container auth-form-panel sign-in-container">
+        <div class="auth-form-inner">
+          <div class="auth-form-header">
+            <div>
+              <h1 class="auth-form-title">Sign In</h1>
+              <p class="auth-form-subtitle">Enter your registered credentials to access your console</p>
+            </div>
+            <!-- Integrated Theme Toggle Button -->
+            <button type="button" class="auth-theme-btn" onclick="document.getElementById('themeToggle').click()"
+              title="Toggle Dark/Light Mode" aria-label="Toggle Theme">
+              <i data-lucide="sun-moon" class="icon-sm"></i>
+            </button>
+          </div>
+
+          <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+            <!-- Login ID Input (Work Email or Mobile) -->
+            <div class="auth-input-group">
+              <label class="auth-input-label">Work Email or Mobile Number</label>
+              <div class="auth-input-wrapper">
+                <span class="auth-input-icon"><i data-lucide="mail" class="icon-sm"></i></span>
+                <input type="text" name="login_id" class="auth-input" value="{{ login_id or '' }}" required
+                  placeholder="name@domain.gov or 10-digit mobile" autocomplete="username">
+              </div>
+            </div>
+
+            <!-- Password Input -->
+            <div class="auth-input-group">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <label class="auth-input-label" style="margin-bottom: 0;">Password</label>
+                <a href="{{ url_for('auth.forgot_password') }}"
+                  style="font-size: 0.8rem; color: var(--civic-blue); font-weight: 600;">Forgot Password?</a>
+              </div>
+              <div class="auth-input-wrapper">
+                <span class="auth-input-icon"><i data-lucide="lock" class="icon-sm"></i></span>
+                <input type="password" name="password" class="auth-input" required placeholder="Enter your password"
+                  autocomplete="current-password">
+                <button type="button" class="auth-password-toggle" onclick="togglePasswordVisibility(this)"
+                  aria-label="Toggle password visibility" title="Show/Hide password" tabindex="-1">
+                  <i data-lucide="eye" class="icon-sm"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Remember Me Checkbox -->
+            <div
+              style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.25rem; margin-bottom: 1.25rem;">
+              <label
+                style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                <input type="checkbox" name="remember" id="remember"
+                  style="width: 16px; height: 16px; accent-color: var(--civic-blue); cursor: pointer;">
+                <span>Remember login on this device</span>
+              </label>
+            </div>
+
+            <!-- Primary Submit Button -->
+            <button type="submit" class="auth-btn-primary">
+              Sign In <i data-lucide="arrow-right" class="icon-sm"></i>
+            </button>
+          </form>
+
+          <!-- Don't have an account link (Smooth interactive slide) -->
+          <div class="auth-footer-link">
+            Don't have an account? <a href="{{ url_for('auth.register') }}" class="switch-to-signup">Sign Up</a>
+          </div>
+
+          <!-- Quick Demo Accounts Helper -->
+          <details class="auth-demo-pill">
+            <summary>
+              <span>Demo Test Credentials</span>
+              <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+            </summary>
+            <div style="margin-top: 0.5rem; display: grid; gap: 0.35rem;">
+              <div>Citizen: <code>citizen@example.com</code> / <code>Citizen@123</code></div>
+              <div>Admin: <code>admin@example.com</code> / <code>Admin@123</code></div>
+              <div>Officer: <code>officer@example.com</code> / <code>Officer@123</code></div>
+              <div>Worker: <code>worker@example.com</code> / <code>Worker@123</code></div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- ================= 2. CREATE ACCOUNT FORM CONTAINER (Right) ================= -->
+      <div class="auth-form-container auth-form-panel sign-up-container">
+        <div class="auth-form-inner">
+          <div class="auth-form-header">
+            <div>
+              <h1 class="auth-form-title">Create Account</h1>
+              <p class="auth-form-subtitle">Register to submit grievances and track real-time resolution</p>
+            </div>
+            <!-- Integrated Theme Toggle Button -->
+            <button type="button" class="auth-theme-btn" onclick="document.getElementById('themeToggle').click()"
+              title="Toggle Dark/Light Mode" aria-label="Toggle Theme">
+              <i data-lucide="sun-moon" class="icon-sm"></i>
+            </button>
+          </div>
+
+          <form method="POST" action="{{ url_for('auth.register') }}">
+            <!-- Full Name Input -->
+            <div class="auth-input-group">
+              <label class="auth-input-label">Full Name <span style="color: red;">*</span></label>
+              <div class="auth-input-wrapper">
+                <span class="auth-input-icon"><i data-lucide="user" class="icon-sm"></i></span>
+                <input type="text" name="full_name" class="auth-input" value="{{ full_name or '' }}" required
+                  placeholder="e.g. Ramesh Kumar" autocomplete="name">
+              </div>
+            </div>
+
+            <!-- Email & Mobile Number Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
+              <div class="auth-input-group">
+                <label class="auth-input-label">Work / Personal Email <span style="color: red;">*</span></label>
+                <div class="auth-input-wrapper">
+                  <span class="auth-input-icon"><i data-lucide="mail" class="icon-sm"></i></span>
+                  <input type="email" name="email" class="auth-input" value="{{ email or '' }}" required
+                    placeholder="name@domain.com" autocomplete="email">
+                </div>
+              </div>
+
+              <div class="auth-input-group">
+                <label class="auth-input-label">Mobile Number <span style="color: red;">*</span></label>
+                <div class="auth-input-wrapper">
+                  <span class="auth-input-icon"><i data-lucide="phone" class="icon-sm"></i></span>
+                  <input type="tel" name="mobile" class="auth-input" value="{{ mobile or '' }}" required
+                    placeholder="10-digit mobile number" autocomplete="tel" inputmode="numeric" maxlength="10">
+                </div>
+              </div>
+            </div>
+
+            <!-- Password & Confirm Password Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
+              <div class="auth-input-group">
+                <label class="auth-input-label">Password <span style="color: red;">*</span></label>
+                <div class="auth-input-wrapper">
+                  <span class="auth-input-icon"><i data-lucide="lock" class="icon-sm"></i></span>
+                  <input type="password" name="password" class="auth-input" required placeholder="Min 8 characters"
+                    autocomplete="new-password">
+                  <button type="button" class="auth-password-toggle" onclick="togglePasswordVisibility(this)"
+                    aria-label="Toggle password visibility" title="Show/Hide password" tabindex="-1">
+                    <i data-lucide="eye" class="icon-sm"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="auth-input-group">
+                <label class="auth-input-label">Confirm Password <span style="color: red;">*</span></label>
+                <div class="auth-input-wrapper">
+                  <span class="auth-input-icon"><i data-lucide="shield-check" class="icon-sm"></i></span>
+                  <input type="password" name="confirm_password" class="auth-input" required
+                    placeholder="Re-enter password" autocomplete="new-password">
+                  <button type="button" class="auth-password-toggle" onclick="togglePasswordVisibility(this)"
+                    aria-label="Toggle password visibility" title="Show/Hide password" tabindex="-1">
+                    <i data-lucide="eye" class="icon-sm"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Primary Register Button -->
+            <button type="submit" class="auth-btn-primary">
+              Sign Up <i data-lucide="arrow-right" class="icon-sm"></i>
+            </button>
+          </form>
+
+          <!-- Already have an account link (Smooth interactive slide) -->
+          <div class="auth-footer-link">
+            Already a member? <a href="{{ url_for('auth.login') }}" class="switch-to-signin">Sign In</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 3. SLIDING OVERLAY CONTAINER ================= -->
+      <div class="auth-overlay-container">
+        <div class="auth-overlay">
+
+          <!-- OVERLAY LEFT PANEL (Active in Default State – Sign Up Mode) -->
+          <div class="auth-overlay-panel auth-welcome-panel overlay-left">
+            <div class="auth-welcome-badge">
+              <i data-lucide="shield" style="width: 13px; height: 13px;"></i>
+              Civic Administration
+            </div>
+            <h2 class="auth-welcome-title">Welcome Back!</h2>
+            <p class="auth-welcome-desc">
+              To stay connected with your municipal administration and track complaint resolution progress in real time,
+              please sign in with your credentials.
+            </p>
+            <button type="button" class="auth-btn-ghost" id="slideSignInBtn">
+              Sign In
+            </button>
+
+            <div class="auth-welcome-features">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="check" style="width: 14px; height: 14px; color: #34d399;"></i>
+                <span>Transparent civic grievance tracking</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="check" style="width: 14px; height: 14px; color: #34d399;"></i>
+                <span>Official municipal departmental dispatch</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="check" style="width: 14px; height: 14px; color: #34d399;"></i>
+                <span>Strict SLA adherence & auto-escalation</span>
+              </div>
+            </div>
+
+            <!-- Curved divider decoration -->
+            <div class="auth-panel-curve-right" aria-hidden="true">
+              <svg viewBox="0 0 40 600" preserveAspectRatio="none"
+                style="position: absolute; right: 0; top: 0; height: 100%; width: 24px; pointer-events: none; opacity: 0.35;">
+                <path d="M0,0 Q35,300 0,600 L40,600 L40,0 Z" fill="currentColor"></path>
+              </svg>
+            </div>
+          </div>
+
+          <!-- OVERLAY RIGHT PANEL (Active in Sign In Mode) -->
+          <div class="auth-overlay-panel auth-welcome-panel overlay-right">
+            <div class="auth-welcome-badge">
+              <i data-lucide="shield-check" style="width: 13px; height: 13px;"></i>
+              Citizen Portal
+            </div>
+            <h2 class="auth-welcome-title">Welcome Back!</h2>
+            <p class="auth-welcome-desc">
+              Enter your personal details to create an account and join our digital municipal grievance redressal
+              platform today.
+            </p>
+            <button type="button" class="auth-btn-ghost" id="slideSignUpBtn">
+              Sign Up
+            </button>
+
+            <div class="auth-welcome-features">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="check" style="width: 14px; height: 14px; color: #34d399;"></i>
+                <span>Guaranteed citizen confidentiality</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="check" style="width: 14px; height: 14px; color: #34d399;"></i>
+                <span>Automated municipal department routing</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="check" style="width: 14px; height: 14px; color: #34d399;"></i>
+                <span>Direct field technician progress reports</span>
+              </div>
+            </div>
+
+            <!-- Curved divider decoration -->
+            <div class="auth-panel-curve-left" aria-hidden="true">
+              <svg viewBox="0 0 40 600" preserveAspectRatio="none"
+                style="position: absolute; left: 0; top: 0; height: 100%; width: 24px; pointer-events: none; opacity: 0.35;">
+                <path d="M40,0 Q5,300 40,600 L0,600 L0,0 Z" fill="currentColor"></path>
+              </svg>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

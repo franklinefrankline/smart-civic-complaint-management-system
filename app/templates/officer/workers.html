@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Department Field Technicians | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <div style="margin-bottom: 2rem;">
+      <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+        Department Field Technicians
+      </h1>
+      <p style="color: var(--text-muted); font-size: 0.92rem;">
+        Available technician pool, active task allocations, and field contact numbers.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Technician Name</th>
+              <th>Mobile</th>
+              <th>Email</th>
+              <th>Active Workload</th>
+              <th>Completed Tasks</th>
+              <th>Duty Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for w in workers %}
+              <tr>
+                <td><strong>{{ w.user.full_name }}</strong></td>
+                <td>{{ w.user.mobile_number }}</td>
+                <td>{{ w.user.email }}</td>
+                <td>
+                  <span class="badge" style="background: {% if w.active_task_count > 3 %}#fee2e2; color: #b91c1c;{% else %}#dbeafe; color: #1e40af;{% endif %}">
+                    {{ w.active_task_count }} active tasks
+                  </span>
+                </td>
+                <td>{{ w.completed_task_count }} resolved</td>
+                <td>
+                  {% if w.is_available %}
+                    <span class="badge badge-resolved">Available</span>
+                  {% else %}
+                    <span class="badge badge-rejected">Busy / Off-Duty</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

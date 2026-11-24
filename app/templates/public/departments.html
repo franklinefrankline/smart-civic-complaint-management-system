@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('nav_departments') }} | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 4rem 1.5rem; max-width: 1000px;">
+  <div style="text-align: center; margin-bottom: 3.5rem;">
+    <h1 style="font-size: 2.4rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.75rem;">
+      Municipal Service Departments
+    </h1>
+    <p style="font-size: 1.15rem; color: var(--text-secondary); max-width: 650px; margin: 0 auto;">
+      Directory of civic departments, emergency lines, and responsible administrative units.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.75rem;">
+    {% for dept in departments %}
+      <div class="card" style="padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+            <div style="color: var(--civic-blue);"><i data-lucide="building-2"></i></div>
+            <span style="font-family: monospace; font-size: 0.8rem; background: var(--bg-subtle); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; color: var(--civic-teal);">
+              {{ dept.code }}
+            </span>
+          </div>
+          <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+            {{ dept.name }}
+          </h3>
+          <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 1.25rem;">
+            {{ dept.description or 'Specialized civic maintenance and public complaint resolution division.' }}
+          </p>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; font-size: 0.82rem; color: var(--text-muted);">
+          <div><i data-lucide="mail" class="icon-sm"></i> {{ dept.contact_email or 'dept-desk@gov.portal' }}</div>
+          <div style="margin-top: 0.25rem;"><i data-lucide="phone" class="icon-sm"></i> {{ dept.contact_phone or '1800-425-0000' }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

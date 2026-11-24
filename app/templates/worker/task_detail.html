@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Task {{ complaint.complaint_ref }} | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <!-- Top Action Bar -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.35rem;">
+          <span style="font-family: monospace; font-size: 0.95rem; background: var(--bg-surface); padding: 0.25rem 0.65rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-weight: 800; color: var(--civic-blue);">
+            {{ complaint.complaint_ref }}
+          </span>
+          <span class="badge badge-{{ complaint.status.lower().replace(' ', '-') }}">
+            {{ complaint.status }}
+          </span>
+          <span class="badge badge-priority-{{ complaint.priority }}">
+            {{ complaint.priority.upper() }}
+          </span>
+        </div>
+        <h1 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary);">
+          {{ complaint.title }}
+        </h1>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+          Assigned by {{ assignment.assigned_by.full_name }} • {{ assignment.assigned_at.strftime('%d %b %Y, %I:%M %p') }}
+        </div>
+      </div>
+
+      <a href="{{ url_for('worker.tasks') }}" class="btn btn-secondary btn-sm">
+        &larr; Back to Tasks
+      </a>
+    </div>
+
+    <!-- Officer Instructions Banner -->
+    {% if assignment.instructions %}
+      <div class="alert alert-info" style="margin-bottom: 1.5rem;">
+        <div>
+          <strong><i data-lucide="clipboard-list" class="icon-sm"></i> Supervisor Instructions:</strong><br>
+          {{ assignment.instructions }}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Rework Warning Banner -->
+    {% if complaint.status == 'Rework Required' %}
+      <div class="alert alert-warning" style="margin-bottom: 1.5rem; border-left: 4px solid #f59e0b; background: rgba(245, 158, 11, 0.12); color: #b45309;">
+        <div>
+          <strong style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.95rem; margin-bottom: 0.25rem;">
+            <i data-lucide="alert-triangle" class="icon-sm"></i> Correction / Rework Required by Supervisor:
+          </strong>
+          <span>{{ complaint.verification_remarks or 'Supervisor requested additional repairs or photographic evidence. Please update and resubmit.' }}</span>
+        </div>
+      </div>
+    {% endif %}
+
+    <div style="display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 1.5rem; margin-bottom: 2rem;">
+      <div>
+        <!-- Task Details -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">Citizen Grievance Description</h3>
+          <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; white-space: pre-line;">
+            {{ complaint.description }}
+          </p>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.88rem;">
+            <div>
+              <span style="color: var(--text-muted);">Category:</span><br>
+              <strong>{{ complaint.category.name }}</strong>
+            </div>
+            <div>
+              <span style="color: var(--text-muted);">Site Location:</span><br>
+              <strong>{{ complaint.address or 'Address not given' }} ({{ complaint.ward_number or 'Ward' }})</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Worker Execution Action Form -->
+        <div class="card" style="margin-bottom: 1.5rem; border-top: 4px solid var(--civic-blue);">
+          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem;">Field Execution Actions</h3>
+
+          <!-- Step 1: Start Work & Upload Before Photo -->
+          {% if complaint.status in ['Assigned', 'Assigned to Worker'] %}
+            <form method="POST" action="{{ url_for('worker.task_detail', complaint_id=complaint.id) }}" enctype="multipart/form-data" style="margin-bottom: 1.5rem;">
+              <input type="hidden" name="action" value="start_work">
+              
+              <div class="form-group">
+                <label class="form-label">Pre-Work Site Condition Photo (Optional Before Image)</label>
+                <input type="file" name="before_image" class="form-control" accept="image/*">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">On-Site Arrival Remarks</label>
+                <input type="text" name="remarks" class="form-control" placeholder="e.g. Arrived on site, identified pipeline rupture, tools deployed.">
+              </div>
+
+              <button type="submit" class="btn btn-primary">
+                <i data-lucide="play" class="icon-sm"></i> Start Work (Mark In Progress)
+              </button>
+            </form>
+          {% endif %}
+
+          <!-- Step 2: Progress Notes & Completion -->
+          {% if complaint.status in ['In Progress', 'Work Started', 'Rework Required'] %}
+            <!-- Progress Notes Subform -->
+            <form method="POST" action="{{ url_for('worker.task_detail', complaint_id=complaint.id) }}" style="margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
+              <input type="hidden" name="action" value="update_progress">
+              <div class="form-group">
+                <label class="form-label">Post Progress Remarks</label>
+                <div style="display: flex; gap: 0.5rem;">
+                  <input type="text" name="progress_notes" class="form-control" placeholder="e.g. Gasket replaced, pressurized testing underway..." required>
+                  <button type="submit" class="btn btn-secondary btn-sm" style="white-space: nowrap;">
+                    <i data-lucide="message-square" class="icon-xs"></i> Post Note
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <!-- Complete Work & Upload After Photo -->
+            <form method="POST" action="{{ url_for('worker.task_detail', complaint_id=complaint.id) }}" enctype="multipart/form-data">
+              <input type="hidden" name="action" value="submit_completion">
+
+              <div class="form-group">
+                <label class="form-label">Completed Work Photo (After-Work Proof) <span style="color: red;">*</span></label>
+                <input type="file" name="after_image" class="form-control" accept="image/*" required>
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Upload photo of the executed repairs for supervisor verification.</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Work Execution Details <span style="color: red;">*</span></label>
+                <textarea name="remarks" class="form-control" rows="3" required placeholder="Describe what parts were replaced, repairs done, and tests completed." minlength="10"></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-success">
+                <i data-lucide="check-circle-2" class="icon-sm"></i> Submit Work for Officer Verification
+              </button>
+            </form>
+          {% endif %}
+
+          {% if complaint.status in ['Work Completed', 'Verification Pending'] %}
+            <div style="background: #e0f2fe; color: #075985; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.9rem;">
+              Work completed and submitted. Your department officer will inspect the evidence and approve final resolution.
+            </div>
+          {% endif %}
+
+          {% if complaint.status == 'Resolved' %}
+            <div style="background: #dcfce7; color: #166534; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.9rem;">
+              This complaint is verified and resolved.
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Evidence Gallery -->
+        <div class="card">
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Work Photos & Evidence</h3>
+          {% if attachments %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
+              {% for att in attachments %}
+                <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden;">
+                  <div style="padding: 0.35rem 0.6rem; font-size: 0.72rem; font-weight: bold; background: var(--bg-subtle);">
+                    {{ att.attachment_type.upper() }}
+                  </div>
+                  {% if att.mime_type and 'image' in att.mime_type %}
+                    <a href="/{{ att.file_path }}" target="_blank">
+                      <img src="/{{ att.file_path }}" alt="Proof" style="width: 100%; height: 110px; object-fit: cover;">
+                    </a>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p style="color: var(--text-muted); font-size: 0.88rem;">No photos attached yet.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Right Column: Navigation Map & History -->
+      <div>
+        <!-- 9-Stage Redressal Lifecycle Timeline -->
+        <div class="card" style="margin-bottom: 1.5rem; border-top: 4px solid var(--civic-blue);">
+          <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary);">
+            <i data-lucide="git-commit" class="icon-sm" style="color: var(--civic-blue);"></i> 9-Stage Redressal Lifecycle
+          </h4>
+          <div class="timeline stagger-in">
+            {% for s in stages %}
+              <div class="timeline-item" style="opacity: {% if s.is_completed %}1{% else %}0.45{% endif %};">
+                <div class="timeline-marker" style="background: {% if s.is_completed %}#16a34a{% else %}var(--border-color){% endif %};"></div>
+                <div class="timeline-content">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+                    <strong style="color: {% if s.is_completed %}var(--text-primary){% else %}var(--text-muted){% endif %}; font-size: 0.88rem;">
+                      {{ s.step }}. {{ s.title }}
+                      {% if s.is_completed %}<i data-lucide="check" class="icon-xs" style="color: #16a34a; margin-left: 0.25rem;"></i>{% endif %}
+                    </strong>
+                    {% if s.timestamp %}
+                      <span class="timeline-time">{{ s.timestamp.strftime('%d %b, %H:%M') }}</span>
+                    {% endif %}
+                  </div>
+                  <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.3; margin: 0;">
+                    {{ s.remarks }}
+                  </p>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Incident Location Information Card (No Map) -->
+        <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem; box-shadow: none;">
+          <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+            Site Address & Execution Target
+          </h4>
+          <div style="display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.85rem;">
+            <div>
+              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Street Address</span>
+              <strong style="color: var(--text-primary);">{{ complaint.street_name or complaint.address or 'Standard Municipal Zone' }}</strong>
+            </div>
+            <div>
+              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Area / Locality</span>
+              <span>{{ complaint.locality or 'Central Zone' }}</span>
+            </div>
+            {% if complaint.landmark %}
+              <div>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Landmark</span>
+                <span>Near {{ complaint.landmark }}</span>
+              </div>
+            {% endif %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.25rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
+              <div>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Ward</span>
+                <span class="badge" style="background: var(--bg-subtle); color: var(--civic-blue); font-weight: 700;">{{ complaint.ward_number or 'Ward 4' }}</span>
+              </div>
+              <div>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">PIN Code</span>
+                <span style="font-family: monospace; font-weight: 600;">{{ complaint.pincode or '600001' }}</span>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <div>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">City / District</span>
+                <span>{{ complaint.city or 'Chennai' }}, {{ complaint.district or 'Chennai' }}</span>
+              </div>
+              <div>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">State</span>
+                <span>{{ complaint.state or 'Tamil Nadu' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">Task Status History</h4>
+          <div class="timeline stagger-in">
+            {% for hist in history %}
+              <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+                    <strong style="color: var(--civic-blue); font-size: 0.88rem;">{{ hist.new_status }}</strong>
+                    <span class="timeline-time">{{ hist.created_at.strftime('%d %b, %H:%M') }}</span>
+                  </div>
+                  <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.3;">
+                    {{ hist.remarks or 'Status updated.' }}
+                  </p>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- No map dependencies needed -->
+{% endblock %}

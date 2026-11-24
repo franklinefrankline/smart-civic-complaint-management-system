@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Completed Tasks History | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <div style="margin-bottom: 2rem;">
+      <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+        Completed Task History
+      </h1>
+      <p style="color: var(--text-muted); font-size: 0.92rem;">
+        Archive of field work orders successfully completed and verified.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Reference</th>
+              <th>Task Title</th>
+              <th>Department</th>
+              <th>Priority</th>
+              <th>Assigned Date</th>
+              <th>Completed Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in assignments %}
+              <tr>
+                <td>
+                  <span style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">
+                    {{ a.complaint.complaint_ref }}
+                  </span>
+                </td>
+                <td style="font-weight: 600;">{{ a.complaint.title }}</td>
+                <td>{{ a.complaint.department.name if a.complaint.department else '-' }}</td>
+                <td>
+                  <span class="badge badge-priority-{{ a.complaint.priority }}">
+                    {{ a.complaint.priority.upper() }}
+                  </span>
+                </td>
+                <td style="font-size: 0.82rem; color: var(--text-muted);">
+                  {{ a.assigned_at.strftime('%Y-%m-%d') }}
+                </td>
+                <td style="font-size: 0.82rem; color: var(--text-muted);">
+                  {{ a.completed_at.strftime('%Y-%m-%d %H:%M') if a.completed_at else '-' }}
+                </td>
+                <td>
+                  <a href="{{ url_for('worker.task_detail', complaint_id=a.complaint.id) }}" class="btn btn-secondary btn-sm">
+                    View
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

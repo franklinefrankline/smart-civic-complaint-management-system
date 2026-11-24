@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Worker Notifications | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content" style="max-width: 900px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+      <div>
+        <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+          Field Crew Alerts
+        </div>
+        <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
+          Field Worker Notifications
+        </h1>
+        <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">
+          Direct work order dispatches, supervisor rework instructions, and approval notices.
+        </p>
+      </div>
+
+      <button class="btn btn-secondary btn-sm" onclick="fetch('/api/notifications/read-all', {method: 'POST'}).then(() => location.reload())">
+        <i data-lucide="check" class="icon-sm"></i> Mark All Read
+      </button>
+    </div>
+
+    <div class="card" style="box-shadow: none;">
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        {% for n in notifications %}
+          <div style="padding: 1rem; background: {% if not n.is_read %}var(--bg-subtle){% else %}var(--bg-surface){% endif %}; border: 1px solid var(--border-color); border-radius: var(--radius-sm); border-left: 3px solid {% if not n.is_read %}var(--civic-blue){% else %}var(--border-color){% endif %}; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 0.2rem;">
+                {{ n.title }}
+              </div>
+              <p style="font-size: 0.84rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 0.25rem;">
+                {{ n.message }}
+              </p>
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                {{ n.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+              </div>
+            </div>
+
+            {% if n.link %}
+              <a href="{{ n.link }}" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;">
+                Open Task &rarr;
+              </a>
+            {% endif %}
+          </div>
+        {% else %}
+          <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">No Task Notifications</div>
+            <p style="font-size: 0.85rem;">You are up to date on all work assignments.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

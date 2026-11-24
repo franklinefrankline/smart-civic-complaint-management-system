@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Department Management | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+          Civic Departments
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.92rem;">
+          Configure municipal divisions, safe department lifecycle, and contacts.
+        </p>
+      </div>
+
+      <button onclick="openModal('createDeptModal')" class="btn btn-primary btn-sm">
+        <i data-lucide="plus" class="icon-sm"></i> Add Department
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Department Name</th>
+              <th>Code</th>
+              <th>Contact Email</th>
+              <th>Contact Phone</th>
+              <th>Active Complaints</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in departments %}
+              <tr>
+                <td>
+                  <strong>{{ d.name }}</strong>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">{{ d.description or 'Civic Unit' }}</div>
+                </td>
+                <td>
+                  <span style="font-family: monospace; font-weight: 700; color: var(--civic-teal);">
+                    {{ d.code }}
+                  </span>
+                </td>
+                <td style="font-size: 0.85rem;">{{ d.contact_email or 'N/A' }}</td>
+                <td style="font-size: 0.85rem;">{{ d.contact_phone or 'N/A' }}</td>
+                <td>
+                  <span class="badge" style="background: var(--bg-subtle);">
+                    {{ d.complaints.count() }} tickets
+                  </span>
+                </td>
+                <td>
+                  {% if d.is_active %}
+                    <span class="badge badge-resolved">Active</span>
+                  {% else %}
+                    <span class="badge badge-rejected">Inactive</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div style="display: flex; gap: 0.35rem;">
+                    <form method="POST" action="{{ url_for('admin.departments') }}">
+                      <input type="hidden" name="action" value="toggle">
+                      <input type="hidden" name="department_id" value="{{ d.id }}">
+                      <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">
+                        {{ 'Disable' if d.is_active else 'Enable' }}
+                      </button>
+                    </form>
+
+                    <form method="POST" action="{{ url_for('admin.departments') }}" onsubmit="return confirm('Safe Delete: Deletion is only allowed if no active complaints or categories exist. Proceed?');">
+                      <input type="hidden" name="action" value="delete">
+                      <input type="hidden" name="department_id" value="{{ d.id }}">
+                      <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">
+                        Delete
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Dept Modal -->
+<div id="createDeptModal" class="modal-overlay">
+  <div class="modal-dialog card" style="max-width: 500px; margin: auto; padding: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h3 style="font-size: 1.25rem; font-weight: 700;">Create Municipal Department</h3>
+      <button type="button" onclick="closeModal('createDeptModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.departments') }}">
+      <input type="hidden" name="action" value="create">
+      <div class="form-group">
+        <label class="form-label">Department Name</label>
+        <input type="text" name="name" class="form-control" placeholder="e.g. Street Lighting & Electrical" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Department Code (Uppercase)</label>
+        <input type="text" name="code" class="form-control" placeholder="e.g. LIGHT" required style="text-transform: uppercase;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Official Contact Email</label>
+        <input type="email" name="contact_email" class="form-control" placeholder="lighting@civic.gov">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Helpline Phone</label>
+        <input type="text" name="contact_phone" class="form-control" placeholder="044-2561-0000">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-control" rows="2"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+        <button type="button" onclick="closeModal('createDeptModal')" class="btn btn-secondary">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Department</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

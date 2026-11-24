@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Department Complaints | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+          Department Complaint Queue
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.92rem;">
+          All grievances assigned to {{ current_user.department.name if current_user.department else 'your department' }}.
+        </p>
+      </div>
+
+      <a href="{{ url_for('officer.reports') }}" class="btn btn-secondary btn-sm">
+        <i data-lucide="file-bar-chart-2" class="icon-sm"></i> Department Report
+      </a>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+      <form method="GET" action="{{ url_for('officer.complaints') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <input type="text" name="search" class="form-control" placeholder="Search reference, citizen, title..." value="{{ search_query }}" style="flex: 2; min-width: 200px;">
+        
+        <select name="status" class="form-control" style="flex: 1; min-width: 140px;">
+          <option value="">All Statuses</option>
+          <option value="Submitted" {% if current_status == 'Submitted' %}selected{% endif %}>Submitted</option>
+          <option value="Under Review" {% if current_status == 'Under Review' %}selected{% endif %}>Under Review</option>
+          <option value="Accepted" {% if current_status == 'Accepted' %}selected{% endif %}>Accepted</option>
+          <option value="Assigned" {% if current_status == 'Assigned' %}selected{% endif %}>Assigned</option>
+          <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>In Progress</option>
+          <option value="Work Completed" {% if current_status == 'Work Completed' %}selected{% endif %}>Work Completed</option>
+          <option value="Verification Pending" {% if current_status == 'Verification Pending' %}selected{% endif %}>Verification Pending</option>
+          <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>Resolved</option>
+          <option value="Rejected" {% if current_status == 'Rejected' %}selected{% endif %}>Rejected</option>
+        </select>
+
+        <select name="priority" class="form-control" style="flex: 1; min-width: 120px;">
+          <option value="">All Priorities</option>
+          <option value="low" {% if current_priority == 'low' %}selected{% endif %}>Low</option>
+          <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>Medium</option>
+          <option value="high" {% if current_priority == 'high' %}selected{% endif %}>High</option>
+          <option value="urgent" {% if current_priority == 'urgent' %}selected{% endif %}>Urgent</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="{{ url_for('officer.complaints') }}" class="btn btn-secondary btn-sm">Reset</a>
+      </form>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Reference</th>
+              <th>Title</th>
+              <th>Citizen</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>SLA Deadline</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in complaints %}
+              <tr>
+                <td>
+                  <span style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">
+                    {{ c.complaint_ref }}
+                  </span>
+                  {% if c.is_escalated %}
+                    <span class="badge badge-escalated" style="margin-left: 0.25rem; font-size: 0.65rem;">ESCALATED</span>
+                  {% endif %}
+                </td>
+                <td style="font-weight: 600; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  {{ c.title }}
+                </td>
+                <td>{{ c.citizen.full_name }}</td>
+                <td>
+                  <span class="badge badge-priority-{{ c.priority }}">
+                    {{ c.priority.upper() }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">
+                    {{ c.status }}
+                  </span>
+                </td>
+                <td style="font-size: 0.8rem; color: {% if c.is_overdue %}var(--status-rejected){% else %}var(--text-muted){% endif %}; font-weight: {% if c.is_overdue %}bold{% else %}normal{% endif %};">
+                  {{ c.sla_due_date.strftime('%Y-%m-%d %H:%M') if c.sla_due_date else 'N/A' }}
+                </td>
+                <td>
+                  <a href="{{ url_for('officer.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm">
+                    Manage
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

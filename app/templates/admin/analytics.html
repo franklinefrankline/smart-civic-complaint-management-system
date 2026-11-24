@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Civic Analytics | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <div style="margin-bottom: 2rem;">
+      <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+        Civic Analytics & Resolution Metrics
+      </h1>
+      <p style="color: var(--text-muted); font-size: 0.92rem;">
+        Performance benchmarking across municipal departments and category distributions.
+      </p>
+    </div>
+
+    <!-- Analytics Charts Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+      <div class="card">
+        <h3 class="card-title" style="margin-bottom: 1rem;">Department Complaint Volume vs Resolution</h3>
+        <div style="height: 320px;">
+          <canvas id="deptPerformanceChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title" style="margin-bottom: 1rem;">Grievances by Category</h3>
+        <div style="height: 320px;">
+          <canvas id="categoryBreakdownChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Dept Performance
+    const deptCtx = document.getElementById('deptPerformanceChart');
+    if (deptCtx) {
+      new Chart(deptCtx, {
+        type: 'bar',
+        data: {
+          labels: {{ dept_labels | tojson }},
+          datasets: [
+            {
+              label: 'Total Registered',
+              data: {{ dept_totals | tojson }},
+              backgroundColor: '#3b82f6'
+            },
+            {
+              label: 'Resolved',
+              data: {{ dept_resolved | tojson }},
+              backgroundColor: '#16a34a'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    // Category Doughnut
+    const catCtx = document.getElementById('categoryBreakdownChart');
+    if (catCtx) {
+      new Chart(catCtx, {
+        type: 'pie',
+        data: {
+          labels: {{ cat_labels | tojson }},
+          datasets: [{
+            data: {{ cat_totals | tojson }},
+            backgroundColor: ['#2563eb', '#0d9488', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b', '#06b6d4', '#eab308']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

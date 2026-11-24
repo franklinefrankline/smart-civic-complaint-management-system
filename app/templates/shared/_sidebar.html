@@ -1,0 +1,422 @@
+<aside class="dashboard-sidebar" id="dashboardSidebar" aria-label="Main Navigation">
+  <!-- Circular Blue Arrow Toggle Button OUTSIDE on the edge -->
+  <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="Toggle navigation menu"
+    aria-expanded="true" title="Collapse Menu">
+    <i data-lucide="chevron-left" class="toggle-icon-expanded"></i>
+    <i data-lucide="chevron-right" class="toggle-icon-collapsed"></i>
+    <span class="toggle-tooltip" id="sidebarToggleTooltip">Collapse Menu</span>
+  </button>
+
+  <!-- 1. Fixed Top Branding Header -->
+  <div class="sidebar-brand-header">
+    <a href="{{ url_for('public.index') }}" class="sidebar-brand-link" title="Smart Civic Complaint Management System">
+      <div class="sidebar-brand-icon">
+        <i data-lucide="shield" class="icon-md"></i>
+      </div>
+      <div class="sidebar-brand-text">
+        <span class="sidebar-brand-title">Smart Civic</span>
+        <span class="sidebar-brand-sub">{{ (current_user.role.title() if current_user else 'Civic') }} Portal</span>
+      </div>
+    </a>
+    <div class="sidebar-header-actions" style="display: flex; align-items: center; gap: 0.35rem;">
+      <button type="button" class="theme-toggle-btn sidebar-header-theme-btn" title="Toggle Theme" aria-label="Toggle Theme">
+        <i data-lucide="moon" class="icon-sm theme-icon"></i>
+      </button>
+      <button type="button" class="mobile-sidebar-close" onclick="toggleMobileSidebar(false)"
+        aria-label="Close mobile navigation">
+        <i data-lucide="x" class="icon-sm"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. Middle Navigation Menu (Independently scrolling) -->
+  <div class="sidebar-nav-container">
+    <ul class="sidebar-menu">
+      {% if current_user and current_user.is_admin %}
+      <li class="menu-label">Administration</li>
+      <li>
+        <a href="{{ url_for('admin.dashboard') }}"
+          class="sidebar-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" title="Overview">
+          <i data-lucide="layout-dashboard" class="icon-sm"></i>
+          <span class="sidebar-label">Overview</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.complaints') }}"
+          class="sidebar-link {% if request.endpoint in ['admin.complaints', 'admin.complaint_detail'] %}active{% endif %}"
+          title="Complaint Management">
+          <i data-lucide="file-text" class="icon-sm"></i>
+          <span class="sidebar-label">Complaint Management</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.citizens') }}"
+          class="sidebar-link {% if request.endpoint == 'admin.citizens' %}active{% endif %}"
+          title="Citizen Management">
+          <i data-lucide="users" class="icon-sm"></i>
+          <span class="sidebar-label">Citizen Management</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.departments') }}"
+          class="sidebar-link {% if request.endpoint == 'admin.departments' %}active{% endif %}"
+          title="Department Management">
+          <i data-lucide="building-2" class="icon-sm"></i>
+          <span class="sidebar-label">Department Management</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.officers') }}"
+          class="sidebar-link {% if request.endpoint == 'admin.officers' %}active{% endif %}"
+          title="Officer Management">
+          <i data-lucide="user-check" class="icon-sm"></i>
+          <span class="sidebar-label">Officer Management</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.workers') }}"
+          class="sidebar-link {% if request.endpoint == 'admin.workers' %}active{% endif %}" title="Worker Management">
+          <i data-lucide="hard-hat" class="icon-sm"></i>
+          <span class="sidebar-label">Worker Management</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.assignments') }}"
+          class="sidebar-link {% if request.endpoint == 'admin.assignments' %}active{% endif %}" title="Assignments">
+          <i data-lucide="clipboard-list" class="icon-sm"></i>
+          <span class="sidebar-label">Assignments</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.analytics') }}"
+          class="sidebar-link {% if request.endpoint == 'admin.analytics' %}active{% endif %}"
+          title="Reports and Analytics">
+          <i data-lucide="bar-chart-2" class="icon-sm"></i>
+          <span class="sidebar-label">Reports and Analytics</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.notifications') }}"
+          class="sidebar-link {% if request.endpoint == 'admin.notifications' %}active{% endif %}"
+          title="Notifications">
+          <i data-lucide="bell" class="icon-sm"></i>
+          <span class="sidebar-label">Notifications</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.audit_logs') }}"
+          class="sidebar-link {% if request.endpoint == 'admin.audit_logs' %}active{% endif %}" title="Audit Logs">
+          <i data-lucide="shield-check" class="icon-sm"></i>
+          <span class="sidebar-label">Audit Logs</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.settings') }}"
+          class="sidebar-link {% if request.endpoint == 'admin.settings' %}active{% endif %}" title="Settings">
+          <i data-lucide="settings" class="icon-sm"></i>
+          <span class="sidebar-label">Settings</span>
+        </a>
+      </li>
+
+      {% elif current_user and current_user.is_officer %}
+      <li class="menu-label">Department Operations</li>
+      <li>
+        <a href="{{ url_for('officer.dashboard') }}"
+          class="sidebar-link {% if request.endpoint == 'officer.dashboard' %}active{% endif %}" title="Dashboard">
+          <i data-lucide="layout-dashboard" class="icon-sm"></i>
+          <span class="sidebar-label">Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('officer.incoming') }}"
+          class="sidebar-link {% if request.endpoint == 'officer.incoming' %}active{% endif %}"
+          title="Incoming Complaints">
+          <i data-lucide="inbox" class="icon-sm"></i>
+          <span class="sidebar-label">Incoming Complaints</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('officer.complaints') }}"
+          class="sidebar-link {% if request.endpoint in ['officer.complaints', 'officer.complaint_detail'] and request.endpoint not in ['officer.incoming', 'officer.verification', 'officer.escalations'] %}active{% endif %}"
+          title="Department Complaints">
+          <i data-lucide="file-text" class="icon-sm"></i>
+          <span class="sidebar-label">Department Complaints</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('officer.workers') }}"
+          class="sidebar-link {% if request.endpoint == 'officer.workers' %}active{% endif %}"
+          title="Worker Assignments">
+          <i data-lucide="users" class="icon-sm"></i>
+          <span class="sidebar-label">Worker Assignments</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('officer.verification') }}"
+          class="sidebar-link {% if request.endpoint == 'officer.verification' %}active{% endif %}"
+          title="Work Verification">
+          <i data-lucide="check-square" class="icon-sm"></i>
+          <span class="sidebar-label">Work Verification</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('officer.escalations') }}"
+          class="sidebar-link {% if request.endpoint == 'officer.escalations' %}active{% endif %}" title="Escalations">
+          <i data-lucide="alert-octagon" class="icon-sm"></i>
+          <span class="sidebar-label">Escalations</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('officer.reports') }}"
+          class="sidebar-link {% if request.endpoint == 'officer.reports' %}active{% endif %}" title="Reports">
+          <i data-lucide="file-bar-chart-2" class="icon-sm"></i>
+          <span class="sidebar-label">Reports</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('officer.notifications') }}"
+          class="sidebar-link {% if request.endpoint == 'officer.notifications' %}active{% endif %}"
+          title="Notifications">
+          <i data-lucide="bell" class="icon-sm"></i>
+          <span class="sidebar-label">Notifications</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('officer.profile') }}"
+          class="sidebar-link {% if request.endpoint == 'officer.profile' %}active{% endif %}" title="Profile">
+          <i data-lucide="user" class="icon-sm"></i>
+          <span class="sidebar-label">Profile</span>
+        </a>
+      </li>
+
+      {% elif current_user and current_user.is_worker %}
+      <li class="menu-label">Field Technician Work</li>
+      <li>
+        <a href="{{ url_for('worker.dashboard') }}"
+          class="sidebar-link {% if request.endpoint == 'worker.dashboard' %}active{% endif %}" title="Dashboard">
+          <i data-lucide="layout-dashboard" class="icon-sm"></i>
+          <span class="sidebar-label">Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('worker.tasks', status='Assigned') }}"
+          class="sidebar-link {% if request.args.get('status') == 'Assigned' %}active{% endif %}"
+          title="Assigned Tasks">
+          <i data-lucide="inbox" class="icon-sm"></i>
+          <span class="sidebar-label">Assigned Tasks</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('worker.tasks', status='In Progress') }}"
+          class="sidebar-link {% if request.args.get('status') == 'In Progress' %}active{% endif %}"
+          title="In Progress">
+          <i data-lucide="wrench" class="icon-sm"></i>
+          <span class="sidebar-label">In Progress</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('worker.tasks', status='Work Completed') }}"
+          class="sidebar-link {% if request.args.get('status') == 'Work Completed' %}active{% endif %}"
+          title="Completed Tasks">
+          <i data-lucide="check-circle" class="icon-sm"></i>
+          <span class="sidebar-label">Completed Tasks</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('worker.history') }}"
+          class="sidebar-link {% if request.endpoint == 'worker.history' %}active{% endif %}" title="Task History">
+          <i data-lucide="history" class="icon-sm"></i>
+          <span class="sidebar-label">Task History</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('worker.notifications') }}"
+          class="sidebar-link {% if request.endpoint == 'worker.notifications' %}active{% endif %}"
+          title="Notifications">
+          <i data-lucide="bell" class="icon-sm"></i>
+          <span class="sidebar-label">Notifications</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('worker.profile') }}"
+          class="sidebar-link {% if request.endpoint == 'worker.profile' %}active{% endif %}" title="Profile">
+          <i data-lucide="user" class="icon-sm"></i>
+          <span class="sidebar-label">Profile</span>
+        </a>
+      </li>
+
+      {% elif current_user and current_user.role == 'citizen' %}
+      <!-- Citizen Menu -->
+      <li class="menu-label">Citizen Services</li>
+      <li>
+        <a href="{{ url_for('citizen.dashboard') }}"
+          class="sidebar-link {% if request.endpoint == 'citizen.dashboard' %}active{% endif %}" title="My Dashboard">
+          <i data-lucide="layout-dashboard" class="icon-sm"></i>
+          <span class="sidebar-label">My Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('citizen.new_complaint') }}"
+          class="sidebar-link {% if request.endpoint == 'citizen.new_complaint' %}active{% endif %}"
+          title="Register Complaint">
+          <i data-lucide="file-plus" class="icon-sm"></i>
+          <span class="sidebar-label">Register Complaint</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('citizen.complaints') }}"
+          class="sidebar-link {% if request.endpoint in ['citizen.complaints', 'citizen.complaint_detail'] and request.endpoint != 'citizen.new_complaint' %}active{% endif %}"
+          title="My Complaints">
+          <i data-lucide="list-ordered" class="icon-sm"></i>
+          <span class="sidebar-label">My Complaints</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('public.track') }}"
+          class="sidebar-link {% if request.endpoint == 'public.track' %}active{% endif %}" title="Track Complaint">
+          <i data-lucide="search" class="icon-sm"></i>
+          <span class="sidebar-label">Track Complaint</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('citizen.notifications') }}"
+          class="sidebar-link {% if request.endpoint == 'citizen.notifications' %}active{% endif %}"
+          title="Notifications">
+          <i data-lucide="bell" class="icon-sm"></i>
+          <span class="sidebar-label">Notifications</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('citizen.feedback') }}"
+          class="sidebar-link {% if request.endpoint == 'citizen.feedback' %}active{% endif %}" title="Feedback">
+          <i data-lucide="star" class="icon-sm"></i>
+          <span class="sidebar-label">Feedback</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('citizen.profile') }}"
+          class="sidebar-link {% if request.endpoint == 'citizen.profile' %}active{% endif %}" title="My Profile">
+          <i data-lucide="user" class="icon-sm"></i>
+          <span class="sidebar-label">My Profile</span>
+        </a>
+      </li>
+
+      {% else %}
+      <!-- Public / Guest Services Menu -->
+      <li class="menu-label">Civic Redressal</li>
+      <li>
+        <a href="{{ url_for('public.index') }}"
+          class="sidebar-link {% if request.endpoint == 'public.index' %}active{% endif %}" title="Home Portal">
+          <i data-lucide="home" class="icon-sm"></i>
+          <span class="sidebar-label">Home Portal</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('public.track') }}"
+          class="sidebar-link {% if request.endpoint == 'public.track' %}active{% endif %}" title="Track Complaint">
+          <i data-lucide="search" class="icon-sm"></i>
+          <span class="sidebar-label">Track Complaint</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('auth.login') }}"
+          class="sidebar-link {% if request.endpoint == 'auth.login' %}active{% endif %}" title="File Complaint">
+          <i data-lucide="file-plus" class="icon-sm"></i>
+          <span class="sidebar-label">File Complaint</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('public.departments') }}"
+          class="sidebar-link {% if request.endpoint == 'public.departments' %}active{% endif %}" title="Departments">
+          <i data-lucide="building-2" class="icon-sm"></i>
+          <span class="sidebar-label">Departments</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('public.how_it_works') }}"
+          class="sidebar-link {% if request.endpoint == 'public.how_it_works' %}active{% endif %}" title="How It Works">
+          <i data-lucide="help-circle" class="icon-sm"></i>
+          <span class="sidebar-label">How It Works</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('public.contact') }}"
+          class="sidebar-link {% if request.endpoint == 'public.contact' %}active{% endif %}" title="Contact Support">
+          <i data-lucide="phone" class="icon-sm"></i>
+          <span class="sidebar-label">Contact Support</span>
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+  </div>
+
+  <!-- 3. Fixed Profile Section at the Bottom -->
+  <div class="sidebar-profile-footer">
+    {% if current_user %}
+    <div class="sidebar-user-card" id="sidebarUserCard"
+      data-tooltip="{{ current_user.full_name }} ({{ current_user.role.title() }})">
+      <div class="sidebar-avatar">
+        {{ current_user.full_name[:2].upper() }}
+      </div>
+      <div class="sidebar-user-details">
+        <div class="sidebar-user-name" title="{{ current_user.full_name }}">{{ current_user.full_name }}</div>
+        <div class="sidebar-user-meta">
+          {% if current_user.department %}
+          {{ current_user.department.name }}
+          {% elif current_user.role == 'citizen' %}
+          {{ current_user.city or 'Ward ' ~ (current_user.ward_number or '1') }}
+          {% else %}
+          {{ current_user.role.title() }}
+          {% endif %}
+        </div>
+      </div>
+      <span class="sidebar-label">{{ current_user.full_name }} ({{ current_user.role.title() }})</span>
+    </div>
+
+    <div class="sidebar-footer-actions">
+      <button type="button" class="sidebar-link sidebar-footer-link theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme">
+        <i data-lucide="moon" class="icon-sm theme-icon"></i>
+        <span class="sidebar-label theme-label-text">Toggle Theme</span>
+      </button>
+      <a href="{{ url_for('public.index') }}" class="sidebar-link sidebar-footer-link" title="Public Portal">
+        <i data-lucide="home" class="icon-sm"></i>
+        <span class="sidebar-label">Public Portal</span>
+      </a>
+      <a href="{{ url_for('auth.logout') }}" class="sidebar-link sidebar-footer-link link-signout" title="Sign Out">
+        <i data-lucide="log-out" class="icon-sm"></i>
+        <span class="sidebar-label">Sign Out</span>
+      </a>
+    </div>
+    {% else %}
+    <div class="sidebar-user-card" id="sidebarUserCard" data-tooltip="Public Citizen Access">
+      <div class="sidebar-avatar" style="background: rgba(37, 99, 235, 0.15); color: var(--civic-blue);">
+        <i data-lucide="user" class="icon-sm"></i>
+      </div>
+      <div class="sidebar-user-details">
+        <div class="sidebar-user-name">Public Citizen</div>
+        <div class="sidebar-user-meta">Civic Portal</div>
+      </div>
+      <span class="sidebar-label">Public Citizen</span>
+    </div>
+
+    <div class="sidebar-footer-actions">
+      <button type="button" class="sidebar-link sidebar-footer-link theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme">
+        <i data-lucide="moon" class="icon-sm theme-icon"></i>
+        <span class="sidebar-label theme-label-text">Toggle Theme</span>
+      </button>
+      <a href="{{ url_for('auth.login') }}" class="sidebar-link sidebar-footer-link" title="Sign In">
+        <i data-lucide="log-in" class="icon-sm"></i>
+        <span class="sidebar-label">Sign In</span>
+      </a>
+      <a href="{{ url_for('auth.register') }}" class="sidebar-link sidebar-footer-link" title="Sign Up">
+        <i data-lucide="user-plus" class="icon-sm"></i>
+        <span class="sidebar-label">Sign Up</span>
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</aside>
+<button type="button" class="mobile-sidebar-trigger" onclick="toggleMobileSidebar(true)" aria-label="Open mobile navigation">
+  <i data-lucide="menu" class="icon-md"></i>
+</button>
+<div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleMobileSidebar(false)"></div>

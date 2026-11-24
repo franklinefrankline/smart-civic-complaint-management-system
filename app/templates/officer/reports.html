@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Department Performance Report | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+          Department Performance Report
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.92rem;">
+          Resolution audit, time compliance, and status summary.
+        </p>
+      </div>
+
+      <a href="{{ url_for('admin.export_complaints_csv', department_id=current_user.department_id) }}" class="btn btn-primary btn-sm">
+        <i data-lucide="download" class="icon-sm"></i> Export Department Data (CSV)
+      </a>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: #dbeafe; color: #1e40af;"><i data-lucide="file-text"></i></div>
+        <div class="stat-info">
+          <span class="stat-value">{{ total }}</span>
+          <span class="stat-label">Total Assigned Complaints</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: #dcfce7; color: #15803d;"><i data-lucide="check-circle-2"></i></div>
+        <div class="stat-info">
+          <span class="stat-value">{{ resolved }}</span>
+          <span class="stat-label">Resolved Issues</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: #fef3c7; color: #b45309;"><i data-lucide="clock"></i></div>
+        <div class="stat-info">
+          <span class="stat-value">{{ pending }}</span>
+          <span class="stat-label">Pending Execution</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complaints Summary Table -->
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Reference</th>
+              <th>Title</th>
+              <th>Citizen</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Resolved</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in complaints %}
+              <tr>
+                <td>
+                  <span style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">
+                    {{ c.complaint_ref }}
+                  </span>
+                </td>
+                <td>{{ c.title }}</td>
+                <td>{{ c.citizen.full_name }}</td>
+                <td>
+                  <span class="badge badge-priority-{{ c.priority }}">
+                    {{ c.priority.upper() }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">
+                    {{ c.status }}
+                  </span>
+                </td>
+                <td style="font-size: 0.8rem; color: var(--text-muted);">
+                  {{ c.created_at.strftime('%Y-%m-%d') }}
+                </td>
+                <td style="font-size: 0.8rem; color: var(--text-muted);">
+                  {{ c.resolved_at.strftime('%Y-%m-%d') if c.resolved_at else '-' }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

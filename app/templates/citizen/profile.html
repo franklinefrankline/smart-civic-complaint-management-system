@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Citizen Profile | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content" style="max-width: 650px;">
+    <div style="margin-bottom: 2rem;">
+      <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+        Profile Settings
+      </h1>
+      <p style="color: var(--text-muted); font-size: 0.92rem;">
+        Manage your personal contact details, residential address, and account password.
+      </p>
+    </div>
+
+    <div class="card" style="padding: 2rem;">
+      <form method="POST" action="{{ url_for('citizen.profile') }}">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" name="full_name" class="form-control" value="{{ user.full_name }}" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Email Address (Locked)</label>
+            <input type="email" class="form-control" value="{{ user.email }}" disabled style="background: var(--bg-subtle);">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mobile Number (Locked)</label>
+            <input type="tel" class="form-control" value="{{ user.mobile_number }}" disabled style="background: var(--bg-subtle);">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Residential Address</label>
+          <input type="text" name="address" class="form-control" value="{{ user.address or '' }}" placeholder="Door No, Street Name">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input type="text" name="city" class="form-control" value="{{ user.city or '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ward Number</label>
+            <input type="text" name="ward_number" class="form-control" value="{{ user.ward_number or '' }}">
+          </div>
+        </div>
+
+        <div class="form-group" style="padding-top: 1rem; border-top: 1px solid var(--border-color);">
+          <label class="form-label">Change Password (leave blank to keep current)</label>
+          <div class="password-input-wrapper">
+            <input type="password" name="new_password" class="form-control" placeholder="New strong password">
+            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" aria-label="Toggle password visibility" title="Show or hide password" tabindex="-1">
+              <i data-lucide="eye" class="icon-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+          <button type="submit" class="btn btn-primary">
+            Save Profile Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

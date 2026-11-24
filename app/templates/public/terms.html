@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Terms and Conditions | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="policy-page">
+  <!-- Header -->
+  <div class="policy-header">
+    <div class="policy-badge">
+      <i data-lucide="file-check" class="icon-sm"></i>
+      Official Municipal Portal Regulations
+    </div>
+    <h1 class="policy-title">Terms and Conditions</h1>
+    <div class="policy-meta">
+      <span><i data-lucide="calendar" class="icon-sm"></i> Last Updated: January 1, 2026</span>
+      <span><i data-lucide="award" class="icon-sm"></i> Binding Public Service Agreement</span>
+      <span><i data-lucide="map-pin" class="icon-sm"></i> Governing Law: Laws of India</span>
+    </div>
+  </div>
+
+  <div class="policy-layout">
+    <!-- TOC -->
+    <aside class="policy-toc">
+      <div class="policy-toc-title">Terms Navigation</div>
+      <ul class="policy-toc-links">
+        <li><a href="#acceptance" class="policy-toc-link">1. Acceptance of Terms</a></li>
+        <li><a href="#account-responsibility" class="policy-toc-link">2. Account Responsibility</a></li>
+        <li><a href="#grievance-rules" class="policy-toc-link">3. Lawful Grievance Submissions</a></li>
+        <li><a href="#service-levels" class="policy-toc-link">4. Service Levels & SLAs</a></li>
+        <li><a href="#evidence-verification" class="policy-toc-link">5. Photo Evidence & Verification</a></li>
+        <li><a href="#liability" class="policy-toc-link">6. Disclaimers & Liability</a></li>
+        <li><a href="#governing-law" class="policy-toc-link">7. Governing Law & Jurisdiction</a></li>
+        <li><a href="#modifications" class="policy-toc-link">8. Modifications to Terms</a></li>
+        <li><a href="#contact" class="policy-toc-link">9. Help Desk Contact</a></li>
+      </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="policy-content">
+      
+      <!-- 1. Acceptance -->
+      <section id="acceptance" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="check" class="icon-sm" style="color: var(--civic-blue);"></i>
+          1. Acceptance of Terms
+        </h2>
+        <div class="policy-card">
+          <p>
+            Welcome to the <strong>Smart Civic Complaint Management and Tracking System</strong>. By accessing, browsing, registering an account, or lodging grievances through this web portal, you agree to comply with and be legally bound by these Terms and Conditions.
+          </p>
+          <p>
+            If you do not agree to these terms, please refrain from accessing the portal or submitting civic complaints.
+          </p>
+        </div>
+      </section>
+
+      <!-- 2. Account Responsibility -->
+      <section id="account-responsibility" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="shield" class="icon-sm" style="color: var(--civic-blue);"></i>
+          2. Citizen Account Registration & Security
+        </h2>
+        <div class="policy-card">
+          <p>
+            When registering, you agree to provide truthful, accurate, and current information, including your full legal name, active mobile number, and valid email address.
+          </p>
+          <p>
+            You are exclusively responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account. Notify our administrators immediately if you suspect unauthorized access or credential compromise.
+          </p>
+        </div>
+      </section>
+
+      <!-- 3. Lawful Grievance Submissions -->
+      <section id="grievance-rules" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="alert-triangle" class="icon-sm" style="color: var(--civic-blue);"></i>
+          3. Lawful & Truthful Grievance Submissions
+        </h2>
+        <div class="policy-card">
+          <p>
+            The portal is dedicated to genuine civic disruptions, municipal infrastructure faults, and public sanitation grievances. You agree that:
+          </p>
+          <ul>
+            <li>You will not submit false, fraudulent, frivolous, or malicious complaints.</li>
+            <li>You will not upload defamatory, obscene, politically motivated, or abusive content or images.</li>
+            <li>You will not attempt to manipulate automated SLA escalation clocks or file duplicate complaints for the same incident under false identities.</li>
+          </ul>
+          <p>
+            Fictitious reporting or harassment of municipal personnel may result in immediate account suspension and appropriate legal action under applicable provisions of the Indian Penal Code and the Information Technology Act.
+          </p>
+        </div>
+      </section>
+
+      <!-- 4. Service Levels & SLAs -->
+      <section id="service-levels" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="clock" class="icon-sm" style="color: var(--civic-blue);"></i>
+          4. Service Level Agreements (SLAs)
+        </h2>
+        <div class="policy-card">
+          <p>
+            Complaints are prioritized (Low, Medium, High, Urgent) and assigned statutory resolution benchmarks according to municipal service charters.
+          </p>
+          <p>
+            While municipal engineering teams make every effort to resolve grievances within standard SLA deadlines, resolution timeframes may vary due to weather extremes, emergency infrastructure contingencies, supply-chain availability, or required road-cutting permits. Automated escalations notify administrative supervisors when deadlines elapse.
+          </p>
+        </div>
+      </section>
+
+      <!-- 5. Photo Evidence & Verification -->
+      <section id="evidence-verification" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="camera" class="icon-sm" style="color: var(--civic-blue);"></i>
+          5. Photographic Evidence & Verification
+        </h2>
+        <div class="policy-card">
+          <p>
+            Field technicians are mandated to provide verifiable visual proof of work completion before a complaint status is transitioned to "Work Completed" or "Resolved".
+          </p>
+          <p>
+            Citizens retain the right to inspect uploaded completion images and submit satisfaction ratings or reopen complaints if resolution is inadequate.
+          </p>
+        </div>
+      </section>
+
+      <!-- 6. Disclaimers & Liability -->
+      <section id="liability" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="alert-octagon" class="icon-sm" style="color: var(--civic-blue);"></i>
+          6. Limitation of Liability
+        </h2>
+        <div class="policy-card">
+          <p>
+            This portal is provided on an "as-is" and "as-available" basis for administrative convenience. While we endeavor to ensure uninterrupted access, the administration is not liable for temporary service interruptions arising from scheduled maintenance, network outages, or unforeseen technical failures.
+          </p>
+        </div>
+      </section>
+
+      <!-- 7. Governing Law -->
+      <section id="governing-law" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="scale" class="icon-sm" style="color: var(--civic-blue);"></i>
+          7. Governing Law & Jurisdiction
+        </h2>
+        <div class="policy-card">
+          <p>
+            These Terms and Conditions shall be governed by and construed in accordance with the laws of the Republic of India.
+          </p>
+          <p>
+            Any disputes, controversies, or legal claims arising out of or related to this portal shall be subject to the exclusive jurisdiction of the competent civil courts having territorial jurisdiction over the municipal administration headquarters in India.
+          </p>
+        </div>
+      </section>
+
+      <!-- 8. Modifications -->
+      <section id="modifications" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="edit" class="icon-sm" style="color: var(--civic-blue);"></i>
+          8. Modifications to Terms
+        </h2>
+        <div class="policy-card">
+          <p>
+            The administration reserves the right to amend or update these terms at its sole discretion. Any amendments take effect immediately upon posting to this portal. Continued use of the portal after such changes constitutes acceptance of the amended terms.
+          </p>
+        </div>
+      </section>
+
+      <!-- 9. Contact -->
+      <section id="contact" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="phone-call" class="icon-sm" style="color: var(--civic-blue);"></i>
+          9. Civic Help Desk
+        </h2>
+        <div class="policy-card">
+          <p>For questions regarding these Terms or municipal grievance rules:</p>
+          <div style="background-color: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-top: 0.75rem;">
+            <div>Smart Civic Complaint Management System Control Desk</div>
+            <div>Helpline: <strong>1800-425-0000</strong> (Toll Free)</div>
+            <div>Email: <strong>civic-desk@gov.portal</strong></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

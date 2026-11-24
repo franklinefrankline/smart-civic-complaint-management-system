@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}About | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 4rem 1.5rem; max-width: 900px;">
+  <div style="text-align: center; margin-bottom: 3.5rem;">
+    <h1 style="font-size: 2.2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.75rem;">
+      About the Smart Civic Platform
+    </h1>
+    <p style="font-size: 1.1rem; color: var(--text-secondary); max-width: 650px; margin: 0 auto;">
+      An enterprise municipal grievance resolution ecosystem bridging citizens, department heads, and field crews.
+    </p>
+  </div>
+
+  <div class="card" style="padding: 2.5rem; margin-bottom: 2rem;">
+    <h2 style="font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary);">
+      Our Civic Mission
+    </h2>
+    <p style="font-size: 1rem; color: var(--text-secondary); line-height: 1.7; margin-bottom: 1.5rem;">
+      Municipal governance succeeds when citizens have an accessible, transparent, and responsive channel to report civic disruptions. The Smart Civic Complaint Management and Tracking System replaces traditional paper-based or opaque complaint desks with end-to-end digital tracking.
+    </p>
+    <p style="font-size: 1rem; color: var(--text-secondary); line-height: 1.7;">
+      Every complaint is digitally timestamped, tracked with administrative ward precision, bound to rigorous SLA resolution benchmarks, and validated with before-and-after photographic evidence prior to case closure.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+    <div class="card" style="padding: 1.75rem;">
+      <div style="color: var(--civic-blue); margin-bottom: 0.75rem;"><i data-lucide="globe"></i></div>
+      <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">Multilingual Access</h3>
+      <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+        Available in English, Tamil, and Hindi to ensure every citizen can report issues comfortably in their preferred language.
+      </p>
+    </div>
+
+    <div class="card" style="padding: 1.75rem;">
+      <div style="color: var(--civic-blue); margin-bottom: 0.75rem;"><i data-lucide="clock"></i></div>
+      <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">SLA & Escalation</h3>
+      <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+        Automated time-tracking flags overdue tasks and escalates unattended grievances directly to administrative oversight.
+      </p>
+    </div>
+
+    <div class="card" style="padding: 1.75rem;">
+      <div style="color: var(--civic-blue); margin-bottom: 0.75rem;"><i data-lucide="camera"></i></div>
+      <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">Verified Proofs</h3>
+      <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+        Field technicians must upload photographic evidence before and after executing repairs, verified by department officers.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

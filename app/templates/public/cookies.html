@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Cookie Policy | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="policy-page">
+  <!-- Policy Header -->
+  <div class="policy-header">
+    <div class="policy-badge">
+      <i data-lucide="cookie" class="icon-sm"></i>
+      Portal Transparency & Tracking Disclosure
+    </div>
+    <h1 class="policy-title">Cookie Policy</h1>
+    <div class="policy-meta">
+      <span><i data-lucide="calendar" class="icon-sm"></i> Effective Date: January 1, 2026</span>
+      <span><i data-lucide="file-text" class="icon-sm"></i> Version: 2.1</span>
+      <span><i data-lucide="check-circle" class="icon-sm"></i> Consent Mechanism: Explicit Opt-In</span>
+    </div>
+  </div>
+
+  <!-- Policy Layout -->
+  <div class="policy-layout">
+    <!-- Sidebar Table of Contents -->
+    <aside class="policy-toc">
+      <div class="policy-toc-title">Table of Contents</div>
+      <ul class="policy-toc-links">
+        <li><a href="#what-are-cookies" class="policy-toc-link">1. What Are Cookies?</a></li>
+        <li><a href="#why-we-use-cookies" class="policy-toc-link">2. Why We Use Cookies</a></li>
+        <li><a href="#essential-cookies" class="policy-toc-link">3. Essential Cookies</a></li>
+        <li><a href="#functional-cookies" class="policy-toc-link">4. Functional Cookies</a></li>
+        <li><a href="#analytics-cookies" class="policy-toc-link">5. Analytics Cookies</a></li>
+        <li><a href="#cookie-preferences" class="policy-toc-link">6. Cookie Preferences</a></li>
+        <li><a href="#managing-and-disabling-cookies" class="policy-toc-link">7. Managing & Disabling</a></li>
+        <li><a href="#third-party-cookies" class="policy-toc-link">8. Third-Party Cookies</a></li>
+        <li><a href="#changes-to-this-cookie-policy" class="policy-toc-link">9. Changes to This Policy</a></li>
+        <li><a href="#contact-information" class="policy-toc-link">10. Contact Information</a></li>
+      </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="policy-content">
+
+      <!-- 1. What Are Cookies? -->
+      <section id="what-are-cookies" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="help-circle" class="icon-sm" style="color: var(--civic-blue);"></i>
+          1. What Are Cookies?
+        </h2>
+        <div class="policy-card">
+          <p>
+            Cookies are small cryptographic text files placed on your computer, mobile phone, or browsing device when you visit websites and web portals. They are widely used by digital government applications to maintain authenticated user sessions, store user interface preferences, prevent fraudulent activity, and ensure reliable web communication.
+          </p>
+          <p>
+            In addition to standard HTTP cookies, this portal may utilize modern browser storage technologies (such as <code>localStorage</code>) to record display preferences without transmitting tracking tokens over network headers.
+          </p>
+        </div>
+      </section>
+
+      <!-- 2. Why We Use Cookies -->
+      <section id="why-we-use-cookies" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="target" class="icon-sm" style="color: var(--civic-blue);"></i>
+          2. Why We Use Cookies
+        </h2>
+        <div class="policy-card">
+          <p>We use cookies and local storage tokens for strictly defined operational purposes:</p>
+          <ul>
+            <li><strong>Session Authentication:</strong> Keeping you securely signed into your Citizen, Officer, Worker, or Administrator dashboard without requiring re-authentication on every page reload.</li>
+            <li><strong>Security and CSRF Defense:</strong> Validating that form submissions and grievance updates originate from authorized, non-tampered browser sessions.</li>
+            <li><strong>Personalization:</strong> Remembering your selected interface language (English, Tamil, Hindi) and visual theme (Light or Dark mode).</li>
+            <li><strong>Performance Optimization:</strong> Measuring aggregate system load to ensure server responsiveness during high-volume municipal complaint influxes.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 3. Essential Cookies -->
+      <section id="essential-cookies" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="shield-alert" class="icon-sm" style="color: var(--civic-blue);"></i>
+          3. Essential Cookies
+        </h2>
+        <div class="policy-card">
+          <p>
+            Essential cookies are strictly necessary for the technical operation and security of the portal. Without these cookies, authenticated services, secure form submissions, and grievance tracking cannot function. These cookies do not require prior consent and cannot be switched off in our system.
+          </p>
+          
+          <div class="policy-table-wrapper">
+            <table class="policy-table">
+              <thead>
+                <tr>
+                  <th>Cookie Identifier</th>
+                  <th>Category</th>
+                  <th>Operational Purpose</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>session</code></td>
+                  <td>Essential</td>
+                  <td>Encrypted signed session cookie holding user authentication state, role tokens, and temporary flash notifications.</td>
+                  <td>Session / 30 Days (if Remember Me selected)</td>
+                </tr>
+                <tr>
+                  <td><code>csrf_token</code></td>
+                  <td>Essential Security</td>
+                  <td>Cryptographic token preventing Cross-Site Request Forgery during complaint filing and administrative actions.</td>
+                  <td>Session</td>
+                </tr>
+                <tr>
+                  <td><code>civic_cookie_consent</code></td>
+                  <td>Essential Governance</td>
+                  <td>Stores your chosen cookie consent preferences so you are not prompted repeatedly on every page load.</td>
+                  <td>1 Year</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Functional Cookies -->
+      <section id="functional-cookies" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="sliders" class="icon-sm" style="color: var(--civic-blue);"></i>
+          4. Functional Cookies
+        </h2>
+        <div class="policy-card">
+          <p>
+            Functional cookies allow the portal to remember customized choices made by the user, delivering an accessible and personalized experience.
+          </p>
+          
+          <div class="policy-table-wrapper">
+            <table class="policy-table">
+              <thead>
+                <tr>
+                  <th>Cookie Identifier</th>
+                  <th>Category</th>
+                  <th>Operational Purpose</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>civic_theme</code> (localStorage)</td>
+                  <td>Functional</td>
+                  <td>Retains your chosen visual display mode (Dark Theme or Light Theme) across sessions.</td>
+                  <td>Persistent</td>
+                </tr>
+                <tr>
+                  <td><code>lang</code> (session/cookie)</td>
+                  <td>Functional</td>
+                  <td>Stores preferred language selection (English, Tamil, Hindi) for localized civic content.</td>
+                  <td>Session / 1 Year</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            You may disable functional cookies through your Cookie Preferences, though doing so may reset your preferred theme or language settings back to system defaults upon browser restart.
+          </p>
+        </div>
+      </section>
+
+      <!-- 5. Analytics Cookies -->
+      <section id="analytics-cookies" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="bar-chart-2" class="icon-sm" style="color: var(--civic-blue);"></i>
+          5. Analytics Cookies
+        </h2>
+        <div class="policy-card">
+          <p>
+            Analytics cookies collect aggregate, anonymous telemetry about how visitors interact with the portal (e.g. which municipal department categories receive the highest traffic, average page response duration, and browser types utilized).
+          </p>
+          <p>
+            <strong>Important:</strong> Analytics cookies are strictly optional. They are inactive by default and are only enabled if you explicitly provide affirmative consent via our Cookie Banner or Cookie Settings panel. These analytics do not collect personal names, mobile numbers, or specific complaint contents.
+          </p>
+        </div>
+      </section>
+
+      <!-- 6. Cookie Preferences -->
+      <section id="cookie-preferences" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="settings" class="icon-sm" style="color: var(--civic-blue);"></i>
+          6. Cookie Preferences
+        </h2>
+        <div class="policy-card">
+          <p>
+            You have full control over optional cookies used on this portal. You can review, modify, or revoke your cookie choices at any time without impacting your right to file or track civic grievances.
+          </p>
+          <div style="margin: 1.5rem 0; padding: 1.25rem; background-color: var(--bg-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+                Manage Your Portal Cookie Settings
+              </div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">
+                Enable or disable optional functional and performance analytics cookies.
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openCookieSettings()">
+              <i data-lucide="sliders" class="icon-sm"></i> Open Cookie Settings
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. Managing and Disabling Cookies -->
+      <section id="managing-and-disabling-cookies" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="shield-off" class="icon-sm" style="color: var(--civic-blue);"></i>
+          7. Managing and Disabling Cookies
+        </h2>
+        <div class="policy-card">
+          <p>
+            In addition to our integrated preferences controller, most modern web browsers allow you to control cookie settings through their preferences menu. You can configure your browser to block all cookies, reject third-party cookies, or prompt you prior to receiving a cookie.
+          </p>
+          <ul>
+            <li><strong>Google Chrome:</strong> Settings &gt; Privacy and Security &gt; Cookies and other site data.</li>
+            <li><strong>Mozilla Firefox:</strong> Settings &gt; Privacy &amp; Security &gt; Enhanced Tracking Protection.</li>
+            <li><strong>Microsoft Edge:</strong> Settings &gt; Cookies and site permissions &gt; Manage and delete cookies.</li>
+            <li><strong>Apple Safari:</strong> Preferences &gt; Privacy &gt; Block all cookies.</li>
+          </ul>
+          <p>
+            Please note that blocking essential cookies directly in your browser will prevent you from signing into your user dashboard or submitting complaints.
+          </p>
+        </div>
+      </section>
+
+      <!-- 8. Third-Party Cookies -->
+      <section id="third-party-cookies" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="external-link" class="icon-sm" style="color: var(--civic-blue);"></i>
+          8. Third-Party Cookies
+        </h2>
+        <div class="policy-card">
+          <p>
+            This portal does not partner with commercial advertising exchanges or third-party behavioral tracking services.
+          </p>
+          <p>
+            Static client-side assets (such as icon fonts and charting scripts) may be delivered via secure content delivery networks (CDNs). These providers transmit web assets over encrypted connections and do not set persistent behavioral tracking cookies on our users.
+          </p>
+        </div>
+      </section>
+
+      <!-- 9. Changes to This Cookie Policy -->
+      <section id="changes-to-this-cookie-policy" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="refresh-cw" class="icon-sm" style="color: var(--civic-blue);"></i>
+          9. Changes to This Cookie Policy
+        </h2>
+        <div class="policy-card">
+          <p>
+            We may update this Cookie Policy from time to time to accommodate technical enhancements, new platform features, or updated statutory standards.
+          </p>
+          <p>
+            Any modifications will become effective immediately upon being published on this page. If material changes are made to how optional cookies are handled, you will be prompted with a renewed Cookie Consent notice upon your next portal visit.
+          </p>
+        </div>
+      </section>
+
+      <!-- 10. Contact Information -->
+      <section id="contact-information" class="policy-section">
+        <h2 class="policy-section-title">
+          <i data-lucide="mail" class="icon-sm" style="color: var(--civic-blue);"></i>
+          10. Contact Information
+        </h2>
+        <div class="policy-card">
+          <p>
+            If you have questions or require technical assistance regarding our cookie management or data protection practices, please contact our help desk:
+          </p>
+          <div style="background-color: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-top: 1rem;">
+            <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.35rem;">
+              Civic Portal IT &amp; Information Security Desk
+            </div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">
+              Smart Civic Complaint Management System
+            </div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">
+              Toll-Free Control Room: <strong>1800-425-0000</strong>
+            </div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary);">
+              Email Support: <strong>civic-desk@gov.portal</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

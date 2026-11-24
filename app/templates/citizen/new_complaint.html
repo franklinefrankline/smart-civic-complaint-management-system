@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Register New Complaint | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content" style="max-width: 960px;">
+    <!-- Header -->
+    <div style="margin-bottom: 1.75rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+      <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-blue); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+        Grievance Lodgement Form
+      </div>
+      <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
+        File a Civic Complaint
+      </h1>
+      <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">
+        Submit your municipal complaint for prompt inspection and work order dispatch. All reports receive a unique tracking reference.
+      </p>
+    </div>
+
+    <!-- Duplicate Warning Container -->
+    <div id="duplicateWarningBox" style="display: none; margin-bottom: 1.5rem;"></div>
+
+    <div class="card" style="padding: 2rem; box-shadow: none;">
+      <form method="POST" action="{{ url_for('citizen.new_complaint') }}" enctype="multipart/form-data">
+        <!-- Title -->
+        <div class="form-group">
+          <label class="form-label">{{ t('lbl_title') }} <span style="color: red;">*</span></label>
+          <input type="text" name="title" class="form-control" required placeholder="e.g. Major water pipeline leakage near Park Avenue corner" minlength="5">
+          <small style="color: var(--text-muted); font-size: 0.75rem;">Clear, concise description of the public issue (minimum 5 characters).</small>
+        </div>
+
+        <!-- Category & Auto-suggested Department -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+          <div class="form-group">
+            <label class="form-label">{{ t('lbl_category') }} <span style="color: red;">*</span></label>
+            <select name="category_id" id="category_id" class="form-control" required>
+              <option value="">-- Select Grievance Category --</option>
+              {% for cat in categories %}
+                <option value="{{ cat.id }}" data-dept="{{ cat.department_id }}">{{ cat.name }} ({{ cat.department.name }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Municipal Department</label>
+            <div style="padding: 0.65rem 0.85rem; background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="shield-check" class="icon-xs" style="color: var(--civic-blue);"></i> Assigned by Administrator upon review
+            </div>
+            <input type="hidden" name="department_id" id="department_id" value="">
+          </div>
+        </div>
+
+        <!-- Priority & Supporting Attachments -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+          <div class="form-group">
+            <label class="form-label">{{ t('lbl_priority') }}</label>
+            <select name="priority" class="form-control">
+              <option value="low">Low (Routine Civic Maintenance - 7 Days SLA)</option>
+              <option value="medium" selected>Medium (Standard Public Grievance - 4 Days SLA)</option>
+              <option value="high">High (Significant Public Hazard - 48 Hours SLA)</option>
+              <option value="urgent">Urgent (Immediate Safety Hazard / Emergency - 24 Hours SLA)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">{{ t('lbl_attachments') }}</label>
+            <input type="file" name="attachments" class="form-control" multiple accept=".jpg,.jpeg,.png,.webp,.pdf">
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Attach photos or documents: JPG, PNG, WEBP, PDF (Max 10MB each)</small>
+          </div>
+        </div>
+
+        <!-- Detailed Description -->
+        <div class="form-group">
+          <label class="form-label">{{ t('lbl_description') }} <span style="color: red;">*</span></label>
+          <textarea name="description" class="form-control" rows="4" required placeholder="Provide specific details such as the duration of the issue, severity, and any hazards to pedestrians or traffic." minlength="15"></textarea>
+        </div>
+
+        <!-- Structured Incident Location Section (No Map) -->
+        <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1.5rem; margin-bottom: 1.75rem;">
+          <div style="margin-bottom: 1.25rem;">
+            <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.2rem;">
+              Incident Location & Administrative Details
+            </h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+              Provide the exact municipal ward, street, and locality to ensure correct assignment to regional field crews.
+            </p>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">State <span style="color: red;">*</span></label>
+              <input type="text" name="state" class="form-control" value="Tamil Nadu" required placeholder="State name">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">District <span style="color: red;">*</span></label>
+              <input type="text" name="district" class="form-control" value="Chennai" required placeholder="District name">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">City or Municipality <span style="color: red;">*</span></label>
+              <input type="text" name="city" class="form-control" value="{{ current_user.city or 'Chennai' }}" required placeholder="e.g. Greater Chennai Corporation">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Ward Number <span style="color: red;">*</span></label>
+              <input type="text" name="ward_number" id="wardInput" class="form-control" value="{{ current_user.ward_number or '4' }}" required placeholder="e.g. Ward 4 / Zone 5">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Street Name / Door No <span style="color: red;">*</span></label>
+              <input type="text" name="street_name" id="streetInput" class="form-control" required placeholder="e.g. 45 Anna Salai / 2nd Main Road" value="{{ current_user.address or '' }}">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Area or Locality <span style="color: red;">*</span></label>
+              <input type="text" name="locality" id="localityInput" class="form-control" required placeholder="e.g. T. Nagar / Mylapore / Central Ward">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Landmark (Optional)</label>
+              <input type="text" name="landmark" class="form-control" placeholder="e.g. Opposite Post Office / Near Water Tank">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">PIN Code <span style="color: red;">*</span></label>
+              <input type="text" name="pincode" class="form-control" required placeholder="e.g. 600017" pattern="[0-9]{6}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Submission Actions -->
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; align-items: center; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+          <a href="{{ url_for('citizen.dashboard') }}" class="btn btn-secondary">
+            Cancel
+          </a>
+          <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.75rem;">
+            <i data-lucide="send" class="icon-sm"></i> Register Grievance
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const categorySelect = document.getElementById('category_id');
+    const deptSelect = document.getElementById('department_id');
+    const wardInput = document.getElementById('wardInput');
+    const localityInput = document.getElementById('localityInput');
+    const warningBox = document.getElementById('duplicateWarningBox');
+
+    // Auto-select department based on chosen category
+    if (categorySelect && deptSelect) {
+      categorySelect.addEventListener('change', () => {
+        const selectedOpt = categorySelect.options[categorySelect.selectedIndex];
+        const deptId = selectedOpt.getAttribute('data-dept');
+        if (deptId) {
+          deptSelect.value = deptId;
+        }
+        checkDuplicates();
+      });
+    }
+
+    if (wardInput) wardInput.addEventListener('blur', checkDuplicates);
+    if (localityInput) localityInput.addEventListener('blur', checkDuplicates);
+
+    function checkDuplicates() {
+      const catId = categorySelect ? categorySelect.value : null;
+      const ward = wardInput ? wardInput.value : '';
+      const locality = localityInput ? localityInput.value : '';
+
+      if (!catId || (!ward && !locality)) return;
+
+      fetch('/api/complaints/check-duplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category_id: parseInt(catId), ward_number: ward, locality: locality })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (!warningBox) return;
+        if (data.has_duplicates && data.duplicates.length > 0) {
+          const listHtml = data.duplicates.map(d => `<li><strong>${d.complaint_ref}</strong>: ${d.title} (${d.distance_meters}, Status: ${d.status})</li>`).join('');
+          warningBox.innerHTML = `
+            <div class="alert alert-warning" style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i data-lucide="alert-triangle" class="icon-md" style="flex-shrink: 0; color: #b45309;"></i>
+              <div>
+                <strong>Recent Similar Complaints in This Municipal Ward:</strong>
+                <p style="font-size: 0.82rem; margin-top: 0.25rem;">A similar complaint has been logged in this zone. You may still proceed if this is an independent issue:</p>
+                <ul style="margin-left: 1.25rem; font-size: 0.8rem; margin-top: 0.35rem;">${listHtml}</ul>
+              </div>
+            </div>
+          `;
+          warningBox.style.display = 'block';
+          if (window.lucide) lucide.createIcons();
+        } else {
+          warningBox.style.display = 'none';
+          warningBox.innerHTML = '';
+        }
+      })
+      .catch(err => console.error('Duplicate check error:', err));
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ t('app_name') }}{% endblock %} | Civic Administration</title>
+  <meta name="description" content="{{ t('app_subtitle') }}">
+  
+  <!-- Master Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <!-- Top Navigation Progress Indicator -->
+  <div id="pageProgressBar"></div>
+
+  <!-- Global Navigation Bar (Rendered ONLY on Home, Sign In, and Sign Up pages) -->
+  {% block navbar %}
+    {% if request.endpoint in ['public.index', 'auth.login', 'auth.register'] %}
+      {% include 'shared/_navbar.html' %}
+    {% endif %}
+  {% endblock %}
+
+  <!-- Flash Messages Banner (Floating Toast Notifications - Never overlaps titles or sidebars) -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div id="flashToastContainer" class="flash-container toast-flash-wrapper" role="region" aria-label="Notifications" style="position: fixed; top: 1.5rem; right: 1.5rem; z-index: 999999; max-width: 480px; min-width: 320px; width: auto; pointer-events: none; display: flex; flex-direction: column; gap: 0.65rem;">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}" style="pointer-events: auto; margin-bottom: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); border-radius: var(--radius-sm, 6px); animation: slideInToast 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 1.15rem;">
+            <span style="font-weight: 500; font-size: 0.88rem; line-height: 1.4;">{{ message }}</span>
+            <button type="button" onclick="this.closest('.alert').remove()" class="alert-close-btn" aria-label="Close alert" style="background: none; border: none; font-size: 1.35rem; line-height: 1; cursor: pointer; color: inherit; padding: 0; opacity: 0.75; display: inline-flex; align-items: center;">&times;</button>
+          </div>
+        {% endfor %}
+      </div>
+      <script>
+        setTimeout(function() {
+          var alerts = document.querySelectorAll('.flash-container .alert');
+          alerts.forEach(function(el) {
+            el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+            el.style.opacity = '0';
+            el.style.transform = 'translateX(40px)';
+            setTimeout(function() { el.remove(); }, 400);
+          });
+        }, 6000);
+      </script>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Main View Block -->
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer (Rendered only on the home page) -->
+  {% block footer %}
+  {% if request.endpoint == 'public.index' %}
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <div class="brand-text-only" style="margin-bottom: 0.75rem;">
+            <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em;">
+              Smart Civic Complaint Management System
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+              Enterprise Municipal Administration & Citizen Grievance Portal
+            </div>
+          </div>
+          <p style="font-size: 0.84rem; color: var(--text-secondary); line-height: 1.5;">
+            An integrated civic engagement platform driving accountable, real-time grievance tracking and transparent municipal resolution.
+          </p>
+        </div>
+        <div class="footer-col">
+          <h4>Portal Navigation</h4>
+          <ul class="footer-links">
+            <li><a href="{{ url_for('public.index') }}">{{ t('nav_home') }}</a></li>
+            <li><a href="{{ url_for('public.about') }}">{{ t('nav_about') }}</a></li>
+            <li><a href="{{ url_for('public.how_it_works') }}">{{ t('nav_how_it_works') }}</a></li>
+            <li><a href="{{ url_for('public.departments') }}">{{ t('nav_departments') }}</a></li>
+            <li><a href="{{ url_for('public.track') }}">{{ t('nav_track') }}</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Municipal Units</h4>
+          <ul class="footer-links">
+            <li><a href="{{ url_for('public.departments') }}">Water Supply & Drainage</a></li>
+            <li><a href="{{ url_for('public.departments') }}">Roads & Infrastructure</a></li>
+            <li><a href="{{ url_for('public.departments') }}">Sanitation & Waste Management</a></li>
+            <li><a href="{{ url_for('public.departments') }}">Public Health & Civic Services</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Civic Help Desk</h4>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.45rem;">
+            Municipal Control: <strong>1800-425-0000</strong>
+          </p>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.45rem;">
+            Support: <strong>civic-desk@gov.portal</strong>
+          </p>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">
+            Available 24x7 for municipal grievance logging and emergency dispatch.
+          </p>
+        </div>
+        <div class="footer-col">
+          <h4>Legal & Policies</h4>
+          <ul class="footer-links">
+            <li><a href="{{ url_for('public.privacy') }}">Privacy Policy</a></li>
+            <li><a href="{{ url_for('public.cookies') }}">Cookie Policy</a></li>
+            <li><a href="javascript:void(0)" onclick="openCookieSettings()">Cookie Settings</a></li>
+            <li><a href="{{ url_for('public.terms') }}">Terms and Conditions</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+        <p>&copy; 2026 Smart Civic Complaint Management System. Enterprise Municipal Administration Platform.</p>
+        <div class="footer-legal-links" style="display: flex; flex-wrap: wrap; gap: 1.25rem; font-size: 0.85rem;">
+          <a href="{{ url_for('public.privacy') }}">Privacy Policy</a>
+          <a href="{{ url_for('public.cookies') }}">Cookie Policy</a>
+          <a href="javascript:void(0)" onclick="openCookieSettings()">Cookie Settings</a>
+          <a href="{{ url_for('public.terms') }}">Terms and Conditions</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  {% endif %}
+  {% endblock %}
+
+  <!-- Cookie Consent Banner -->
+  <div id="cookieConsentBanner" class="cookie-banner" role="dialog" aria-labelledby="cookieBannerTitle" aria-describedby="cookieBannerDesc" style="display: none;">
+    <div class="cookie-banner-content">
+      <div class="cookie-banner-text">
+        <h4 id="cookieBannerTitle" class="cookie-banner-title">
+          <i data-lucide="cookie" class="icon-sm" style="color: var(--civic-blue);"></i>
+          Civic Portal Cookie Notice
+        </h4>
+        <p id="cookieBannerDesc" class="cookie-banner-desc">
+          We use essential cookies to ensure secure user authentication and portal functionality. We also use functional and analytics cookies to remember your display preferences and improve municipal services. You can choose your preferences or read our <a href="{{ url_for('public.cookies') }}">Cookie Policy</a> and <a href="{{ url_for('public.privacy') }}">Privacy Policy</a>.
+        </p>
+      </div>
+      <div class="cookie-banner-actions">
+        <button type="button" class="btn btn-secondary btn-sm" id="cookieRejectOptional">Reject Optional Cookies</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="cookieCustomize">Customize Preferences</button>
+        <button type="button" class="btn btn-primary btn-sm" id="cookieAcceptAll">Accept All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cookie Settings Modal -->
+  <div id="cookieSettingsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cookieModalTitle">
+    <div class="modal-dialog cookie-settings-dialog">
+      <div class="card-header" style="margin-bottom: 0.75rem;">
+        <h3 id="cookieModalTitle" class="card-title" style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;">
+          <i data-lucide="sliders" class="icon-sm" style="color: var(--civic-blue);"></i>
+          Cookie Settings
+        </h3>
+        <button type="button" class="toast-close-btn" onclick="closeModal('cookieSettingsModal')" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="cookie-settings-body">
+        <p style="font-size: 0.86rem; color: var(--text-secondary); margin-bottom: 1rem;">
+          Manage your cookie choices. Essential cookies cannot be disabled as they are required for security, session verification, and core grievance redressal features.
+        </p>
+
+        <!-- 1. Essential Cookies -->
+        <div class="cookie-pref-item">
+          <div class="cookie-pref-info">
+            <div class="cookie-pref-name">
+              Essential & Security Cookies
+              <span class="badge badge-submitted" style="font-size: 0.68rem; margin-left: 0.5rem;">Always Active</span>
+            </div>
+            <p class="cookie-pref-desc">
+              Necessary for user sign-in, session management, CSRF token security, and secure complaint submission.
+            </p>
+          </div>
+          <div class="cookie-pref-toggle">
+            <label class="switch-control">
+              <input type="checkbox" checked disabled aria-label="Essential Cookies">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 2. Functional Cookies -->
+        <div class="cookie-pref-item">
+          <div class="cookie-pref-info">
+            <div class="cookie-pref-name">Functional & Preference Cookies</div>
+            <p class="cookie-pref-desc">
+              Remembers your theme selection (Dark/Light mode) and chosen language (English, Tamil, Hindi) across sessions.
+            </p>
+          </div>
+          <div class="cookie-pref-toggle">
+            <label class="switch-control">
+              <input type="checkbox" id="prefFunctional" class="cookie-switch" checked aria-label="Functional Cookies">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 3. Analytics Cookies -->
+        <div class="cookie-pref-item">
+          <div class="cookie-pref-info">
+            <div class="cookie-pref-name">Performance & Analytics Cookies</div>
+            <p class="cookie-pref-desc">
+              Helps municipal administrators analyze aggregate, non-identifiable usage patterns to optimize complaint resolution workflows.
+            </p>
+          </div>
+          <div class="cookie-pref-toggle">
+            <label class="switch-control">
+              <input type="checkbox" id="prefAnalytics" class="cookie-switch" aria-label="Analytics Cookies">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('cookieSettingsModal')">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="cookieSaveCustom">Save Preferences</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- Master Application Scripts -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+  
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

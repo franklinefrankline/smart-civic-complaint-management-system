@@ -1,0 +1,74 @@
+<nav class="navbar" aria-label="Main Navigation">
+  <div class="navbar-container">
+    <!-- Left Section: Application Branding -->
+    <a href="{{ url_for('public.index') }}" class="brand-link" title="Smart Civic Complaint Management System">
+      <span class="brand-title">Smart Civic Complaint Management System</span>
+      <span class="brand-subtitle">MUNICIPAL REDRESSAL PORTAL</span>
+    </a>
+
+    <!-- Center Section: Horizontal Navigation Links -->
+    <ul class="nav-links">
+      <li><a href="{{ url_for('public.index') }}" class="nav-link {% if request.endpoint == 'public.index' %}active{% endif %}">{{ t('nav_home') }}</a></li>
+      <li><a href="{{ url_for('public.about') }}" class="nav-link {% if request.endpoint == 'public.about' %}active{% endif %}">{{ t('nav_about') }}</a></li>
+      <li><a href="{{ url_for('public.how_it_works') }}" class="nav-link {% if request.endpoint == 'public.how_it_works' %}active{% endif %}">{{ t('nav_how_it_works') }}</a></li>
+      <li><a href="{{ url_for('public.departments') }}" class="nav-link {% if request.endpoint == 'public.departments' %}active{% endif %}">{{ t('nav_departments') }}</a></li>
+      <li><a href="{{ url_for('public.track') }}" class="nav-link {% if request.endpoint == 'public.track' %}active{% endif %}">{{ t('nav_track') }}</a></li>
+      <li><a href="{{ url_for('public.contact') }}" class="nav-link {% if request.endpoint == 'public.contact' %}active{% endif %}">{{ t('nav_contact') }}</a></li>
+    </ul>
+
+    <!-- Right Section: Action Controls -->
+    <div class="nav-actions">
+      <!-- Theme Toggle -->
+      <button type="button" class="theme-toggle-btn" id="themeToggle" title="Toggle Theme" aria-label="Toggle Theme">
+        <i data-lucide="moon" class="icon-sm theme-icon"></i>
+      </button>
+
+      {% if current_user %}
+        <!-- Notification Bell Dropdown -->
+        <div class="notif-dropdown">
+          <button class="btn btn-secondary btn-sm notif-btn" id="notifToggleBtn" title="Notifications" aria-label="Notifications">
+            <i data-lucide="bell" class="icon-sm"></i>
+            <span id="notifBadge" class="notif-badge" style="display: {% if unread_notifications_count > 0 %}inline-flex{% else %}none{% endif %};">
+              {{ unread_notifications_count }}
+            </span>
+          </button>
+          
+          <div class="notif-menu" id="notifMenu">
+            <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+              <strong style="font-size: 0.85rem;">Notifications</strong>
+              <button id="markAllReadBtn" style="background: none; border: none; font-size: 0.78rem; color: var(--civic-blue); cursor: pointer;">Mark all read</button>
+            </div>
+            <div id="notifList">
+              <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Role Portal Link (Dashboard Button) -->
+        {% if current_user.is_admin %}
+          <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary btn-sm nav-dashboard-btn">Admin Console</a>
+        {% elif current_user.is_officer %}
+          <a href="{{ url_for('officer.dashboard') }}" class="btn btn-primary btn-sm nav-dashboard-btn">Officer Console</a>
+        {% elif current_user.is_worker %}
+          <a href="{{ url_for('worker.dashboard') }}" class="btn btn-primary btn-sm nav-dashboard-btn">Worker Console</a>
+        {% else %}
+          <a href="{{ url_for('citizen.dashboard') }}" class="btn btn-primary btn-sm nav-dashboard-btn">{{ t('nav_dashboard') }}</a>
+        {% endif %}
+
+        <!-- Logout Button -->
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary btn-sm nav-logout-btn" title="Sign Out" aria-label="Sign Out">
+          <i data-lucide="log-out" class="icon-sm"></i>
+        </a>
+      {% else %}
+        <!-- Unauthenticated Authentication Controls -->
+        <a href="{{ url_for('auth.login') }}" class="btn btn-secondary btn-sm">{{ t('nav_login') }}</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">{{ t('nav_register') }}</a>
+      {% endif %}
+
+      <!-- Mobile Hamburger Toggle -->
+      <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation" title="Toggle navigation">
+        <i data-lucide="menu" class="icon-md"></i>
+      </button>
+    </div>
+  </div>
+</nav>

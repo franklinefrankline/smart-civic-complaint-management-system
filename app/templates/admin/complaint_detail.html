@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Complaint {{ complaint.complaint_ref }} | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <!-- Top Action Bar -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.35rem;">
+          <span style="font-family: monospace; font-size: 0.95rem; background: var(--bg-surface); padding: 0.25rem 0.65rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-weight: 800; color: var(--civic-blue);">
+            {{ complaint.complaint_ref }}
+          </span>
+          <span class="badge badge-{{ complaint.status.lower().replace(' ', '-') }}">
+            {{ complaint.status }}
+          </span>
+          <span class="badge badge-priority-{{ complaint.priority }}">
+            {{ complaint.priority.upper() }} PRIORITY
+          </span>
+          {% if complaint.is_escalated %}
+            <span class="badge badge-escalated">ESCALATED OVERDUE</span>
+          {% endif %}
+        </div>
+        <h1 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary);">
+          {{ complaint.title }}
+        </h1>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+          Citizen: <strong>{{ complaint.citizen.full_name }}</strong> ({{ complaint.citizen.mobile_number }}) • Submitted {{ complaint.created_at.strftime('%d %b %Y, %I:%M %p') }}
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ url_for('admin.complaints') }}" class="btn btn-secondary btn-sm">
+          &larr; Back to Register
+        </a>
+      </div>
+    </div>
+
+    <!-- Admin Operational Control Grid -->
+    <div style="display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 1.5rem; margin-bottom: 2rem;">
+      <div>
+        <!-- Description Card -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">Citizen Report</h3>
+          <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; white-space: pre-line;">
+            {{ complaint.description }}
+          </p>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.88rem;">
+            <div>
+              <span style="color: var(--text-muted);">Category:</span><br>
+              <strong>{{ complaint.category.name }}</strong>
+            </div>
+            <div>
+              <span style="color: var(--text-muted);">Assigned Department:</span><br>
+              <strong>{{ complaint.department.name if complaint.department else 'Unassigned' }}</strong>
+            </div>
+            <div>
+              <span style="color: var(--text-muted);">Location Address:</span><br>
+              <strong>{{ complaint.address or 'Not specified' }} ({{ complaint.city or 'City' }}, {{ complaint.ward_number or 'Ward' }})</strong>
+            </div>
+            <div>
+              <span style="color: var(--text-muted);">SLA Resolution Target:</span><br>
+              <strong style="color: {% if complaint.is_overdue %}var(--status-rejected){% else %}var(--text-primary){% endif %};">
+                {{ complaint.sla_due_date.strftime('%d %b %Y, %I:%M %p') if complaint.sla_due_date else 'Standard' }}
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Administrative Actions Card -->
+        <div class="card" style="margin-bottom: 1.5rem; border-top: 4px solid var(--civic-blue);">
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1.25rem;">Administrative Oversight Actions</h3>
+
+          <!-- LEVEL 2: Department & Officer Assignment Form -->
+          <form method="POST" action="{{ url_for('admin.complaint_detail', complaint_id=complaint.id) }}" style="margin-bottom: 1.5rem; padding: 1.25rem; background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+            <input type="hidden" name="action" value="assign_department_officer">
+            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--civic-blue);">
+              <i data-lucide="user-plus" class="icon-sm"></i> Level 2: Assign Department & Authorized Officer
+            </h4>
+            
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+              <label class="form-label" style="font-weight: 600;">1. Select Civic Department <span style="color: red;">*</span></label>
+              <select name="department_id" id="admin_dept_select" class="form-control" required onchange="filterOfficersByDept(this.value)">
+                <option value="">-- Choose Target Department --</option>
+                {% for d in departments %}
+                  <option value="{{ d.id }}" {% if complaint.department_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+              <label class="form-label" style="font-weight: 600;">2. Select Active Department Officer <span style="color: red;">*</span></label>
+              <select name="officer_id" id="admin_officer_select" class="form-control" required data-selected="{{ complaint.assigned_officer_id or '' }}">
+                <option value="">-- Choose Department Officer --</option>
+                {% for off in officers %}
+                  <option value="{{ off.id }}" data-dept="{{ off.department_id }}" {% if complaint.assigned_officer_id == off.id %}selected{% endif %}>
+                    {{ off.full_name }} ({{ off.department.name if off.department else 'No Dept' }})
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label class="form-label" style="font-weight: 600;">3. Administrative Remarks</label>
+              <textarea name="admin_remarks" class="form-control" rows="2" placeholder="Administrative review notes, priority directions, or municipal instructions...">{{ complaint.admin_remarks or '' }}</textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <i data-lucide="check" class="icon-sm"></i> Assign Complaint to Department Officer
+            </button>
+          </form>
+
+          <!-- Department Assignment -->
+          <form method="POST" action="{{ url_for('admin.complaint_detail', complaint_id=complaint.id) }}" style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
+            <input type="hidden" name="action" value="assign_department">
+            <label class="form-label">Reassign Department Only</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <select name="department_id" class="form-control" required style="flex: 1;">
+                {% for d in departments %}
+                  <option value="{{ d.id }}" {% if complaint.department_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-secondary btn-sm">Update Dept</button>
+            </div>
+          </form>
+
+          <!-- Worker Assignment -->
+          <form method="POST" action="{{ url_for('admin.complaint_detail', complaint_id=complaint.id) }}" style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
+            <input type="hidden" name="action" value="assign_worker">
+            <label class="form-label">Assign Available Field Technician</label>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <select name="worker_user_id" class="form-control" required style="flex: 1;">
+                <option value="">-- Choose Field Worker --</option>
+                {% for w in workers %}
+                  <option value="{{ w.user_id }}">{{ w.user.full_name }} ({{ w.department.name }}, Active tasks: {{ w.active_task_count }})</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-primary btn-sm">Assign Worker</button>
+            </div>
+            <input type="text" name="instructions" class="form-control" placeholder="Optional instructions for field technician">
+          </form>
+
+          <!-- Status Override -->
+          <form method="POST" action="{{ url_for('admin.complaint_detail', complaint_id=complaint.id) }}" style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
+            <input type="hidden" name="action" value="change_status">
+            <label class="form-label">Update Status Lifecycle</label>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <select name="new_status" class="form-control" required style="flex: 1;">
+                <option value="Under Review">Under Review</option>
+                <option value="Accepted">Accepted</option>
+                <option value="Assigned">Assigned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Work Completed">Work Completed</option>
+                <option value="Verification Pending">Verification Pending</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Rejected">Rejected</option>
+                <option value="Escalated">Escalated</option>
+              </select>
+              <button type="submit" class="btn btn-secondary btn-sm">Apply Status</button>
+            </div>
+            <input type="text" name="remarks" class="form-control" placeholder="Action remarks for audit log">
+            <input type="text" name="rejection_reason" class="form-control" placeholder="Mandatory rejection reason if choosing Rejected" style="margin-top: 0.5rem;">
+          </form>
+
+          <!-- Priority Update -->
+          <form method="POST" action="{{ url_for('admin.complaint_detail', complaint_id=complaint.id) }}">
+            <input type="hidden" name="action" value="change_priority">
+            <label class="form-label">Set Priority Level</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <select name="new_priority" class="form-control" style="flex: 1;">
+                <option value="low" {% if complaint.priority == 'low' %}selected{% endif %}>Low (7 Days)</option>
+                <option value="medium" {% if complaint.priority == 'medium' %}selected{% endif %}>Medium (4 Days)</option>
+                <option value="high" {% if complaint.priority == 'high' %}selected{% endif %}>High (48 Hours)</option>
+                <option value="urgent" {% if complaint.priority == 'urgent' %}selected{% endif %}>Urgent (24 Hours)</option>
+              </select>
+              <button type="submit" class="btn btn-secondary btn-sm">Update Priority</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Proofs / Attachments -->
+        <div class="card">
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Evidence Attachments</h3>
+          {% if attachments %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
+              {% for att in attachments %}
+                <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden;">
+                  <div style="padding: 0.35rem 0.6rem; font-size: 0.72rem; font-weight: bold; background: var(--bg-subtle);">
+                    {{ att.attachment_type.upper() }}
+                  </div>
+                  {% if att.mime_type and 'image' in att.mime_type %}
+                    <a href="/{{ att.file_path }}" target="_blank">
+                      <img src="/{{ att.file_path }}" alt="Proof" style="width: 100%; height: 110px; object-fit: cover;">
+                    </a>
+                  {% else %}
+                    <div style="padding: 1.5rem; text-align: center;"><a href="/{{ att.file_path }}" target="_blank">View File</a></div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p style="color: var(--text-muted); font-size: 0.88rem;">No files uploaded.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Right Column: Map & Lifecycle History -->
+      <div>
+        <!-- 9-Stage Redressal Lifecycle Timeline -->
+        <div class="card" style="margin-bottom: 1.5rem; border-top: 4px solid var(--civic-blue);">
+          <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary);">
+            <i data-lucide="git-commit" class="icon-sm" style="color: var(--civic-blue);"></i> 9-Stage Redressal Lifecycle
+          </h4>
+          <div class="timeline stagger-in">
+            {% for s in stages %}
+              <div class="timeline-item" style="opacity: {% if s.is_completed %}1{% else %}0.45{% endif %};">
+                <div class="timeline-marker" style="background: {% if s.is_completed %}#16a34a{% else %}var(--border-color){% endif %};"></div>
+                <div class="timeline-content">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+                    <strong style="color: {% if s.is_completed %}var(--text-primary){% else %}var(--text-muted){% endif %}; font-size: 0.88rem;">
+                      {{ s.step }}. {{ s.title }}
+                      {% if s.is_completed %}<i data-lucide="check" class="icon-xs" style="color: #16a34a; margin-left: 0.25rem;"></i>{% endif %}
+                    </strong>
+                    {% if s.timestamp %}
+                      <span class="timeline-time">{{ s.timestamp.strftime('%d %b, %H:%M') }}</span>
+                    {% endif %}
+                  </div>
+                  <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.3; margin: 0;">
+                    {{ s.remarks }}
+                  </p>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Incident Location Information Card (No Map) -->
+        <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem; box-shadow: none;">
+          <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+            Incident Location & Administrative Details
+          </h4>
+          <div style="display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.85rem;">
+            <div>
+              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Street Address</span>
+              <strong style="color: var(--text-primary);">{{ complaint.street_name or complaint.address or 'Standard Municipal Zone' }}</strong>
+            </div>
+            <div>
+              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Area / Locality</span>
+              <span>{{ complaint.locality or 'Central Zone' }}</span>
+            </div>
+            {% if complaint.landmark %}
+              <div>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Landmark</span>
+                <span>Near {{ complaint.landmark }}</span>
+              </div>
+            {% endif %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.25rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
+              <div>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Ward</span>
+                <span class="badge" style="background: var(--bg-subtle); color: var(--civic-blue); font-weight: 700;">{{ complaint.ward_number or 'Ward 4' }}</span>
+              </div>
+              <div>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">PIN Code</span>
+                <span style="font-family: monospace; font-weight: 600;">{{ complaint.pincode or '600001' }}</span>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <div>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">City / District</span>
+                <span>{{ complaint.city or 'Chennai' }}, {{ complaint.district or 'Chennai' }}</span>
+              </div>
+              <div>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">State</span>
+                <span>{{ complaint.state or 'Tamil Nadu' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div class="card">
+          <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">Lifecycle Audit Trail</h4>
+          <div class="timeline stagger-in">
+            {% for hist in history %}
+              <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+                    <strong style="color: var(--civic-blue); font-size: 0.88rem;">{{ hist.new_status }}</strong>
+                    <span class="timeline-time">{{ hist.created_at.strftime('%d %b, %H:%M') }}</span>
+                  </div>
+                  <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.3;">
+                    {{ hist.remarks or 'Status updated.' }}
+                  </p>
+                  <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    By: {{ hist.changed_by.full_name if hist.changed_by else 'System' }}
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const ALL_OFFICERS = [
+  {% for off in officers %}
+  {
+    id: {{ off.id }},
+    name: {{ off.full_name|tojson }},
+    deptId: {{ off.department_id if off.department_id else 'null' }},
+    deptName: {{ (off.department.name if off.department else 'No Department')|tojson }}
+  }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+function filterOfficersByDept(deptId) {
+  const officerSelect = document.getElementById('admin_officer_select');
+  if (!officerSelect) return;
+  
+  const savedVal = officerSelect.getAttribute('data-selected') || '{{ complaint.assigned_officer_id or "" }}';
+  officerSelect.innerHTML = '';
+  
+  const defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = '-- Choose Department Officer --';
+  officerSelect.appendChild(defaultOpt);
+  
+  if (!deptId) {
+    ALL_OFFICERS.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.id;
+      opt.textContent = `${o.name} (${o.deptName})`;
+      if (String(o.id) === String(savedVal)) opt.selected = true;
+      officerSelect.appendChild(opt);
+    });
+    return;
+  }
+  
+  const matching = ALL_OFFICERS.filter(o => String(o.deptId) === String(deptId));
+  
+  if (matching.length === 0) {
+    const emptyOpt = document.createElement('option');
+    emptyOpt.value = '';
+    emptyOpt.disabled = true;
+    emptyOpt.selected = true;
+    emptyOpt.textContent = '⚠️ No active officers found for this department';
+    officerSelect.appendChild(emptyOpt);
+    return;
+  }
+  
+  let matchFound = false;
+  matching.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.id;
+    opt.textContent = `${o.name} (${o.deptName})`;
+    if (String(o.id) === String(savedVal)) {
+      opt.selected = true;
+      matchFound = true;
+    }
+    officerSelect.appendChild(opt);
+  });
+  
+  if (!matchFound && matching.length === 1) {
+    officerSelect.value = matching[0].id;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const deptSelect = document.getElementById('admin_dept_select');
+  if (deptSelect && deptSelect.value) {
+    filterOfficersByDept(deptSelect.value);
+  }
+});
+</script>
+{% endblock %}

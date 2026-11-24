@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}My Field Tasks | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+          Field Task Queue
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.92rem;">
+          All work orders assigned to you by municipal department officers.
+        </p>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+      <form method="GET" action="{{ url_for('worker.tasks') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <input type="text" name="search" class="form-control" placeholder="Search reference or task title..." value="{{ search_query }}" style="flex: 2; min-width: 220px;">
+        <select name="status" class="form-control" style="flex: 1; min-width: 140px;">
+          <option value="">All Statuses</option>
+          <option value="Assigned" {% if current_status == 'Assigned' %}selected{% endif %}>Assigned</option>
+          <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>In Progress</option>
+          <option value="Work Completed" {% if current_status == 'Work Completed' %}selected{% endif %}>Work Completed</option>
+          <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>Resolved</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="{{ url_for('worker.tasks') }}" class="btn btn-secondary btn-sm">Reset</a>
+      </form>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Reference</th>
+              <th>Task Title</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Address / Area</th>
+              <th>Assigned Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in tasks %}
+              <tr>
+                <td>
+                  <span style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">
+                    {{ c.complaint_ref }}
+                  </span>
+                </td>
+                <td style="font-weight: 600; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  {{ c.title }}
+                </td>
+                <td>
+                  <span class="badge badge-priority-{{ c.priority }}">
+                    {{ c.priority.upper() }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">
+                    {{ c.status }}
+                  </span>
+                </td>
+                <td style="font-size: 0.85rem;">{{ c.address or 'Civic Zone' }}</td>
+                <td style="font-size: 0.82rem; color: var(--text-muted);">
+                  {{ c.created_at.strftime('%Y-%m-%d') }}
+                </td>
+                <td>
+                  <a href="{{ url_for('worker.task_detail', complaint_id=c.id) }}" class="btn btn-primary btn-sm">
+                    Open Task
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

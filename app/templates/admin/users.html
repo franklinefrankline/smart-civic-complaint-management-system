@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}User Management | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+          User Management
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.92rem;">
+          Manage Citizens, Department Officers, Field Technicians, and Administrators.
+        </p>
+      </div>
+
+      <button onclick="openModal('addUserModal')" class="btn btn-primary btn-sm">
+        <i data-lucide="user-plus" class="icon-sm"></i> Add New User
+      </button>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+      <form method="GET" action="{{ url_for('admin.users') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <input type="text" name="search" class="form-control" placeholder="Search by name, email, or mobile..." value="{{ search_query }}" style="flex: 2; min-width: 200px;">
+        <select name="role" class="form-control" style="flex: 1; min-width: 140px;">
+          <option value="">All Roles</option>
+          <option value="citizen" {% if current_role == 'citizen' %}selected{% endif %}>Citizen</option>
+          <option value="officer" {% if current_role == 'officer' %}selected{% endif %}>Department Officer</option>
+          <option value="worker" {% if current_role == 'worker' %}selected{% endif %}>Field Worker</option>
+          <option value="admin" {% if current_role == 'admin' %}selected{% endif %}>Administrator</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="{{ url_for('admin.users') }}" class="btn btn-secondary btn-sm">Reset</a>
+      </form>
+    </div>
+
+    <!-- Users Table -->
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Role</th>
+              <th>Contact</th>
+              <th>Department</th>
+              <th>Password Status</th>
+              <th>Account Status</th>
+              <th>Registered</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+              <tr>
+                <td>
+                  <strong>{{ u.full_name }}</strong><br>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">{{ u.email }}</span>
+                </td>
+                <td>
+                  <span class="badge" style="background: var(--bg-subtle); color: var(--text-primary); text-transform: uppercase;">
+                    {{ u.role }}
+                  </span>
+                </td>
+                <td style="font-size: 0.85rem;">{{ u.mobile_number }}</td>
+                <td style="font-size: 0.85rem;">{{ u.department.name if u.department else '-' }}</td>
+                <td>
+                  {% if u.is_password_reset_required %}
+                    <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; padding: 0.25rem 0.55rem; border-radius: var(--radius-sm, 4px);">
+                      <i data-lucide="clock" class="icon-xs" style="width: 12px; height: 12px;"></i> Pending Reset
+                    </span>
+                  {% else %}
+                    <span class="badge badge-resolved" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; padding: 0.25rem 0.55rem; border-radius: var(--radius-sm, 4px);">
+                      <i data-lucide="check-circle-2" class="icon-xs" style="width: 12px; height: 12px;"></i> Changed
+                    </span>
+                    {% if u.password_changed_at %}
+                      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">
+                        {{ u.password_changed_at.strftime('%Y-%m-%d') }}
+                      </div>
+                    {% endif %}
+                  {% endif %}
+                </td>
+                <td>
+                  {% if u.is_active %}
+                    <span class="badge badge-resolved">Active</span>
+                  {% else %}
+                    <span class="badge badge-rejected">Disabled</span>
+                  {% endif %}
+                </td>
+                <td style="font-size: 0.8rem; color: var(--text-muted);">
+                  {{ u.created_at.strftime('%Y-%m-%d') }}
+                </td>
+                <td>
+                  {% if u.id != current_user.id %}
+                    <div style="display: flex; gap: 0.4rem; align-items: center;">
+                      <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;">
+                        <input type="hidden" name="action" value="toggle_status">
+                        <input type="hidden" name="user_id" value="{{ u.id }}">
+                        <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;">
+                          {{ 'Deactivate' if u.is_active else 'Activate' }}
+                        </button>
+                      </form>
+                      <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;"
+                        onsubmit="return confirm('Permanently delete account for {{ u.full_name }} ({{ u.email }})? All associated records will be removed. This cannot be undone.');">
+                        <input type="hidden" name="action" value="delete_user">
+                        <input type="hidden" name="user_id" value="{{ u.id }}">
+                        <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;">
+                          <i data-lucide="trash-2" class="icon-sm"></i> Delete
+                        </button>
+                      </form>
+                    </div>
+                  {% else %}
+                    <span class="badge" style="background: var(--civic-blue-light); color: var(--civic-blue); font-weight: 700;">
+                      Current Admin
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div id="addUserModal" class="modal-overlay" {% if modal_open %}style="display: flex;" class="modal-overlay show"{% endif %}>
+  <div class="modal-dialog card" style="max-width: 500px; margin: auto; padding: 2rem; position: relative;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h3 style="font-size: 1.25rem; font-weight: 700;">Add New System User</h3>
+      <button type="button" onclick="closeModal('addUserModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+
+    <!-- Error Alert inside Modal (Shown when duplicate mobile/email or validation error occurs) -->
+    <div id="addUserErrorAlert" class="alert alert-danger" style="display: {% if modal_open and modal_error %}flex{% else %}none{% endif %}; align-items: center; gap: 0.65rem; margin-bottom: 1.25rem; padding: 0.8rem 1rem; border-radius: var(--radius-md); font-size: 0.88rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5;">
+      <i data-lucide="alert-circle" class="icon-sm" style="flex-shrink: 0; color: #ef4444;"></i>
+      <span id="addUserErrorMessage">{{ modal_error if modal_error else '' }}</span>
+    </div>
+
+    <form id="addUserForm" method="POST" action="{{ url_for('admin.users') }}" novalidate>
+      <input type="hidden" name="action" value="add_user">
+      
+      <div class="form-group">
+        <label class="form-label required">Full Name</label>
+        <input type="text" name="full_name" id="modalFullName" class="form-control" value="{{ form_data.full_name if form_data else '' }}" required placeholder="e.g. John Doe">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label required">Email Address</label>
+        <input type="email" name="email" id="modalEmail" class="form-control" value="{{ form_data.email if form_data else '' }}" required placeholder="e.g. user@civic.gov">
+        <span id="emailErrorHint" class="form-hint" style="color: #ef4444; display: {% if modal_error_field in ['email', 'both'] %}block{% else %}none{% endif %}; font-size: 0.8rem; margin-top: 0.3rem; font-weight: 500;">
+          {{ modal_error if modal_error_field in ['email', 'both'] else '' }}
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label required">Mobile Number</label>
+        <input type="tel" name="mobile" id="modalMobile" class="form-control" value="{{ form_data.mobile if form_data else '' }}" required placeholder="e.g. 9876543210" inputmode="numeric" maxlength="10">
+        <span id="mobileErrorHint" class="form-hint" style="color: #ef4444; display: {% if modal_error_field in ['mobile', 'both'] %}block{% else %}none{% endif %}; font-size: 0.8rem; margin-top: 0.3rem; font-weight: 500;">
+          {{ modal_error if modal_error_field in ['mobile', 'both'] else '' }}
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label required">Assigned Role</label>
+        <select name="role" class="form-control" required id="modalUserRole">
+          <option value="citizen" {% if form_data and form_data.role == 'citizen' %}selected{% endif %}>Citizen</option>
+          <option value="officer" {% if form_data and form_data.role == 'officer' %}selected{% endif %}>Department Officer</option>
+          <option value="worker" {% if form_data and form_data.role == 'worker' %}selected{% endif %}>Field Worker</option>
+          <option value="admin" {% if form_data and form_data.role == 'admin' %}selected{% endif %}>Administrator</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="modalDeptGroup" style="display: {% if form_data and form_data.role in ['officer', 'worker'] %}block{% else %}none{% endif %};">
+        <label class="form-label">Department (For Officers & Workers)</label>
+        <select name="department_id" class="form-control" id="modalUserDept">
+          <option value="">-- Select Department --</option>
+          {% for d in departments %}
+            <option value="{{ d.id }}" {% if form_data and form_data.department_id|string == d.id|string %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label required">Initial Password</label>
+        <div class="password-input-wrapper" style="position: relative; display: flex; align-items: center; width: 100%;">
+          <input type="password" name="password" id="modalUserPassword" class="form-control" value="{{ form_data.password if form_data else 'Welcome@123' }}" required placeholder="Enter initial password" style="padding-right: 2.75rem;">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" aria-label="Toggle password visibility" title="Show or hide password" tabindex="-1" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; padding: 0.25rem; z-index: 5;">
+            <svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+        <button type="button" onclick="closeModal('addUserModal')" class="btn btn-secondary">Cancel</button>
+        <button type="submit" id="addUserSubmitBtn" class="btn btn-primary">Create Account</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const roleSelect = document.getElementById('modalUserRole');
+  const deptGroup = document.getElementById('modalDeptGroup');
+  const deptSelect = document.getElementById('modalUserDept');
+
+  function updateDeptVisibility() {
+    if (!roleSelect || !deptGroup) return;
+    const isOfficerOrWorker = roleSelect.value === 'officer' || roleSelect.value === 'worker';
+    deptGroup.style.display = isOfficerOrWorker ? 'block' : 'none';
+    if (deptSelect) {
+      if (isOfficerOrWorker) {
+        deptSelect.setAttribute('required', 'required');
+      } else {
+        deptSelect.removeAttribute('required');
+      }
+    }
+  }
+
+  if (roleSelect) {
+    roleSelect.addEventListener('change', updateDeptVisibility);
+    updateDeptVisibility();
+  }
+
+  const addUserForm = document.getElementById('addUserForm');
+  const errorAlert = document.getElementById('addUserErrorAlert');
+  const errorMsg = document.getElementById('addUserErrorMessage');
+  const emailInput = document.getElementById('modalEmail');
+  const mobileInput = document.getElementById('modalMobile');
+  const emailHint = document.getElementById('emailErrorHint');
+  const mobileHint = document.getElementById('mobileErrorHint');
+  const submitBtn = document.getElementById('addUserSubmitBtn');
+
+  function clearErrors() {
+    if (errorAlert) errorAlert.style.display = 'none';
+    if (emailInput) {
+      emailInput.style.borderColor = '';
+      emailInput.style.boxShadow = '';
+    }
+    if (mobileInput) {
+      mobileInput.style.borderColor = '';
+      mobileInput.style.boxShadow = '';
+    }
+    if (emailHint) {
+      emailHint.style.display = 'none';
+      emailHint.textContent = '';
+    }
+    if (mobileHint) {
+      mobileHint.style.display = 'none';
+      mobileHint.textContent = '';
+    }
+  }
+
+  if (emailInput) {
+    emailInput.addEventListener('input', function() {
+      emailInput.style.borderColor = '';
+      emailInput.style.boxShadow = '';
+      if (emailHint) emailHint.style.display = 'none';
+      if (errorAlert && errorMsg && errorMsg.textContent.toLowerCase().includes('email') && !errorMsg.textContent.toLowerCase().includes('mobile')) {
+        errorAlert.style.display = 'none';
+      }
+    });
+  }
+
+  if (mobileInput) {
+    mobileInput.addEventListener('input', function() {
+      mobileInput.style.borderColor = '';
+      mobileInput.style.boxShadow = '';
+      if (mobileHint) mobileHint.style.display = 'none';
+      if (errorAlert && errorMsg && errorMsg.textContent.toLowerCase().includes('mobile') && !errorMsg.textContent.toLowerCase().includes('email')) {
+        errorAlert.style.display = 'none';
+      }
+    });
+  }
+
+  if (addUserForm) {
+    addUserForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      clearErrors();
+
+      const fullNameEl = document.getElementById('modalFullName');
+      const fullName = (fullNameEl ? fullNameEl.value : '').trim();
+      const email = (emailInput ? emailInput.value : '').trim();
+      const mobile = (mobileInput ? mobileInput.value : '').trim();
+      const role = roleSelect ? roleSelect.value : 'citizen';
+      const deptId = deptSelect ? deptSelect.value : '';
+
+      if (!fullName) {
+        if (errorAlert && errorMsg) {
+          errorMsg.textContent = 'Please enter the user full name.';
+          errorAlert.style.display = 'flex';
+        }
+        if (fullNameEl) fullNameEl.focus();
+        return;
+      }
+      if (!email) {
+        if (errorAlert && errorMsg) {
+          errorMsg.textContent = 'Please enter a valid email address.';
+          errorAlert.style.display = 'flex';
+        }
+        if (emailInput) emailInput.focus();
+        return;
+      }
+      if (!mobile) {
+        if (errorAlert && errorMsg) {
+          errorMsg.textContent = 'Please enter a mobile number.';
+          errorAlert.style.display = 'flex';
+        }
+        if (mobileInput) mobileInput.focus();
+        return;
+      }
+      if ((role === 'officer' || role === 'worker') && !deptId) {
+        if (errorAlert && errorMsg) {
+          errorMsg.textContent = 'Please select a department for Officer or Field Worker role.';
+          errorAlert.style.display = 'flex';
+        }
+        if (deptSelect) deptSelect.focus();
+        return;
+      }
+
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Create Account';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 0.5rem;"><svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path></svg> Saving...</span>';
+      }
+
+      try {
+        const targetUrl = addUserForm.getAttribute('action') || '{{ url_for("admin.users") }}';
+        const formData = new FormData(addUserForm);
+        const response = await fetch(targetUrl, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          }
+        });
+
+        const data = await response.json().catch(() => null);
+
+        if (response.ok && data && data.success) {
+          // Success: close modal and reload so the table displays the new user
+          if (window.closeModal) {
+            window.closeModal('addUserModal');
+          }
+          window.location.reload();
+        } else {
+          // Error: DO NOT CLOSE MODAL!
+          const message = (data && data.message) ? data.message : 'An error occurred while creating user.';
+          const field = data ? data.field : null;
+
+          if (errorAlert && errorMsg) {
+            errorMsg.textContent = message;
+            errorAlert.style.display = 'flex';
+            if (window.lucide) lucide.createIcons();
+          }
+
+          if (field === 'both') {
+            if (emailInput) {
+              emailInput.style.borderColor = '#ef4444';
+              emailInput.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.2)';
+            }
+            if (emailHint) {
+              emailHint.textContent = 'This email address is already registered.';
+              emailHint.style.display = 'block';
+            }
+            if (mobileInput) {
+              mobileInput.style.borderColor = '#ef4444';
+              mobileInput.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.2)';
+            }
+            if (mobileHint) {
+              mobileHint.textContent = 'This mobile number is already registered.';
+              mobileHint.style.display = 'block';
+            }
+            if (mobileInput) {
+              mobileInput.focus();
+              mobileInput.select();
+            }
+          } else if (field === 'mobile' || message.toLowerCase().includes('mobile')) {
+            if (mobileInput) {
+              mobileInput.style.borderColor = '#ef4444';
+              mobileInput.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.2)';
+              mobileInput.focus();
+              mobileInput.select();
+            }
+            if (mobileHint) {
+              mobileHint.textContent = message;
+              mobileHint.style.display = 'block';
+            }
+          } else if (field === 'email' || message.toLowerCase().includes('email')) {
+            if (emailInput) {
+              emailInput.style.borderColor = '#ef4444';
+              emailInput.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.2)';
+              emailInput.focus();
+              emailInput.select();
+            }
+            if (emailHint) {
+              emailHint.textContent = message;
+              emailHint.style.display = 'block';
+            }
+          } else if (field === 'department_id') {
+            if (deptSelect) {
+              deptSelect.style.borderColor = '#ef4444';
+              deptSelect.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.2)';
+              deptSelect.focus();
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Request failed:', err);
+        if (errorAlert && errorMsg) {
+          errorMsg.textContent = 'A network connection error occurred. Please try again.';
+          errorAlert.style.display = 'flex';
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnHtml;
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

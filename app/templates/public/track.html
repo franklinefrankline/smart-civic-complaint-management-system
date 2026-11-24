@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Track Complaint Status | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <div class="container" style="padding: 2.5rem 1.5rem 4rem; max-width: 900px; margin: 0 auto;">
+      <!-- Search Bar -->
+      <div class="card" style="padding: 2rem; margin-bottom: 2.5rem; border-top: 4px solid var(--civic-blue);">
+    <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+      <i data-lucide="search" class="icon-sm"></i> Public Complaint Tracking
+    </h2>
+    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+      Check the real-time status, timeline, assigned department, and resolution stage of any civic complaint.
+    </p>
+
+    <form method="GET" action="{{ url_for('public.track') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <input type="text" name="ref" class="form-control" placeholder="Enter Reference ID (e.g. CMP-202611-XXXX)" value="{{ search_ref or '' }}" required style="flex: 2; min-width: 200px; font-family: monospace; text-transform: uppercase;">
+      <input type="text" name="identifier" class="form-control" placeholder="Optional Phone / Email" style="flex: 1.5; min-width: 160px;">
+      <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.5rem;">
+        Track Status
+      </button>
+    </form>
+  </div>
+
+  {% if not_found %}
+    <div class="card" style="text-align: center; padding: 3rem; background: var(--bg-surface);">
+      <div style="margin-bottom: 1rem; color: var(--text-muted);"><i data-lucide="alert-circle" style="width: 48px; height: 48px;"></i></div>
+      <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+        Complaint Record Not Found
+      </h3>
+      <p style="color: var(--text-secondary); font-size: 0.92rem; max-width: 480px; margin: 0 auto;">
+        We could not locate any active complaint matching reference <strong>{{ search_ref }}</strong>. Please verify the ID from your SMS/Email acknowledgement.
+      </p>
+    </div>
+
+  {% elif complaint %}
+    <!-- Complaint Details Card -->
+    <div class="card" style="padding: 2rem; margin-bottom: 2rem;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+        <div>
+          <span style="font-family: monospace; font-size: 0.85rem; background: var(--bg-subtle); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; color: var(--civic-blue);">
+            {{ complaint.complaint_ref }}
+          </span>
+          <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--text-primary); margin-top: 0.35rem;">
+            {{ complaint.title }}
+          </h2>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Registered on {{ complaint.created_at.strftime('%d %B %Y, %I:%M %p') }}
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <span class="badge badge-{{ complaint.status.lower().replace(' ', '-') }}">
+            {{ complaint.status }}
+          </span>
+          <span class="badge badge-priority-{{ complaint.priority }}">
+            {{ complaint.priority.upper() }} PRIORITY
+          </span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Category</div>
+          <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-top: 0.2rem;">{{ complaint.category.name }}</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Assigned Department</div>
+          <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-top: 0.2rem;">{{ complaint.department.name if complaint.department else 'Under Routing' }}</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Location Area</div>
+          <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-top: 0.2rem;">{{ complaint.ward_number or 'Civic Zone' }}, {{ complaint.city or 'City' }}</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">SLA Resolution Target</div>
+          <div style="font-size: 0.95rem; font-weight: 600; color: {% if complaint.is_overdue %}var(--status-rejected){% else %}var(--text-primary){% endif %}; margin-top: 0.2rem;">
+            {{ complaint.sla_due_date.strftime('%d %b %Y, %I:%M %p') if complaint.sla_due_date else 'Standard' }}
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 2rem;">
+        <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">Citizen Description</h4>
+        <p style="font-size: 0.92rem; color: var(--text-primary); line-height: 1.6; background: var(--bg-surface); padding: 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+          {{ complaint.description }}
+        </p>
+      </div>
+
+      <!-- 9-Stage Redressal Lifecycle Timeline -->
+      {% if stages %}
+        <div style="margin-bottom: 2rem;">
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); margin-bottom: 1rem;">
+            <i data-lucide="git-commit" class="icon-sm" style="color: var(--civic-blue);"></i> 9-Stage Redressal Lifecycle
+          </h3>
+          <div class="timeline stagger-in">
+            {% for s in stages %}
+              <div class="timeline-item" style="opacity: {% if s.is_completed %}1{% else %}0.45{% endif %};">
+                <div class="timeline-marker" style="background: {% if s.is_completed %}#16a34a{% else %}var(--border-color){% endif %};"></div>
+                <div class="timeline-content">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+                    <strong style="color: {% if s.is_completed %}var(--text-primary){% else %}var(--text-muted){% endif %}; font-size: 0.88rem;">
+                      {{ s.step }}. {{ s.title }}
+                      {% if s.is_completed %}<i data-lucide="check" class="icon-xs" style="color: #16a34a; margin-left: 0.25rem;"></i>{% endif %}
+                    </strong>
+                    {% if s.timestamp %}
+                      <span class="timeline-time">{{ s.timestamp.strftime('%d %b, %H:%M') }}</span>
+                    {% endif %}
+                  </div>
+                  <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.3; margin: 0;">
+                    {{ s.remarks }}
+                  </p>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Lifecycle Timeline -->
+      <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); margin-bottom: 1rem;">
+        Resolution Timeline & History
+      </h3>
+      <div class="timeline stagger-in">
+        {% for hist in complaint.status_history %}
+          <div class="timeline-item">
+            <div class="timeline-marker"></div>
+            <div class="timeline-content">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                <strong style="color: var(--civic-blue); font-size: 0.92rem;">{{ hist.new_status }}</strong>
+                <span class="timeline-time">{{ hist.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">
+                {{ hist.remarks or 'Status updated in official system registry.' }}
+              </p>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                Action recorded by: {{ hist.changed_by.role.title() if hist.changed_by else 'Automated Civic Engine' }}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
