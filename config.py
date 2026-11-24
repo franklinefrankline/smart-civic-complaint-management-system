@@ -18,26 +18,36 @@ class Config:
     DB_PORT = os.environ.get('DB_PORT', '3306')
     DB_NAME = os.environ.get('DB_NAME', 'smart_civic_complaints')
     
-    # Priority: explicit DATABASE_URL -> constructed MySQL URL -> fallback SQLite on Vercel
+    # Robust detection of Vercel serverless environment
+    IS_VERCEL = bool(os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'))
+
+    # Priority: explicit DATABASE_URL -> fallback SQLite on Vercel -> constructed MySQL URL
     _explicit_db = os.environ.get('DATABASE_URL')
     if _explicit_db:
         if _explicit_db.startswith('postgres://'):
             _explicit_db = _explicit_db.replace('postgres://', 'postgresql://', 1)
         SQLALCHEMY_DATABASE_URI = _explicit_db
-    elif os.environ.get('VERCEL'):
-        # Fallback SQLite on Vercel if cloud database URL is not yet configured
+    elif IS_VERCEL:
+        # Resilient SQLite database on Vercel serverless filesystem
         SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/smart_civic.db'
     else:
         SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_recycle': 280,
-        'pool_pre_ping': True
-    }
+
+    # Configure engine options appropriately for dialect
+    if 'sqlite' in SQLALCHEMY_DATABASE_URI:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'connect_args': {'check_same_thread': False}
+        }
+    else:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_recycle': 280,
+            'pool_pre_ping': True
+        }
     
     # Upload settings
-    if os.environ.get('VERCEL'):
+    if IS_VERCEL:
         UPLOAD_FOLDER = '/tmp/uploads'
     else:
         UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
