@@ -32,8 +32,18 @@ def create_app(config_name=None):
     # Import models so SQLAlchemy is aware of them
     from app import models
 
-    # Ensure schema migrations for password reset tracking
+    # Initialize all database tables and seed baseline departments on startup
     with app.app_context():
+        try:
+            db.create_all()
+            from app.models.department import Department
+            if not Department.query.first():
+                from app.services.seed_service import seed_all
+                seed_all()
+        except Exception as e:
+            app.logger.warning(f"DB startup initialization notice: {e}")
+
+        # Ensure schema migrations for password reset tracking
         try:
             from sqlalchemy import inspect, text
             inspector = inspect(db.engine)
@@ -81,20 +91,6 @@ def create_app(config_name=None):
             ]
         )
     
-    # Auto-initialize database on first request if empty (for cloud/serverless environments)
-    @app.before_request
-    def ensure_cloud_db_ready():
-        if not getattr(app, '_db_seeded', False):
-            app._db_seeded = True
-            try:
-                db.create_all()
-                from app.models.user import User
-                if not User.query.filter_by(role='admin').first():
-                    from app.services.seed_service import seed_all
-                    seed_all()
-            except Exception as e:
-                app.logger.warning(f"Cloud DB init notice: {e}")
-
     # Global error handlers
     @app.errorhandler(403)
     def forbidden(error):
