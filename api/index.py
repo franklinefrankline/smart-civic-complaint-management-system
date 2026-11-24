@@ -1,16 +1,23 @@
 import os
 import sys
 
-# Ensure application base directory is in sys.path
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+# Ensure all potential root directories are on Python path
+for p in [
+    os.getcwd(),
+    os.path.dirname(os.path.abspath(__file__)),
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+]:
+    if p and p not in sys.path:
+        sys.path.insert(0, p)
 
-# Set VERCEL environment flag
 os.environ['VERCEL'] = '1'
 
-from app import app, db
-from app.models.user import User
+try:
+    from app import app, db
+except Exception:
+    import app as _app_pkg
+    app = getattr(_app_pkg, 'app', None) or _app_pkg.create_app()
+    db = _app_pkg.db
 
 # Enable ProxyFix for Vercel reverse proxy
 try:
@@ -19,26 +26,9 @@ try:
 except Exception:
     pass
 
-# Lazy database initialization on first request
-_db_ready = False
-
-@app.before_request
-def setup_database_if_needed():
-    global _db_ready
-    if not _db_ready:
-        try:
-            with app.app_context():
-                db.create_all()
-                if not User.query.filter_by(role='admin').first():
-                    from app.services.seed_service import seed_all
-                    seed_all()
-        except Exception as e:
-            app.logger.warning(f"Lazy DB init note: {e}")
-        _db_ready = True
-
-# Export both 'app' and 'handler' for compatibility with Vercel Python runtimes
+# Export both 'app' and 'handler' for Vercel Python runtime
 handler = app
 
 @app.route('/healthz')
 def healthz():
-    return {"status": "ok", "app": "smart-civic-complaint-system"}
+    return {"status": "ok", "service": "smart-civic-complaint-system"}
