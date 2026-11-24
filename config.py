@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import timedelta
 from dotenv import load_dotenv
 
@@ -18,17 +19,25 @@ class Config:
     DB_PORT = os.environ.get('DB_PORT', '3306')
     DB_NAME = os.environ.get('DB_NAME', 'smart_civic_complaints')
     
-    # Robust detection of cloud / serverless hosting environments (Vercel, Render, etc.)
-    IS_CLOUD = bool(os.environ.get('VERCEL') or os.environ.get('RENDER') or os.environ.get('VERCEL_ENV') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'))
+    # Cloud / Serverless detection
+    IS_CLOUD = bool(
+        os.environ.get('VERCEL') or 
+        os.environ.get('RENDER') or 
+        os.environ.get('VERCEL_ENV') or 
+        os.environ.get('AWS_LAMBDA_FUNCTION_NAME') or 
+        sys.platform.startswith('linux')
+    )
 
-    # Priority: explicit DATABASE_URL -> fallback SQLite on Cloud -> constructed MySQL URL
+    # Priority:
+    # 1. Explicit DATABASE_URL (Cloud MySQL, TiDB, PostgreSQL, etc.)
+    # 2. If running on Cloud / Linux (Vercel, Render) -> Resilient SQLite in /tmp
+    # 3. Local Windows development -> Local XAMPP MySQL
     _explicit_db = os.environ.get('DATABASE_URL')
     if _explicit_db:
         if _explicit_db.startswith('postgres://'):
             _explicit_db = _explicit_db.replace('postgres://', 'postgresql://', 1)
         SQLALCHEMY_DATABASE_URI = _explicit_db
     elif IS_CLOUD:
-        # Resilient SQLite database on cloud filesystem if external database URL is not set
         SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/smart_civic.db'
     else:
         SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
@@ -46,7 +55,7 @@ class Config:
             'pool_pre_ping': True
         }
     
-    # Upload settings
+    # Upload settings: writable /tmp on Cloud/Linux, local directory on Windows
     if IS_CLOUD:
         UPLOAD_FOLDER = '/tmp/uploads'
     else:

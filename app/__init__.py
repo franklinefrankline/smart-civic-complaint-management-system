@@ -12,11 +12,19 @@ def create_app(config_name=None):
     app = Flask(__name__)
     app.config.from_object(config_by_name.get(config_name, config_by_name['default']))
     
-    # Ensure upload directories exist
-    upload_dir = app.config['UPLOAD_FOLDER']
-    os.makedirs(upload_dir, exist_ok=True)
-    os.makedirs(os.path.join(upload_dir, 'complaints'), exist_ok=True)
-    os.makedirs(os.path.join(upload_dir, 'proofs'), exist_ok=True)
+    # Ensure upload directories exist safely (with /tmp fallback for read-only cloud filesystems)
+    upload_dir = app.config.get('UPLOAD_FOLDER', '/tmp/uploads')
+    try:
+        os.makedirs(upload_dir, exist_ok=True)
+        os.makedirs(os.path.join(upload_dir, 'complaints'), exist_ok=True)
+        os.makedirs(os.path.join(upload_dir, 'proofs'), exist_ok=True)
+    except Exception:
+        app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
+        try:
+            os.makedirs('/tmp/uploads/complaints', exist_ok=True)
+            os.makedirs('/tmp/uploads/proofs', exist_ok=True)
+        except Exception:
+            pass
     
     # Initialize extensions
     db.init_app(app)

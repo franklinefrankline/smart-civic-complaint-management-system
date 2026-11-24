@@ -35,3 +35,10 @@ def setup_database_if_needed():
         except Exception as e:
             app.logger.warning(f"Lazy DB init note: {e}")
         _db_ready = True
+
+# Export both 'app' and 'handler' for compatibility with Vercel Python runtimes
+handler = app
+
+@app.route('/healthz')
+def healthz():
+    return {"status": "ok", "app": "smart-civic-complaint-system"}
