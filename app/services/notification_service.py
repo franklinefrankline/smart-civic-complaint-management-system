@@ -3,11 +3,13 @@ from app import db
 from app.models.notification import Notification
 from app.models.user import User
 
-def create_notification(user_id, title, message, link=None, notification_type='info'):
-    """Create in-app notification for a given user"""
+
+def create_notification(user_id, title, message, link=None, notification_type='info', complaint_id=None):
+    """Create in-app notification permanently in the database for a given user."""
     try:
         notif = Notification(
             user_id=user_id,
+            complaint_id=complaint_id,
             title=title,
             message=message,
             link=link,
@@ -16,24 +18,41 @@ def create_notification(user_id, title, message, link=None, notification_type='i
         db.session.add(notif)
         db.session.commit()
         return notif
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         return None
 
-def notify_admins(title, message, link=None, notification_type='admin_alert'):
-    """Broadcast notification to all active administrators"""
+
+def notify_admins(title, message, link=None, notification_type='admin_alert', complaint_id=None):
+    """Broadcast notification to all active administrators."""
     admins = User.query.filter_by(role='admin', is_active=True).all()
     for admin in admins:
-        create_notification(admin.id, title, message, link, notification_type)
+        create_notification(
+            admin.id,
+            title,
+            message,
+            link=link,
+            notification_type=notification_type,
+            complaint_id=complaint_id
+        )
 
-def notify_department_officers(department_id, title, message, link=None, notification_type='dept_alert'):
-    """Broadcast notification to all officers belonging to a department"""
+
+def notify_department_officers(department_id, title, message, link=None, notification_type='dept_alert', complaint_id=None):
+    """Broadcast notification to all officers belonging to a department."""
     officers = User.query.filter_by(role='officer', department_id=department_id, is_active=True).all()
     for officer in officers:
-        create_notification(officer.id, title, message, link, notification_type)
+        create_notification(
+            officer.id,
+            title,
+            message,
+            link=link,
+            notification_type=notification_type,
+            complaint_id=complaint_id
+        )
+
 
 def mark_as_read(notification_id, user_id):
-    """Mark a specific notification as read"""
+    """Mark a specific notification belonging to user_id as read."""
     notif = Notification.query.filter_by(id=notification_id, user_id=user_id).first()
     if notif and not notif.is_read:
         notif.is_read = True
@@ -42,8 +61,9 @@ def mark_as_read(notification_id, user_id):
         return True
     return False
 
+
 def mark_all_as_read(user_id):
-    """Mark all unread notifications for a user as read"""
+    """Mark all unread notifications for user_id as read."""
     Notification.query.filter_by(user_id=user_id, is_read=False).update({
         'is_read': True,
         'read_at': datetime.utcnow()

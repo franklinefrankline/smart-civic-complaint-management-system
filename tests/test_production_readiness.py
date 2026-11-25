@@ -1,0 +1,558 @@
+import io
+import os
+import unittest
+from app import create_app, db
+from app.models.user import User
+from app.models.department import Department
+from app.models.category import ComplaintCategory
+from app.models.complaint import Complaint
+from app.models.workflow import Worker
+from app.models.attachment import ComplaintAttachment
+from app.models.notification import Notification
+from config import _build_database_config
+
+
+class ProductionReadinessTestCase(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app('testing')
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+        self.dept = Department(name='Water Supply', code='WATER', is_active=True)
+        db.session.add(self.dept)
+        db.session.flush()
+
+        self.cat = ComplaintCategory(
+            name='Pipe Leak',
+            department_id=self.dept.id,
+            default_priority='high',
+            sla_hours=48,
+            is_active=True,
+        )
+        db.session.add(self.cat)
+        db.session.flush()
+
+        self.admin = User(role='admin', full_name='Admin Prod', email='admin@prod.gov', mobile_number='9111111111', is_active=True)
+        self.admin.set_password('Admin@123')
+        self.officer = User(role='officer', full_name='Officer Prod', email='officer@prod.gov', mobile_number='9111111112', department_id=self.dept.id, is_active=True)
+        self.officer.set_password('Officer@123')
+        self.worker = User(role='worker', full_name='Worker Prod', email='worker@prod.gov', mobile_number='9111111113', department_id=self.dept.id, is_active=True)
+        self.worker.set_password('Worker@123')
+        self.citizen = User(role='citizen', full_name='Citizen Prod', email='citizen@prod.gov', mobile_number='9111111114', is_active=True)
+        self.citizen.set_password('Citizen@123')
+
+        db.session.add_all([self.admin, self.officer, self.worker, self.citizen])
+        db.session.flush()
+        db.session.add(Worker(user_id=self.worker.id, department_id=self.dept.id, is_available=True))
+        db.session.commit()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def login(self, email, password):
+        return self.client.post('/auth/login', data={'login_id': email, 'password': password}, follow_redirects=True)
+
+    def test_health_endpoints(self):
+        for ep in ['/health', '/healthz', '/api/health']:
+            res = self.client.get(ep)
+            self.assertEqual(res.status_code, 200, f"{ep} failed")
+            data = res.get_json()
+            self.assertEqual(data['status'], 'ok')
+            self.assertEqual(data['database'], 'connected')
+
+    def test_cors_restricted_to_vercel_origin(self):
+        res_ok = self.client.get('/api/stats/summary', headers={'Origin': 'https://sccmt.vercel.app'})
+        self.assertEqual(res_ok.status_code, 200)
+        self.assertEqual(res_ok.headers.get('Access-Control-Allow-Origin'), 'https://sccmt.vercel.app')
+        self.assertEqual(res_ok.headers.get('Access-Control-Allow-Credentials'), 'true')
+
+        res_opt = self.client.options('/api/notifications', headers={'Origin': 'https://sccmt.vercel.app'})
+        self.assertIn(res_opt.status_code, (200, 204))
+        self.assertEqual(res_opt.headers.get('Access-Control-Allow-Origin'), 'https://sccmt.vercel.app')
+
+        res_bad = self.client.get('/api/stats/summary', headers={'Origin': 'https://untrusted.example.com'})
+        self.assertEqual(res_bad.status_code, 200)
+        self.assertIsNone(res_bad.headers.get('Access-Control-Allow-Origin'))
+
+    def test_unauthenticated_redirect_uses_relative_next_and_api_returns_401(self):
+        res_page = self.client.get('/admin/departments')
+        self.assertEqual(res_page.status_code, 302)
+        loc = res_page.headers.get('Location', '')
+        self.assertIn('/auth/login', loc)
+        self.assertIn('next=/admin/departments', loc)
+        self.assertNotIn('onrender.com', loc)
+
+        res_ajax = self.client.get('/admin/departments', headers={'X-Requested-With': 'XMLHttpRequest'})
+        self.assertEqual(res_ajax.status_code, 401)
+        self.assertFalse(res_ajax.get_json()['success'])
+
+    def test_mysql_uri_normalization_and_ssl_handling(self):
+        orig_env = os.environ.copy()
+        try:
+            os.environ['RENDER'] = 'true'
+            os.environ['DATABASE_URL'] = 'mysql://user1:p%40ss@db.example.com:3306/civic?ssl-mode=REQUIRED'
+            _, uri, opts, *_ = _build_database_config()
+            self.assertTrue(uri.startswith('mysql+pymysql://'))
+            self.assertNotIn('ssl-mode', uri)
+            self.assertIn('ssl', opts['connect_args'])
+            self.assertTrue(opts['pool_pre_ping'])
+
+            del os.environ['DATABASE_URL']
+            os.environ['DB_HOST'] = 'mysql.example.net'
+            os.environ['DB_USER'] = 'admin'
+            os.environ['DB_PASSWORD'] = 'P@ss#123'
+            os.environ['DB_NAME'] = 'sccmt_prod'
+            _, uri2, *_ = _build_database_config()
+            self.assertIn('mysql+pymysql://admin:P%40ss%23123@mysql.example.net:3306/sccmt_prod', uri2)
+        finally:
+            os.environ.clear()
+            os.environ.update(orig_env)
+
+    def test_persistent_attachment_serving_and_worker_progress_and_queues(self):
+        # 1. Citizen registers complaint with image upload
+        self.login('citizen@prod.gov', 'Citizen@123')
+        fake_img = (io.BytesIO(b'\x89PNG\r\n\x1a\nfakeimagedata'), 'leak.png')
+        res = self.client.post('/citizen/complaints/new', data={
+            'title': 'Burst pipe near school gate',
+            'category_id': self.cat.id,
+            'description': 'Water flowing across the road continuously since morning.',
+            'priority': 'high',
+            'address': '12 Main St',
+            'ward_number': 'Ward 2',
+            'pincode': '600001',
+            'attachments': fake_img,
+        }, content_type='multipart/form-data', follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+
+        comp = Complaint.query.first()
+        self.assertIsNotNone(comp)
+        att = ComplaintAttachment.query.filter_by(complaint_id=comp.id).first()
+        self.assertIsNotNone(att)
+        self.assertIsNotNone(att.file_data)
+        self.assertTrue(len(att.file_data) > 0)
+
+        # Simulate Render ephemeral disk wipe by deleting local file if written
+        disk_path = os.path.join(self.app.config['UPLOAD_FOLDER'], 'complaints', att.filename)
+        if os.path.exists(disk_path):
+            os.remove(disk_path)
+
+        # Verify attachment still serves cleanly from DB BLOB storage!
+        img_res = self.client.get(f'/{att.file_path}')
+        self.assertEqual(img_res.status_code, 200)
+        self.assertIn(b'fakeimagedata', img_res.data)
+        self.client.get('/auth/logout')
+
+        # 2. Admin assigns Department & Officer
+        self.login('admin@prod.gov', 'Admin@123')
+        self.client.post(f'/admin/complaint/{comp.id}', data={
+            'action': 'assign_department_officer',
+            'department_id': self.dept.id,
+            'officer_id': self.officer.id,
+            'admin_remarks': 'Urgent dispatch'
+        }, follow_redirects=True)
+        self.client.get('/auth/logout')
+
+        # 3. Officer sees it in /officer/incoming and assigns worker
+        self.login('officer@prod.gov', 'Officer@123')
+        inc_res = self.client.get('/officer/incoming')
+        self.assertEqual(inc_res.status_code, 200)
+        self.assertIn(comp.complaint_ref.encode(), inc_res.data)
+
+        self.client.post(f'/officer/complaint/{comp.id}', data={
+            'action': 'assign_worker',
+            'worker_user_id': self.worker.id,
+            'instructions': 'Repair joint immediately'
+        }, follow_redirects=True)
+        self.client.get('/auth/logout')
+
+        # 4. Worker sees task on dashboard, starts work, posts progress note (previously NameError!), and completes with proof
+        self.login('worker@prod.gov', 'Worker@123')
+        w_dash = self.client.get('/worker/dashboard')
+        self.assertEqual(w_dash.status_code, 200)
+        self.assertIn(comp.complaint_ref.encode(), w_dash.data)
+
+        self.client.post(f'/worker/task/{comp.id}', data={'action': 'start_work', 'remarks': 'Arrived'}, follow_redirects=True)
+        prog_res = self.client.post(f'/worker/task/{comp.id}', data={'action': 'update_progress', 'progress_notes': 'Replaced gasket'}, follow_redirects=True)
+        self.assertEqual(prog_res.status_code, 200)
+        self.assertIn(b'Progress update recorded', prog_res.data)
+
+        proof_img = (io.BytesIO(b'\x89PNG\r\n\x1a\nafterproofdata'), 'after.png')
+        comp_res = self.client.post(f'/worker/task/{comp.id}', data={
+            'action': 'submit_completion',
+            'remarks': 'Pipe sealed and pressure tested cleanly.',
+            'after_image': proof_img
+        }, content_type='multipart/form-data', follow_redirects=True)
+        self.assertEqual(comp_res.status_code, 200)
+        self.assertIn(b'Work submitted successfully', comp_res.data)
+        self.client.get('/auth/logout')
+
+        # Verify notifications delivered to officer and citizen
+        self.assertTrue(Notification.query.filter_by(user_id=self.officer.id).count() >= 2)
+        self.assertTrue(Notification.query.filter_by(user_id=self.citizen.id).count() >= 3)
+
+    def test_admin_live_updates_fingerprint_changes_on_new_complaint(self):
+        # 1. Admin polls /api/live-updates before any complaint
+        self.login('admin@prod.gov', 'Admin@123')
+        res1 = self.client.get('/api/live-updates')
+        self.assertEqual(res1.status_code, 200)
+        d1 = res1.get_json()
+        self.assertEqual(d1['total_count'], 0)
+        self.client.get('/auth/logout')
+
+        # 2. Citizen submits a new complaint
+        self.login('citizen@prod.gov', 'Citizen@123')
+        self.client.post('/citizen/complaints/new', data={
+            'title': 'Streetlight failure at main crossroad',
+            'category_id': self.cat.id,
+            'description': 'The streetlight pole is completely dark since yesterday night.',
+            'priority': 'high',
+            'address': 'Crossroad 3',
+            'ward_number': 'Ward 2',
+            'pincode': '600001'
+        }, follow_redirects=True)
+        self.client.get('/auth/logout')
+
+        # 3. Admin polls /api/live-updates without page refresh -> fingerprint & counts update
+        self.login('admin@prod.gov', 'Admin@123')
+        res2 = self.client.get('/api/live-updates')
+        self.assertEqual(res2.status_code, 200)
+        d2 = res2.get_json()
+        self.assertEqual(d2['total_count'], 1)
+        self.assertEqual(d2['pending_count'], 1)
+        self.assertNotEqual(d1['fingerprint'], d2['fingerprint'])
+        self.assertIsNotNone(d2['latest_notification'])
+        self.assertIn('New Complaint:', d2['latest_notification']['title'])
+
+    def test_zero_browser_native_popups_and_centralized_modal_present(self):
+        import re
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        app_dir = os.path.join(base_dir, 'app')
+        native_hits = []
+        for root, _, files in os.walk(app_dir):
+            for fname in files:
+                if fname.endswith(('.html', '.js', '.py')):
+                    fpath = os.path.join(root, fname)
+                    with open(fpath, 'r', encoding='utf-8', errors='ignore') as fp:
+                        for lineno, line in enumerate(fp, 1):
+                            if re.search(r'(?<!show)\b(alert|confirm|prompt)\s*\(|window\.(alert|confirm|prompt)\s*\(', line):
+                                native_hits.append(f"{fpath}:{lineno}")
+        self.assertEqual(native_hits, [], f"Native browser popups found: {native_hits}")
+
+        # Verify centralized confirmation modal & custom triggers render for admin pages
+        self.login('admin@prod.gov', 'Admin@123')
+        for route in ['/admin/workers', '/admin/officers', '/admin/citizens', '/admin/users', '/admin/departments', '/admin/settings']:
+            res = self.client.get(route)
+            self.assertEqual(res.status_code, 200)
+            self.assertIn(b'id="sccmtConfirmModal"', res.data)
+            self.assertIn(b'id="toastContainer"', res.data)
+            self.assertIn(b'data-confirm=', res.data)
+            self.assertNotIn(b'return confirm(', res.data)
+
+        # Verify main.js central notification/confirmation providers and custom form validation
+        js_path = os.path.join(app_dir, 'static', 'js', 'main.js')
+        with open(js_path, 'r', encoding='utf-8') as fp:
+            js = fp.read()
+        for symbol in ['window.showConfirm', 'window.showToast', 'NotificationProvider', 'ConfirmDialog', 'ToastContainer', 'useNotification', 'useConfirmation', 'form.noValidate = true']:
+            self.assertIn(symbol, js)
+
+    def test_realtime_sse_all_4_roles_and_missed_notification_recovery(self):
+        dept_id = self.dept.id
+        cat_id = self.cat.id
+        officer_id = self.officer.id
+        worker_id = self.worker.id
+
+        # Unauthenticated SSE stream must be blocked (401)
+        unauth_stream = self.client.get('/api/stream')
+        self.assertEqual(unauth_stream.status_code, 401)
+
+        # Create 4 separate browser sessions (Citizen, Admin, Officer, Worker)
+        c_client = self.app.test_client()
+        a_client = self.app.test_client()
+        o_client = self.app.test_client()
+        w_client = self.app.test_client()
+
+        c_client.post('/auth/login', data={'login_id': 'citizen@prod.gov', 'password': 'Citizen@123'})
+        a_client.post('/auth/login', data={'login_id': 'admin@prod.gov', 'password': 'Admin@123'})
+        o_client.post('/auth/login', data={'login_id': 'officer@prod.gov', 'password': 'Officer@123'})
+        w_client.post('/auth/login', data={'login_id': 'worker@prod.gov', 'password': 'Worker@123'})
+
+        # Capture Admin initial cursor before disconnect
+        a_init = a_client.get('/api/live-updates').get_json()
+        admin_cursor = a_init['latest_notif_id']
+
+        # 1. Citizen submits complaint -> Admin SSE stream & DB notification immediately reflect it
+        c_client.post('/citizen/complaints/new', data={
+            'title': 'Major main pipeline rupture',
+            'category_id': cat_id,
+            'description': 'High volume water leak flooding the main street intersection.',
+            'priority': 'urgent',
+            'address': '101 Main Road',
+            'ward_number': 'Ward 3',
+            'pincode': '600001'
+        }, follow_redirects=True)
+        comp = Complaint.query.first()
+        self.assertIsNotNone(comp)
+        comp_id = comp.id
+        comp_ref = comp.complaint_ref
+
+        sse_admin = a_client.get(f'/api/stream?since_id={admin_cursor}')
+        self.assertEqual(sse_admin.status_code, 200)
+        self.assertIn('text/event-stream', sse_admin.content_type)
+        body = sse_admin.data.decode('utf-8')
+        self.assertIn('event: sync', body)
+        self.assertIn(comp_ref, body)
+
+        # Verify Admin received persisted notification with complaint_id
+        a_notifs = a_client.get('/api/notifications').get_json()
+        self.assertEqual(a_notifs['unread_count'], 1)
+        self.assertEqual(a_notifs['notifications'][0]['complaint_id'], comp_id)
+
+        # 2. Admin assigns Officer -> Officer sees update & notification immediately
+        a_client.post(f'/admin/complaint/{comp_id}', data={
+            'action': 'assign_department_officer',
+            'department_id': dept_id,
+            'officer_id': officer_id,
+            'admin_remarks': 'Dispatch immediately.'
+        }, follow_redirects=True)
+        o_sync = o_client.get('/api/live-updates').get_json()
+        self.assertEqual(o_sync['total_count'], 1)
+        self.assertEqual(o_sync['unread_notifications'], 1)
+        self.assertEqual(o_sync['latest_notification']['complaint_id'], comp_id)
+
+        # 3. Officer assigns Worker -> Worker receives notification with complaint ID, location, department & instructions
+        o_client.post(f'/officer/complaint/{comp_id}', data={
+            'action': 'assign_worker',
+            'worker_user_id': worker_id,
+            'instructions': 'Carry hydraulic wrench'
+        }, follow_redirects=True)
+        w_notifs = w_client.get('/api/notifications').get_json()
+        self.assertEqual(w_notifs['unread_count'], 1)
+        w_msg = w_notifs['notifications'][0]['message']
+        self.assertIn(comp_ref, w_msg)
+        self.assertIn('Water Supply', w_msg)
+        self.assertIn('Carry hydraulic wrench', w_msg)
+
+        # 4. Worker starts work -> Officer and Admin receive updates
+        w_client.post(f'/worker/task/{comp_id}', data={'action': 'start_work', 'remarks': 'Started repairs'}, follow_redirects=True)
+        o_notifs_after_start = o_client.get('/api/notifications').get_json()
+        self.assertTrue(any('Work Started' in n['title'] for n in o_notifs_after_start['notifications']))
+
+        # 5. Worker submits completion -> Officer & Admin notified; Citizen receives single clean notification (no duplicate)
+        after_img = (io.BytesIO(b'\x89PNG\r\n\x1a\nafter'), 'done.png')
+        w_client.post(f'/worker/task/{comp_id}', data={
+            'action': 'submit_completion',
+            'remarks': 'Replaced pipe flange and tested.',
+            'after_image': after_img
+        }, content_type='multipart/form-data', follow_redirects=True)
+        o_notifs_verif = o_client.get('/api/notifications').get_json()
+        self.assertTrue(any('Work Submitted for Verification' in n['title'] for n in o_notifs_verif['notifications']))
+
+        # 6. Officer requests rework -> Worker notified with reason
+        o_client.post(f'/officer/complaint/{comp_id}', data={
+            'action': 'return_rework',
+            'rework_reason': 'Need clearer valve closeup photo.'
+        }, follow_redirects=True)
+        w_notifs_rework = w_client.get('/api/notifications').get_json()
+        self.assertTrue(any('Rework Required' in n['title'] and 'valve closeup' in n['message'] for n in w_notifs_rework['notifications']))
+
+        # 7. Officer approves completion -> Citizen & Admin resolved updates
+        o_client.post(f'/officer/complaint/{comp_id}', data={
+            'action': 'verify_resolve',
+            'remarks': 'Approved cleanly.'
+        }, follow_redirects=True)
+        c_notifs = c_client.get('/api/notifications').get_json()
+        self.assertTrue(any('Complaint Resolved' in n['title'] for n in c_notifs['notifications']))
+        # Ensure Citizen never sees Admin or Officer internal notifications
+        self.assertFalse(any('Work Submitted for Verification' in n['title'] for n in c_notifs['notifications']))
+
+        # 8. Mark single notification read -> unread count decreases & persists across new session login
+        first_nid = c_notifs['notifications'][0]['id']
+        prev_unread = c_notifs['unread_count']
+        c_client.post(f'/api/notifications/{first_nid}/read')
+        c_client.get('/auth/logout')
+
+        c_new_device = self.app.test_client()
+        c_new_device.post('/auth/login', data={'login_id': 'citizen@prod.gov', 'password': 'Citizen@123'})
+        c_persisted = c_new_device.get('/api/notifications').get_json()
+        self.assertEqual(c_persisted['unread_count'], prev_unread - 1)
+
+        # 9. Network reconnect recovery (Last-Event-ID / since_id) returns missed notifications
+        reconnect_sync = a_client.get(f'/api/live-updates?since_id={admin_cursor}').get_json()
+        self.assertTrue(len(reconnect_sync['new_notifications']) >= 3)
+
+    def test_global_gif_loader_asset_and_all_pages_configured(self):
+        # 1. Exact animated GIF binary exists in static assets and serves over HTTP
+        gif_path = os.path.join(self.app.static_folder, 'img', 'loader.gif')
+        self.assertTrue(os.path.isfile(gif_path), 'loader.gif missing from app/static/img/')
+        with open(gif_path, 'rb') as fh:
+            header = fh.read(6)
+        self.assertIn(header, (b'GIF89a', b'GIF87a'))
+
+        gif_res = self.client.get('/static/img/loader.gif')
+        self.assertEqual(gif_res.status_code, 200)
+        self.assertIn('image/gif', gif_res.content_type)
+        self.assertEqual(len(gif_res.data), os.path.getsize(gif_path))
+        gif_res.close()
+
+        # 2. Rendered on initial landing, login page, and all four authenticated role dashboards
+        public_pages = ['/', '/auth/login']
+        for route in public_pages:
+            res = self.client.get(route)
+            html = res.get_data(as_text=True)
+            self.assertEqual(res.status_code, 200)
+            self.assertIn('id="globalPageLoader"', html)
+            self.assertIn('/static/img/loader.gif', html)
+            self.assertIn('#020D1C', html)
+            self.assertIn('id="globalPageLoaderError"', html)
+            self.assertIn('id="globalPageLoaderRetryBtn"', html)
+
+        role_dashboards = [
+            ('citizen@prod.gov', 'Citizen@123', '/citizen/dashboard'),
+            ('admin@prod.gov', 'Admin@123', '/admin/dashboard'),
+            ('officer@prod.gov', 'Officer@123', '/officer/dashboard'),
+            ('worker@prod.gov', 'Worker@123', '/worker/dashboard'),
+        ]
+        for email, pwd, dash in role_dashboards:
+            client = self.app.test_client()
+            login_res = client.post('/auth/login', data={'login_id': email, 'password': pwd}, follow_redirects=True)
+            self.assertEqual(login_res.status_code, 200)
+            dash_res = client.get(dash)
+            html = dash_res.get_data(as_text=True)
+            self.assertEqual(dash_res.status_code, 200)
+            self.assertIn('id="globalPageLoader"', html)
+            self.assertIn('/static/img/loader.gif', html)
+            self.assertIn('#020D1C', html)
+
+    def test_admin_analytics_empty_and_populated_metrics(self):
+        a_client = self.app.test_client()
+        self.assertEqual(
+            a_client.post('/auth/login', data={'login_id': 'admin@prod.gov', 'password': 'Admin@123'}, follow_redirects=True).status_code,
+            200
+        )
+
+        # 1. Empty state renders clean KPIs and empty-state guidance without errors
+        res_empty = a_client.get('/admin/analytics')
+        self.assertEqual(res_empty.status_code, 200)
+        html_empty = res_empty.get_data(as_text=True)
+        self.assertIn('No Complaints Registered Yet', html_empty)
+        self.assertIn('id="deptAnalyticsTableBody"', html_empty)
+
+        api_empty = a_client.get('/api/admin/analytics-data')
+        self.assertEqual(api_empty.status_code, 200)
+        self.assertEqual(api_empty.get_json()['summary']['total'], 0)
+
+        # Non-admin role must be rejected (403)
+        c_client = self.app.test_client()
+        c_client.post('/auth/login', data={'login_id': 'citizen@prod.gov', 'password': 'Citizen@123'})
+        self.assertEqual(c_client.get('/api/admin/analytics-data').status_code, 403)
+
+        # 2. Newly submitted complaint (department_id=None before routing) is attributed via category department
+        c1 = Complaint(
+            complaint_ref='CMP-ANL-001',
+            citizen_id=self.citizen.id,
+            department_id=None,
+            category_id=self.cat.id,
+            title='Street water burst',
+            description='Heavy water pipe leak near junction.',
+            priority='high',
+            status='Submitted',
+        )
+        c2 = Complaint(
+            complaint_ref='CMP-ANL-002',
+            citizen_id=self.citizen.id,
+            department_id=self.dept.id,
+            category_id=self.cat.id,
+            title='Fixed water line',
+            description='Resolved main pipe issue.',
+            priority='medium',
+            status='Resolved',
+        )
+        db.session.add_all([c1, c2])
+        db.session.commit()
+
+        api_pop = a_client.get('/api/admin/analytics-data')
+        self.assertEqual(api_pop.status_code, 200)
+        data = api_pop.get_json()
+        self.assertEqual(data['summary']['total'], 2)
+        self.assertEqual(data['summary']['pending'], 1)
+        self.assertEqual(data['summary']['resolved'], 1)
+        self.assertEqual(data['summary']['resolution_rate'], 50.0)
+        self.assertEqual(data['dept_totals'], [2])
+        self.assertEqual(data['dept_resolved'], [1])
+        self.assertEqual(data['cat_labels'], ['Pipe Leak'])
+        self.assertEqual(data['cat_totals'], [2])
+
+        res_pop = a_client.get('/admin/analytics')
+        self.assertEqual(res_pop.status_code, 200)
+        self.assertIn('Water Supply', res_pop.get_data(as_text=True))
+
+    def test_full_page_layout_no_half_screen_constraints(self):
+        import re
+        templates_dir = os.path.join(self.app.root_path, 'templates')
+        for root, _, files in os.walk(templates_dir):
+            for fname in files:
+                if not fname.endswith('.html'):
+                    continue
+                fpath = os.path.join(root, fname)
+                with open(fpath, 'r', encoding='utf-8') as fh:
+                    content = fh.read()
+                self.assertIsNone(
+                    re.search(r'<div[^>]*class=["\'][^"\']*dashboard-content[^"\']*["\'][^>]*max-width', content),
+                    f"Template {fname} still constrains .dashboard-content with inline max-width"
+                )
+
+        css_path = os.path.join(self.app.static_folder, 'css', 'main.css')
+        with open(css_path, 'r', encoding='utf-8') as fh:
+            css = fh.read()
+        self.assertIn('max-width: calc(100vw - var(--sidebar-expanded-width)) !important;', css)
+        self.assertIn('width: 100% !important;', css)
+
+    def test_back_button_present_on_contact_and_public_pages(self):
+        for route in ['/contact', '/about', '/departments', '/how-it-works', '/cookies', '/privacy', '/terms', '/track']:
+            res = self.client.get(route)
+            self.assertEqual(res.status_code, 200, f"{route} failed")
+            html = res.get_data(as_text=True)
+            self.assertIn('data-back-nav', html, f"Back button missing on {route}")
+
+        # Track page should NOT render the left sidebar menu bar
+        track_html = self.client.get('/track').get_data(as_text=True)
+        self.assertNotIn('id="dashboardSidebar"', track_html)
+
+    def test_contact_form_sends_message_to_admin_dashboard_and_notifies(self):
+        res = self.client.post('/contact', data={
+            'name': 'Priya Citizen',
+            'contact': 'priya@example.com',
+            'message': 'Need help updating my ward details on grievance form.'
+        }, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+
+        a_client = self.app.test_client()
+        a_client.post('/auth/login', data={'login_id': 'admin@prod.gov', 'password': 'Admin@123'})
+
+        # Admin receives real-time notification
+        notifs = a_client.get('/api/notifications').get_json()
+        self.assertTrue(any('New Contact Inquiry' in n['title'] and 'Priya Citizen' in n['message'] for n in notifs['notifications']))
+
+        # Admin dashboard displays the contact inquiry card and message
+        dash_html = a_client.get('/admin/dashboard').get_data(as_text=True)
+        self.assertIn('id="contactInquiriesCard"', dash_html)
+        self.assertIn('Priya Citizen', dash_html)
+        self.assertIn('Need help updating my ward details on grievance form.', dash_html)
+
+        # Admin can mark inquiry reviewed
+        from app.models.contact import ContactMessage
+        msg = ContactMessage.query.filter_by(name='Priya Citizen').first()
+        self.assertIsNotNone(msg)
+        self.assertFalse(msg.is_read)
+        mark_res = a_client.post(f'/admin/contact-messages/{msg.id}/read', follow_redirects=True)
+        self.assertEqual(mark_res.status_code, 200)
+        db.session.refresh(msg)
+        self.assertTrue(msg.is_read)
+
+
+if __name__ == '__main__':
+    unittest.main()

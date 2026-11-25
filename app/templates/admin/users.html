@@ -97,7 +97,11 @@
                 <td>
                   {% if u.id != current_user.id %}
                     <div style="display: flex; gap: 0.4rem; align-items: center;">
-                      <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;">
+                      <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;"
+                        data-confirm-title="{{ 'Deactivate User Account' if u.is_active else 'Activate User Account' }}"
+                        data-confirm="Are you sure you want to {{ 'deactivate' if u.is_active else 'activate' }} {{ u.full_name }} ({{ u.email }})?"
+                        data-confirm-btn="{{ 'Deactivate' if u.is_active else 'Activate' }}"
+                        data-confirm-variant="warning">
                         <input type="hidden" name="action" value="toggle_status">
                         <input type="hidden" name="user_id" value="{{ u.id }}">
                         <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;">
@@ -105,7 +109,10 @@
                         </button>
                       </form>
                       <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;"
-                        onsubmit="return confirm('Permanently delete account for {{ u.full_name }} ({{ u.email }})? All associated records will be removed. This cannot be undone.');">
+                        data-confirm-title="Delete User Account"
+                        data-confirm="Permanently delete account for {{ u.full_name }} ({{ u.email }})? All associated records will be removed. This cannot be undone."
+                        data-confirm-btn="Delete Account"
+                        data-confirm-variant="danger">
                         <input type="hidden" name="action" value="delete_user">
                         <input type="hidden" name="user_id" value="{{ u.id }}">
                         <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;">
@@ -339,6 +346,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const response = await fetch(targetUrl, {
           method: 'POST',
           body: formData,
+          credentials: 'include',
           headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
@@ -420,6 +428,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (errorAlert && errorMsg) {
           errorMsg.textContent = 'A network connection error occurred. Please try again.';
           errorAlert.style.display = 'flex';
+        }
+        if (window.showToast) {
+          window.showToast('Server connection failed. Please check your internet and try again.', 'error', 'Network Error');
         }
       } finally {
         if (submitBtn) {

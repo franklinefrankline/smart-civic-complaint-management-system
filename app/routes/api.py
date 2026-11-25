@@ -1,25 +1,53 @@
-from flask import Blueprint, jsonify, request, session, g
+import json
+import time
+from flask import Blueprint, jsonify, request, session, g, Response, stream_with_context, current_app
+from sqlalchemy import text
 from app import db
 from app.models.complaint import Complaint
 from app.models.category import ComplaintCategory
 from app.models.department import Department
 from app.models.user import User
 from app.models.notification import Notification
-from app.services.complaint_service import find_potential_duplicates, suggest_department_by_category
+from app.services.complaint_service import (
+    find_potential_duplicates,
+    suggest_department_by_category,
+    build_admin_analytics_payload,
+    PENDING_STATUSES,
+    IN_PROGRESS_STATUSES,
+)
 from app.services.notification_service import mark_as_read, mark_all_as_read
 from app.services.sla_service import check_and_escalate_overdue_complaints
 from app.utils.decorators import login_required
 
 api_bp = Blueprint('api', __name__)
 
+
+@api_bp.route('/health')
+def api_health():
+    try:
+        db.session.execute(text('SELECT 1'))
+        return jsonify({
+            'status': 'ok',
+            'service': 'smart-civic-complaint-system',
+            'database': 'connected',
+            'dialect': db.engine.dialect.name
+        }), 200
+    except Exception:
+        return jsonify({
+            'status': 'degraded',
+            'service': 'smart-civic-complaint-system',
+            'database': 'disconnected'
+        }), 503
+
+
 @api_bp.route('/stats/summary')
 def stats_summary():
     total = Complaint.query.count()
     resolved = Complaint.query.filter_by(status='Resolved').count()
-    pending = Complaint.query.filter(Complaint.status.in_(['Submitted', 'Under Review'])).count()
-    in_progress = Complaint.query.filter(Complaint.status.in_(['Accepted', 'Assigned', 'In Progress', 'Work Completed', 'Verification Pending'])).count()
+    pending = Complaint.query.filter(Complaint.status.in_(PENDING_STATUSES)).count()
+    in_progress = Complaint.query.filter(Complaint.status.in_(IN_PROGRESS_STATUSES)).count()
     overdue = Complaint.query.filter_by(is_escalated=True).count()
-    
+
     return jsonify({
         'total': total,
         'resolved': resolved,
@@ -27,6 +55,14 @@ def stats_summary():
         'in_progress': in_progress,
         'overdue': overdue
     })
+
+
+@api_bp.route('/admin/analytics-data')
+@login_required
+def admin_analytics_data():
+    if g.user.role != 'admin':
+        return jsonify({'error': 'Administrator access required.'}), 403
+    return jsonify(build_admin_analytics_payload())
 
 @api_bp.route('/complaints/locations')
 def complaint_locations():
@@ -148,3 +184,148 @@ def trigger_sla_check():
     """Sweep overdue complaints and trigger auto-escalation"""
     escalated = check_and_escalate_overdue_complaints()
     return jsonify({'status': 'ok', 'escalated_count': escalated})
+
+
+def _build_user_live_snapshot(user_id, role, department_id, since_notif_id=None):
+    """Build strictly user/role-scoped real-time snapshot from the database."""
+    query = Complaint.query
+
+    if role == 'officer' and department_id:
+        query = query.filter_by(department_id=department_id).filter(
+            (Complaint.assigned_officer_id == user_id) | (Complaint.assigned_officer_id.is_(None))
+        )
+    elif role == 'officer':
+        query = query.filter_by(id=-1)
+    elif role == 'worker':
+        from app.models.workflow import ComplaintAssignment
+        assigned_ids = [
+            a.complaint_id
+            for a in ComplaintAssignment.query.filter_by(assigned_to_user_id=user_id).all()
+        ]
+        query = query.filter(Complaint.id.in_(assigned_ids)) if assigned_ids else query.filter_by(id=-1)
+    elif role == 'citizen':
+        query = query.filter_by(citizen_id=user_id)
+
+    total_count = query.count()
+    pending_count = query.filter(Complaint.status.in_(PENDING_STATUSES)).count()
+    latest = query.order_by(Complaint.updated_at.desc(), Complaint.id.desc()).first()
+    latest_id = latest.id if latest else 0
+    latest_updated = latest.updated_at.isoformat() if latest and latest.updated_at else ''
+
+    unread_notifs = Notification.query.filter_by(user_id=user_id, is_read=False).count()
+    latest_notif = (
+        Notification.query.filter_by(user_id=user_id)
+        .order_by(Notification.id.desc())
+        .first()
+    )
+    latest_notif_id = latest_notif.id if latest_notif else 0
+
+    new_notifications = []
+    if since_notif_id is not None and latest_notif_id > since_notif_id:
+        missed = (
+            Notification.query.filter(
+                Notification.user_id == user_id,
+                Notification.id > since_notif_id
+            )
+            .order_by(Notification.id.asc())
+            .limit(20)
+            .all()
+        )
+        new_notifications = [n.to_dict() for n in missed]
+
+    fingerprint = f"{total_count}:{pending_count}:{latest_id}:{latest_updated}"
+    return {
+        'fingerprint': fingerprint,
+        'total_count': total_count,
+        'pending_count': pending_count,
+        'latest_id': latest_id,
+        'unread_notifications': unread_notifs,
+        'latest_notif_id': latest_notif_id,
+        'latest_notification': latest_notif.to_dict() if latest_notif else None,
+        'new_notifications': new_notifications,
+        'role': role,
+    }
+
+
+@api_bp.route('/live-updates')
+@login_required
+def live_updates():
+    """
+    Lightweight live sync endpoint polled as fallback or on focus so Admin, Officer,
+    Worker, and Citizen views update automatically without manual page refresh.
+    """
+    since_id = request.args.get('since_id', type=int)
+    snapshot = _build_user_live_snapshot(
+        g.user.id,
+        g.user.role,
+        g.user.department_id,
+        since_notif_id=since_id
+    )
+    return jsonify(snapshot)
+
+
+@api_bp.route('/stream')
+@login_required
+def realtime_stream():
+    """
+    Authenticated Server-Sent Events (SSE) stream backed directly by MySQL/DB.
+    Reconnects cleanly every ~25s and supports Last-Event-ID for missed notification recovery.
+    """
+    user_id = g.user.id
+    role = g.user.role
+    dept_id = g.user.department_id
+    is_testing = bool(current_app.config.get('TESTING'))
+    since_id = None
+    try:
+        raw_since = request.headers.get('Last-Event-ID') or request.args.get('since_id')
+        if raw_since is not None and str(raw_since).strip() != '':
+            since_id = int(raw_since)
+    except (TypeError, ValueError):
+        since_id = None
+
+    @stream_with_context
+    def event_generator():
+        yield "retry: 2000\n\n"
+        last_fp = None
+        last_unread = None
+        cursor_notif_id = since_id
+        ticks = 1 if is_testing else 16
+
+        for tick in range(ticks):
+            try:
+                db.session.remove()
+                snapshot = _build_user_live_snapshot(
+                    user_id,
+                    role,
+                    dept_id,
+                    since_notif_id=cursor_notif_id
+                )
+                fp = snapshot['fingerprint']
+                unread = snapshot['unread_notifications']
+                latest_nid = snapshot['latest_notif_id']
+
+                has_new = (cursor_notif_id is not None and latest_nid > cursor_notif_id) or (cursor_notif_id is None and tick == 0)
+                if tick == 0 or fp != last_fp or unread != last_unread or has_new:
+                    event_id = latest_nid if latest_nid is not None else 0
+                    cursor_notif_id = latest_nid
+                    last_fp = fp
+                    last_unread = unread
+                    yield f"id: {event_id}\nevent: sync\ndata: {json.dumps(snapshot)}\n\n"
+                elif tick % 6 == 0:
+                    yield f"event: heartbeat\ndata: {json.dumps({'ts': int(time.time())})}\n\n"
+            except GeneratorExit:
+                break
+            except Exception:
+                db.session.rollback()
+                yield f"event: heartbeat\ndata: {json.dumps({'status': 'recovering'})}\n\n"
+
+            if not is_testing and tick < ticks - 1:
+                time.sleep(1.5)
+
+    headers = {
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no',
+        'Connection': 'keep-alive',
+    }
+    return Response(event_generator(), mimetype='text/event-stream', headers=headers)
+

@@ -5,7 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{{ t('app_name') }}{% endblock %} | Civic Administration</title>
   <meta name="description" content="{{ t('app_subtitle') }}">
-  
+  <meta name="api-base-url" content="{{ api_base_url or '' }}">
+  <link rel="preload" as="image" href="{{ url_for('static', filename='img/loader.gif') }}">
+
+  <!-- Critical Global Page Loader Styles (Prevent FOUC on #020D1C backdrop) -->
+  <style>
+    html.loader-locked, body.loader-locked { overflow: hidden; }
+    #globalPageLoader {
+      position: fixed;
+      inset: 0;
+      z-index: 999999;
+      background-color: #020D1C;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.28s ease, visibility 0.28s ease;
+    }
+    #globalPageLoader.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    #globalPageLoader .global-page-loader-gif {
+      width: min(280px, 68vw);
+      max-width: 438px;
+      height: auto;
+      aspect-ratio: 438 / 389;
+      object-fit: contain;
+      display: block;
+      user-select: none;
+      pointer-events: none;
+    }
+    #globalPageLoader .global-page-loader-error[hidden] {
+      display: none !important;
+    }
+  </style>
+
   <!-- Master Stylesheet -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   
@@ -17,7 +55,35 @@
   
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="loader-locked">
+  <!-- Global Full-Screen Page Loader -->
+  <div id="globalPageLoader" class="global-page-loader" role="status" aria-live="polite" aria-busy="true">
+    <img id="globalPageLoaderImg" class="global-page-loader-gif" src="{{ url_for('static', filename='img/loader.gif') }}" alt="Loading" width="438" height="389">
+    <div id="globalPageLoaderError" class="global-page-loader-error" hidden>
+      <p id="globalPageLoaderErrorText" class="global-page-loader-error-msg">Unable to load page content. Please check your connection and try again.</p>
+      <button type="button" id="globalPageLoaderRetryBtn" class="btn btn-primary btn-sm">Retry</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      window.__loaderStartTs = Date.now();
+      window.__loaderFailsafeTimer = setTimeout(function() {
+        var el = document.getElementById('globalPageLoader');
+        var err = document.getElementById('globalPageLoaderError');
+        var img = document.getElementById('globalPageLoaderImg');
+        var btn = document.getElementById('globalPageLoaderRetryBtn');
+        if (el && !el.classList.contains('is-hidden') && document.readyState !== 'complete') {
+          if (img) img.hidden = true;
+          if (err) err.hidden = false;
+          el.setAttribute('aria-busy', 'false');
+          if (btn && !btn.dataset.boundFallback) {
+            btn.dataset.boundFallback = '1';
+            btn.addEventListener('click', function() { window.location.reload(); });
+          }
+        }
+      }, 20000);
+    })();
+  </script>
   <!-- Top Navigation Progress Indicator -->
   <div id="pageProgressBar"></div>
 
@@ -31,24 +97,38 @@
   <!-- Flash Messages Banner (Floating Toast Notifications - Never overlaps titles or sidebars) -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div id="flashToastContainer" class="flash-container toast-flash-wrapper" role="region" aria-label="Notifications" style="position: fixed; top: 1.5rem; right: 1.5rem; z-index: 999999; max-width: 480px; min-width: 320px; width: auto; pointer-events: none; display: flex; flex-direction: column; gap: 0.65rem;">
+      <div id="flashToastContainer" class="flash-container toast-flash-wrapper" role="region" aria-label="Notifications" style="position: fixed; top: 1.5rem; right: 1.5rem; z-index: 99998; max-width: 440px; min-width: 300px; width: auto; pointer-events: none; display: flex; flex-direction: column; gap: 0.65rem;">
         {% for category, message in messages %}
-          <div class="alert alert-{{ category }}" style="pointer-events: auto; margin-bottom: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); border-radius: var(--radius-sm, 6px); animation: slideInToast 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 1.15rem;">
-            <span style="font-weight: 500; font-size: 0.88rem; line-height: 1.4;">{{ message }}</span>
+          {% set alert_cat = 'danger' if category == 'error' else category %}
+          <div class="alert alert-{{ alert_cat }}" data-flash-category="{{ alert_cat }}" style="pointer-events: auto; margin-bottom: 0; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28); border-radius: var(--radius-sm, 8px); animation: slideInToast 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 1.15rem;">
+            <span style="display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 500; font-size: 0.88rem; line-height: 1.4;">
+              {% if alert_cat == 'success' %}
+                <i data-lucide="check-circle-2" class="icon-sm" style="flex-shrink: 0;"></i>
+              {% elif alert_cat == 'danger' %}
+                <i data-lucide="alert-circle" class="icon-sm" style="flex-shrink: 0;"></i>
+              {% elif alert_cat == 'warning' %}
+                <i data-lucide="alert-triangle" class="icon-sm" style="flex-shrink: 0;"></i>
+              {% else %}
+                <i data-lucide="info" class="icon-sm" style="flex-shrink: 0;"></i>
+              {% endif %}
+              <span>{{ message }}</span>
+            </span>
             <button type="button" onclick="this.closest('.alert').remove()" class="alert-close-btn" aria-label="Close alert" style="background: none; border: none; font-size: 1.35rem; line-height: 1; cursor: pointer; color: inherit; padding: 0; opacity: 0.75; display: inline-flex; align-items: center;">&times;</button>
           </div>
         {% endfor %}
       </div>
       <script>
-        setTimeout(function() {
-          var alerts = document.querySelectorAll('.flash-container .alert');
-          alerts.forEach(function(el) {
-            el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        document.querySelectorAll('.flash-container .alert').forEach(function(el) {
+          var cat = el.getAttribute('data-flash-category');
+          var delay = (cat === 'danger') ? 5200 : (cat === 'warning' ? 4500 : 3800);
+          setTimeout(function() {
+            if (!el.parentNode) return;
+            el.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
             el.style.opacity = '0';
             el.style.transform = 'translateX(40px)';
-            setTimeout(function() { el.remove(); }, 400);
-          });
-        }, 6000);
+            setTimeout(function() { if (el.parentNode) el.remove(); }, 360);
+          }, delay);
+        });
       </script>
     {% endif %}
   {% endwith %}
@@ -221,6 +301,40 @@
       <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
         <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('cookieSettingsModal')">Cancel</button>
         <button type="button" class="btn btn-primary btn-sm" id="cookieSaveCustom">Save Preferences</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Notification Dropdown Panel (Shared across all authenticated role consoles) -->
+  {% if current_user and request.endpoint not in ['public.index', 'auth.login', 'auth.register'] %}
+  <div class="notif-menu dashboard-notif-menu" id="notifMenu" role="region" aria-label="Notifications Panel">
+    <div style="padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <strong style="font-size: 0.88rem; color: var(--text-primary); display: inline-flex; align-items: center; gap: 0.4rem;">
+        <i data-lucide="bell" class="icon-xs" style="color: var(--civic-blue);"></i> Notifications
+      </strong>
+      <button type="button" id="markAllReadBtn" style="background: none; border: none; font-size: 0.78rem; font-weight: 600; color: var(--civic-blue); cursor: pointer;">Mark all read</button>
+    </div>
+    <div id="notifList">
+      <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Loading...</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Centralized Website Confirmation Dialog (Replaces ALL native confirm/alert/prompt) -->
+  <div id="sccmtConfirmModal" class="modal-overlay confirm-modal-overlay" role="alertdialog" aria-modal="true" aria-labelledby="sccmtConfirmTitle" aria-describedby="sccmtConfirmMessage" style="display: none;">
+    <div class="modal-dialog confirm-modal-dialog">
+      <div class="confirm-modal-header">
+        <div id="sccmtConfirmIconWrap" class="confirm-modal-icon variant-danger">
+          <i id="sccmtConfirmIcon" data-lucide="alert-triangle" class="icon-md"></i>
+        </div>
+        <div style="flex: 1;">
+          <h3 id="sccmtConfirmTitle" class="confirm-modal-title">Confirm Action</h3>
+          <p id="sccmtConfirmMessage" class="confirm-modal-desc">Are you sure you want to proceed?</p>
+        </div>
+      </div>
+      <div class="confirm-modal-actions">
+        <button type="button" id="sccmtConfirmCancelBtn" class="btn btn-secondary btn-sm">Cancel</button>
+        <button type="button" id="sccmtConfirmOkBtn" class="btn btn-danger btn-sm">Confirm</button>
       </div>
     </div>
   </div>

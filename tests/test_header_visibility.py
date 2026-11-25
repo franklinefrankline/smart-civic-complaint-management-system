@@ -106,19 +106,20 @@ class HeaderVisibilityTestCase(unittest.TestCase):
             self.assertIn(b'id="dashboardSidebar"', res.data)
 
     def test_track_page_has_sidebar_and_no_navbar(self):
-        """8. Track Complaint page has left sidebar menu bar (both auth and unauth) and no top navbar"""
+        """8. Track Complaint page has no sidebar menu bar and no top navbar (clean standalone tracking)"""
         # Unauthenticated public track
         self.client.get('/auth/logout')
         res_unauth = self.client.get('/track')
         self.assertEqual(res_unauth.status_code, 200)
         self.assertNotIn(b'<nav class="navbar', res_unauth.data)
-        self.assertIn(b'id="dashboardSidebar"', res_unauth.data)
+        self.assertNotIn(b'id="dashboardSidebar"', res_unauth.data)
         self.assertIn(b'Public Complaint Tracking', res_unauth.data)
+        self.assertIn(b'data-back-nav', res_unauth.data)
 
         # Authenticated citizen track
         self.client.post('/auth/login', data={'login_id': 'citizen.vis@test.gov', 'password': 'Citizen@123'})
         res_auth = self.client.get('/track')
         self.assertEqual(res_auth.status_code, 200)
         self.assertNotIn(b'<nav class="navbar', res_auth.data)
-        self.assertIn(b'id="dashboardSidebar"', res_auth.data)
-        self.assertIn(b'Citizen Jane', res_auth.data)
+        self.assertNotIn(b'id="dashboardSidebar"', res_auth.data)
+        self.assertIn(b'data-back-nav', res_auth.data)

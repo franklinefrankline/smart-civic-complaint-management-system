@@ -3,7 +3,8 @@
 {% block title %}How It Works | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
-<div class="container" style="padding: 4rem 1.5rem; max-width: 900px;">
+<div class="container" style="padding: 4rem 2rem;">
+  {% include 'shared/_back_button.html' %}
   <div style="text-align: center; margin-bottom: 3.5rem;">
     <h1 style="font-size: 2.4rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.75rem;">
       Complaint Resolution Workflow
@@ -16,41 +17,58 @@
   <div class="card" style="padding: 2.5rem; margin-bottom: 2rem;">
     <div style="display: flex; flex-direction: column; gap: 2rem;">
       <div style="display: flex; gap: 1.5rem; align-items: flex-start;">
-        <div style="width: 44px; height: 44px; border-radius: 50%; background: #dbeafe; color: #1e40af; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; flex-shrink: 0;">1</div>
+        <div
+          style="width: 44px; height: 44px; border-radius: 50%; background: #dbeafe; color: #1e40af; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; flex-shrink: 0;">
+          1</div>
         <div>
-          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem;">Citizen Registration & Address Details</h3>
+          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem;">Citizen Registration & Address
+            Details</h3>
           <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.6;">
-            The citizen registers or signs in, fills out the grievance form with title, category, description, and municipal ward and street address. Duplicate detection prevents redundant reports in the same zone.
+            The citizen registers or signs in, fills out the grievance form with title, category, description, and
+            municipal ward and street address. Duplicate detection prevents redundant reports in the same zone.
           </p>
         </div>
       </div>
 
       <div style="display: flex; gap: 1.5rem; align-items: flex-start;">
-        <div style="width: 44px; height: 44px; border-radius: 50%; background: #e0e7ff; color: #4338ca; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; flex-shrink: 0;">2</div>
+        <div
+          style="width: 44px; height: 44px; border-radius: 50%; background: #e0e7ff; color: #4338ca; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; flex-shrink: 0;">
+          2</div>
         <div>
-          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem;">Department Officer Acceptance & Worker Assignment</h3>
+          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem;">Department Officer Acceptance &
+            Worker Assignment</h3>
           <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.6;">
-            The complaint enters the designated department queue. The officer inspects the photo, approves the priority level, and assigns an available field technician with specific execution instructions.
+            The complaint enters the designated department queue. The officer inspects the photo, approves the priority
+            level, and assigns an available field technician with specific execution instructions.
           </p>
         </div>
       </div>
 
       <div style="display: flex; gap: 1.5rem; align-items: flex-start;">
-        <div style="width: 44px; height: 44px; border-radius: 50%; background: #fef3c7; color: #b45309; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; flex-shrink: 0;">3</div>
+        <div
+          style="width: 44px; height: 44px; border-radius: 50%; background: #fef3c7; color: #b45309; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; flex-shrink: 0;">
+          3</div>
         <div>
-          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem;">Field Technician On-Site Execution</h3>
+          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem;">Field Technician On-Site Execution
+          </h3>
           <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.6;">
-            The field worker accepts the assignment, updates status to "In Progress", uploads pre-work condition photos, executes necessary repairs, and submits completion notes accompanied by after-work photos.
+            The field worker accepts the assignment, updates status to "In Progress", uploads pre-work condition photos,
+            executes necessary repairs, and submits completion notes accompanied by after-work photos.
           </p>
         </div>
       </div>
 
       <div style="display: flex; gap: 1.5rem; align-items: flex-start;">
-        <div style="width: 44px; height: 44px; border-radius: 50%; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; flex-shrink: 0;">4</div>
+        <div
+          style="width: 44px; height: 44px; border-radius: 50%; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; flex-shrink: 0;">
+          4</div>
         <div>
-          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem;">Officer Quality Verification & Final Resolution</h3>
+          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem;">Officer Quality Verification & Final
+            Resolution</h3>
           <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.6;">
-            The officer verifies the submitted evidence. If work is satisfactory, the officer approves resolution. If incomplete, it is returned for rework. Upon resolution, the citizen receives an alert and provides star ratings.
+            The officer verifies the submitted evidence. If work is satisfactory, the officer approves resolution. If
+            incomplete, it is returned for rework. Upon resolution, the citizen receives an alert and provides star
+            ratings.
           </p>
         </div>
       </div>

@@ -1,0 +1,9 @@
+<div class="page-back-bar">
+  <button type="button"
+          class="btn btn-secondary btn-sm page-back-btn"
+          data-back-nav
+          data-fallback-url="{{ back_fallback_url if back_fallback_url is defined else url_for('public.index') }}">
+    <i data-lucide="arrow-left" class="icon-xs"></i>
+    <span>Back</span>
+  </button>
+</div>

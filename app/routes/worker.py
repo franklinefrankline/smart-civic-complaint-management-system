@@ -2,10 +2,16 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 from app import db
 from app.models.complaint import Complaint
-from app.models.workflow import ComplaintAssignment, Worker
+from app.models.workflow import ComplaintAssignment, Worker, ComplaintStatusHistory
 from app.models.attachment import ComplaintAttachment
-from app.services.complaint_service import transition_complaint_status, get_complaint_9_stage_timeline
-from app.services.notification_service import create_notification
+from app.services.complaint_service import (
+    transition_complaint_status,
+    get_complaint_9_stage_timeline,
+    ASSIGNED_TO_WORKER_STATUSES,
+    ACTIVE_WORK_STATUSES,
+    COMPLETED_PENDING_VERIF_STATUSES,
+)
+from app.services.notification_service import create_notification, notify_admins, notify_department_officers
 from app.services.audit_service import log_action
 from app.utils.helpers import save_uploaded_file
 from app.utils.decorators import login_required, role_required
@@ -29,11 +35,13 @@ def dashboard():
     query = Complaint.query.filter(Complaint.id.in_(assigned_complaint_ids)) if assigned_complaint_ids else Complaint.query.filter_by(id=-1)
     
     total = query.count()
-    new_tasks = query.filter_by(status='Assigned').count()
-    in_progress = query.filter_by(status='In Progress').count()
-    completed = query.filter(Complaint.status.in_(['Work Completed', 'Verification Pending', 'Resolved'])).count()
+    new_tasks = query.filter(Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES)).count()
+    in_progress = query.filter(Complaint.status.in_(ACTIVE_WORK_STATUSES)).count()
+    completed = query.filter(Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES + ['Resolved'])).count()
     
-    active_tasks = query.filter(Complaint.status.in_(['Assigned', 'In Progress'])).order_by(Complaint.priority.desc()).all()
+    active_tasks = query.filter(
+        Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES + ACTIVE_WORK_STATUSES)
+    ).order_by(Complaint.priority.desc()).all()
     
     stats = {
         'total': total,
@@ -59,7 +67,14 @@ def tasks():
     
     status = request.args.get('status')
     if status:
-        query = query.filter_by(status=status)
+        if status in ASSIGNED_TO_WORKER_STATUSES:
+            query = query.filter(Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES))
+        elif status in ('In Progress', 'Work Started'):
+            query = query.filter(Complaint.status.in_(ACTIVE_WORK_STATUSES))
+        elif status in COMPLETED_PENDING_VERIF_STATUSES:
+            query = query.filter(Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES))
+        else:
+            query = query.filter_by(status=status)
         
     search = request.args.get('search', '').strip()
     if search:
@@ -95,10 +110,11 @@ def task_detail(complaint_id):
         
         try:
             if action == 'start_work':
-                # Worker starts field work
+                # Worker starts field work (notifies Citizen & Admins via transition_complaint_status)
                 transition_complaint_status(complaint, 'In Progress', g.user, remarks=remarks or "Field technician started site work.")
                 assignment.status = 'In Progress'
-                
+                complaint.updated_at = datetime.utcnow()
+
                 # Check for "Before Work" image
                 before_img = request.files.get('before_image')
                 if before_img and before_img.filename != '':
@@ -113,13 +129,35 @@ def task_detail(complaint_id):
                             file_path=saved['file_path'],
                             file_size=saved['file_size'],
                             mime_type=saved['mime_type'],
+                            file_data=saved.get('file_data'),
                             remarks='Pre-work site condition'
                         )
                         db.session.add(att)
-                        
+
                 db.session.commit()
+
+                # Notify Department Officer that worker started work
+                if complaint.assigned_officer_id:
+                    create_notification(
+                        complaint.assigned_officer_id,
+                        f"Work Started: {complaint.complaint_ref}",
+                        f"Field technician {g.user.full_name} started work on '{complaint.title}'.",
+                        link=f"/officer/complaints/{complaint.id}",
+                        notification_type='status_changed',
+                        complaint_id=complaint.id
+                    )
+                elif complaint.department_id:
+                    notify_department_officers(
+                        complaint.department_id,
+                        f"Work Started: {complaint.complaint_ref}",
+                        f"Field technician {g.user.full_name} started work on '{complaint.title}'.",
+                        link=f"/officer/complaints/{complaint.id}",
+                        notification_type='status_changed',
+                        complaint_id=complaint.id
+                    )
+
                 flash("Task marked In Progress.", "success")
-                
+
             elif action == 'update_progress':
                 progress_notes = request.form.get('progress_notes', '').strip()
                 if not progress_notes:
@@ -132,6 +170,7 @@ def task_detail(complaint_id):
                     new_status=complaint.status,
                     remarks=f"Progress Update: {progress_notes}"
                 )
+                complaint.updated_at = datetime.utcnow()
                 db.session.add(hist)
                 db.session.commit()
                 if complaint.assigned_officer_id:
@@ -139,7 +178,9 @@ def task_detail(complaint_id):
                         complaint.assigned_officer_id,
                         f"Task Progress: {complaint.complaint_ref}",
                         f"Field worker {g.user.full_name} posted progress: {progress_notes}",
-                        link=f"/officer/complaints/{complaint.id}"
+                        link=f"/officer/complaints/{complaint.id}",
+                        notification_type='status_changed',
+                        complaint_id=complaint.id
                     )
                 flash("Progress update recorded successfully.", "info")
 
@@ -148,7 +189,7 @@ def task_detail(complaint_id):
                 if not remarks:
                     flash("Please provide completion notes describing work executed.", "danger")
                     return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
-                    
+
                 after_img = request.files.get('after_image')
                 if not after_img or after_img.filename == '':
                     # Check if an after_work image was already uploaded earlier
@@ -170,34 +211,64 @@ def task_detail(complaint_id):
                             file_path=saved['file_path'],
                             file_size=saved['file_size'],
                             mime_type=saved['mime_type'],
+                            file_data=saved.get('file_data'),
                             remarks='Completed work site photo'
                         )
                         db.session.add(att)
-                        
-                transition_complaint_status(complaint, 'Verification Pending', g.user, remarks=f"Work completed: {remarks}. Awaiting officer verification.")
+
+                # Transition status without duplicating Citizen/Admin notifications
+                transition_complaint_status(
+                    complaint,
+                    'Verification Pending',
+                    g.user,
+                    remarks=f"Work completed: {remarks}. Awaiting officer verification.",
+                    notify_citizen=False,
+                    notify_admin_on_staff_action=False
+                )
                 assignment.status = 'Completed'
                 assignment.completed_at = datetime.utcnow()
-                
-                # Notify Department Officer
+                complaint.updated_at = datetime.utcnow()
+                db.session.commit()
+
+                # Notify Department Officer (single dedicated notification)
                 if complaint.assigned_officer_id:
                     create_notification(
                         complaint.assigned_officer_id,
                         f"Work Submitted for Verification: {complaint.complaint_ref}",
                         f"Worker {g.user.full_name} has completed work on '{complaint.title}' and submitted verification evidence.",
                         link=f"/officer/complaints/{complaint.id}",
-                        notification_type='status_changed'
+                        notification_type='verification_pending',
+                        complaint_id=complaint.id
                     )
-                    
-                # Notify Citizen
+                elif complaint.department_id:
+                    notify_department_officers(
+                        complaint.department_id,
+                        f"Work Submitted for Verification: {complaint.complaint_ref}",
+                        f"Worker {g.user.full_name} has completed work on '{complaint.title}' and submitted verification evidence.",
+                        link=f"/officer/complaints/{complaint.id}",
+                        notification_type='verification_pending',
+                        complaint_id=complaint.id
+                    )
+
+                # Notify Citizen (single dedicated notification)
                 create_notification(
                     complaint.citizen_id,
                     f"Work Completed: {complaint.complaint_ref}",
                     f"Field repairs for '{complaint.title}' are complete and currently undergoing department officer verification.",
                     link=f"/citizen/complaints/{complaint.id}",
-                    notification_type='status_changed'
+                    notification_type='status_changed',
+                    complaint_id=complaint.id
                 )
-                
-                db.session.commit()
+
+                # Notify Admins (single dedicated notification)
+                notify_admins(
+                    title=f"Completion Evidence Submitted: {complaint.complaint_ref}",
+                    message=f"Technician {g.user.full_name} submitted completion evidence for {complaint.complaint_ref}. Pending officer verification.",
+                    link=f"/admin/complaints/{complaint.id}",
+                    notification_type='verification_pending',
+                    complaint_id=complaint.id
+                )
+
                 flash("Work submitted successfully! Now pending officer verification.", "success")
                 
         except Exception as e:

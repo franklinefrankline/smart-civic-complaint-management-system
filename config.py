@@ -1,74 +1,169 @@
 import os
 import sys
 from datetime import timedelta
+from urllib.parse import quote_plus, urlparse, parse_qs, urlencode, urlunparse
 from dotenv import load_dotenv
 
 # Base directory of the application
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-# Load environment variables from .env file
+# Load environment variables from .env file (local development)
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'smart-civic-complaint-secret-key-fallback-2026')
-    
-    # Database Settings
-    DB_USER = os.environ.get('DB_USER', 'root')
-    DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
-    DB_HOST = os.environ.get('DB_HOST', '127.0.0.1')
-    DB_PORT = os.environ.get('DB_PORT', '3306')
-    DB_NAME = os.environ.get('DB_NAME', 'smart_civic_complaints')
-    
-    # Cloud / Serverless detection
-    IS_CLOUD = bool(
-        os.environ.get('VERCEL') or 
-        os.environ.get('RENDER') or 
-        os.environ.get('VERCEL_ENV') or 
-        os.environ.get('AWS_LAMBDA_FUNCTION_NAME') or 
-        sys.platform.startswith('linux')
+
+def _build_database_config():
+    """
+    Resolve SQLAlchemy URI and engine options cleanly for local and cloud MySQL.
+    Priority:
+      1. Explicit DATABASE_URL / MYSQL_URL / SQLALCHEMY_DATABASE_URI
+      2. Explicit DB_HOST / MYSQLHOST environment variables (builds MySQL+PyMySQL URI)
+      3. Local development default MySQL (127.0.0.1:3306)
+      4. Cloud ephemeral SQLite fallback ONLY if no MySQL variables are configured
+    """
+    is_cloud = bool(
+        os.environ.get('RENDER')
+        or os.environ.get('VERCEL')
+        or os.environ.get('VERCEL_ENV')
+        or os.environ.get('AWS_LAMBDA_FUNCTION_NAME')
+        or sys.platform.startswith('linux')
     )
 
-    # Priority:
-    # 1. Explicit DATABASE_URL (Cloud MySQL, TiDB, PostgreSQL, etc.)
-    # 2. If running on Cloud / Linux (Vercel, Render) -> Resilient SQLite in /tmp
-    # 3. Local Windows development -> Local XAMPP MySQL
-    _explicit_db = os.environ.get('DATABASE_URL')
-    if _explicit_db:
-        if _explicit_db.startswith('postgres://'):
-            _explicit_db = _explicit_db.replace('postgres://', 'postgresql://', 1)
-        SQLALCHEMY_DATABASE_URI = _explicit_db
-    elif IS_CLOUD:
-        SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/smart_civic.db'
+    explicit_url = (
+        os.environ.get('DATABASE_URL')
+        or os.environ.get('MYSQL_URL')
+        or os.environ.get('SQLALCHEMY_DATABASE_URI')
+        or ''
+    ).strip()
+
+    db_user = os.environ.get('DB_USER') or os.environ.get('MYSQLUSER') or 'root'
+    db_password = os.environ.get('DB_PASSWORD') or os.environ.get('MYSQLPASSWORD') or ''
+    db_host = os.environ.get('DB_HOST') or os.environ.get('MYSQLHOST') or ''
+    db_port = os.environ.get('DB_PORT') or os.environ.get('MYSQLPORT') or '3306'
+    db_name = os.environ.get('DB_NAME') or os.environ.get('MYSQLDATABASE') or 'smart_civic_complaints'
+
+    ssl_required = os.environ.get('DB_SSL', '').lower() in ('1', 'true', 'yes', 'required')
+    ssl_ca = os.environ.get('DB_SSL_CA', '').strip()
+
+    if explicit_url:
+        if explicit_url.startswith('postgres://'):
+            explicit_url = explicit_url.replace('postgres://', 'postgresql://', 1)
+        elif explicit_url.startswith('mysql://'):
+            explicit_url = explicit_url.replace('mysql://', 'mysql+pymysql://', 1)
+        elif explicit_url.startswith('mysql2://'):
+            explicit_url = explicit_url.replace('mysql2://', 'mysql+pymysql://', 1)
+
+        # Strip unsupported PyMySQL query args like ssl-mode / sslmode and enable SSL safely
+        parsed = urlparse(explicit_url)
+        query = parse_qs(parsed.query, keep_blank_values=True)
+        for ssl_key in ('ssl-mode', 'ssl_mode', 'sslmode'):
+            if ssl_key in query:
+                val = (query.pop(ssl_key)[0] or '').lower()
+                if val in ('required', 'verify_ca', 'verify_identity', 'true', '1'):
+                    ssl_required = True
+        if 'mysql' in parsed.scheme and 'charset' not in query:
+            query['charset'] = ['utf8mb4']
+
+        clean_query = urlencode(query, doseq=True)
+        uri = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, clean_query, parsed.fragment))
+    elif db_host:
+        encoded_user = quote_plus(db_user)
+        encoded_pw = quote_plus(db_password)
+        auth = f"{encoded_user}:{encoded_pw}" if db_password else encoded_user
+        uri = f"mysql+pymysql://{auth}@{db_host}:{db_port}/{db_name}?charset=utf8mb4"
+    elif is_cloud:
+        uri = 'sqlite:////tmp/smart_civic.db'
     else:
-        SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
+        encoded_user = quote_plus(db_user)
+        encoded_pw = quote_plus(db_password)
+        auth = f"{encoded_user}:{encoded_pw}" if db_password else encoded_user
+        uri = f"mysql+pymysql://{auth}@127.0.0.1:{db_port}/{db_name}?charset=utf8mb4"
 
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-    # Configure engine options appropriately for dialect
-    if 'sqlite' in SQLALCHEMY_DATABASE_URI:
-        SQLALCHEMY_ENGINE_OPTIONS = {
+    if 'sqlite' in uri:
+        engine_options = {
             'connect_args': {'check_same_thread': False}
         }
+    elif 'mysql' in uri:
+        connect_args = {
+            'connect_timeout': int(os.environ.get('DB_CONNECT_TIMEOUT', 10))
+        }
+        if ssl_ca:
+            connect_args['ssl'] = {'ca': ssl_ca}
+        elif ssl_required:
+            connect_args['ssl'] = {'ssl_mode': 'PREFERRED'}
+
+        engine_options = {
+            'pool_recycle': int(os.environ.get('DB_POOL_RECYCLE', 280)),
+            'pool_pre_ping': True,
+            'pool_size': int(os.environ.get('DB_POOL_SIZE', 5)),
+            'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', 10)),
+            'pool_timeout': 30,
+            'connect_args': connect_args
+        }
     else:
-        SQLALCHEMY_ENGINE_OPTIONS = {
+        engine_options = {
             'pool_recycle': 280,
             'pool_pre_ping': True
         }
-    
+
+    return is_cloud, uri, engine_options, db_user, db_password, db_host or '127.0.0.1', db_port, db_name
+
+
+_IS_CLOUD, _DB_URI, _ENGINE_OPTS, _DB_USER, _DB_PASSWORD, _DB_HOST, _DB_PORT, _DB_NAME = _build_database_config()
+
+
+class Config:
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'smart-civic-complaint-secret-key-fallback-2026')
+
+    # Database Settings
+    DB_USER = _DB_USER
+    DB_PASSWORD = _DB_PASSWORD
+    DB_HOST = _DB_HOST
+    DB_PORT = _DB_PORT
+    DB_NAME = _DB_NAME
+    IS_CLOUD = _IS_CLOUD
+
+    SQLALCHEMY_DATABASE_URI = _DB_URI
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = _ENGINE_OPTS
+
     # Upload settings: writable /tmp on Cloud/Linux, local directory on Windows
     if IS_CLOUD:
-        UPLOAD_FOLDER = '/tmp/uploads'
+        UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/uploads')
     else:
-        UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+        UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(BASE_DIR, 'uploads'))
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
-    MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10 MB limit
-    
+    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 10 * 1024 * 1024))  # 10 MB limit
+
+    # CORS & API Base Configuration
+    _extra_origins = [
+        o.strip().rstrip('/')
+        for o in os.environ.get('CORS_ORIGINS', '').split(',')
+        if o.strip()
+    ]
+    CORS_ALLOWED_ORIGINS = list(dict.fromkeys([
+        'https://sccmt.vercel.app',
+        *_extra_origins,
+        *([] if IS_CLOUD else ['http://127.0.0.1:5000', 'http://localhost:5000'])
+    ]))
+    API_BASE_URL = (
+        os.environ.get('API_BASE_URL')
+        or os.environ.get('NEXT_PUBLIC_API_BASE_URL')
+        or os.environ.get('VITE_API_BASE_URL')
+        or ''
+    ).strip().rstrip('/')
+
     # Session & Security
+    SESSION_COOKIE_NAME = os.environ.get('SESSION_COOKIE_NAME', 'sccmt_session')
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Lax'
-    SESSION_COOKIE_SECURE = False  # Set to True if running HTTPS in production
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
-    
+    SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
+    SESSION_COOKIE_SECURE = os.environ.get(
+        'SESSION_COOKIE_SECURE',
+        'true' if IS_CLOUD else 'false'
+    ).lower() == 'true'
+    PERMANENT_SESSION_LIFETIME = timedelta(
+        seconds=int(os.environ.get('PERMANENT_SESSION_LIFETIME', 86400))
+    )
+
     # SLA Response times in hours
     SLA_HOURS = {
         'urgent': 24,    # 1 day
@@ -76,25 +171,33 @@ class Config:
         'medium': 96,    # 4 days
         'low': 168       # 7 days
     }
-    
+
     # Languages supported
     LANGUAGES = ['en', 'ta', 'hi']
     DEFAULT_LANGUAGE = 'en'
 
+
 class DevelopmentConfig(Config):
     DEBUG = True
 
+
 class ProductionConfig(Config):
     DEBUG = False
-    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'true').lower() == 'true'
+
 
 class TestingConfig(Config):
     TESTING = True
+    SESSION_COOKIE_SECURE = False
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'test_civic.db')}"
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'connect_args': {'check_same_thread': False}
+    }
+
 
 config_by_name = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
     'testing': TestingConfig,
-    'default': DevelopmentConfig
+    'default': ProductionConfig if _IS_CLOUD else DevelopmentConfig
 }

@@ -123,7 +123,7 @@
     </div>
 
     <!-- LEVEL 2: New Complaints Queue (Pending Department Officer Assignment) -->
-    <div class="card" style="margin-bottom: 2rem; border-top: 4px solid var(--civic-blue);">
+    <div id="newComplaintsQueueCard" class="card" style="margin-bottom: 2rem; border-top: 4px solid var(--civic-blue);">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
         <div>
           <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">
@@ -205,8 +205,12 @@
           </h3>
           <span style="font-size: 0.75rem; color: var(--text-muted);">Current Active Load</span>
         </div>
-        <div style="height: 250px;">
+        <div style="height: 250px; position: relative;">
           <canvas id="deptChart"></canvas>
+          <div id="dashDeptEmpty" {% if stats.total > 0 %}hidden{% endif %} style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--text-muted); background: var(--bg-surface);">
+            <i data-lucide="bar-chart-3" style="width: 34px; height: 34px; opacity: 0.45; margin-bottom: 0.45rem;"></i>
+            <span style="font-size: 0.85rem; font-weight: 500;">No complaints registered yet</span>
+          </div>
         </div>
       </div>
 
@@ -217,8 +221,12 @@
           </h3>
           <span style="font-size: 0.75rem; color: var(--text-muted);">Top Categories</span>
         </div>
-        <div style="height: 250px;">
+        <div style="height: 250px; position: relative;">
           <canvas id="catChart"></canvas>
+          <div id="dashCatEmpty" {% if chart_data.cat_counts|sum > 0 %}hidden{% endif %} style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--text-muted); background: var(--bg-surface);">
+            <i data-lucide="pie-chart" style="width: 34px; height: 34px; opacity: 0.45; margin-bottom: 0.45rem;"></i>
+            <span style="font-size: 0.85rem; font-weight: 500;">No category activity yet</span>
+          </div>
         </div>
       </div>
     </div>
@@ -226,7 +234,7 @@
     <!-- Recent Complaints Table & Audit Log Preview -->
     <div style="display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 1.25rem;">
       <!-- Recent Complaints -->
-      <div class="card" style="box-shadow: none;">
+      <div id="recentComplaintsCard" class="card" style="box-shadow: none;">
         <div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
           <h3 style="font-size: 0.95rem; font-weight: 700;">Recent Complaint Submissions</h3>
           <a href="{{ url_for('admin.complaints') }}" style="font-size: 0.8rem; font-weight: 600;">View All Complaints &rarr;</a>
@@ -281,7 +289,7 @@
       </div>
 
       <!-- Live Audit Log Feed -->
-      <div class="card" style="box-shadow: none;">
+      <div id="auditStreamCard" class="card" style="box-shadow: none;">
         <div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
           <h3 style="font-size: 0.95rem; font-weight: 700;">Operational Audit Stream</h3>
           <a href="{{ url_for('admin.audit_logs') }}" style="font-size: 0.8rem; font-weight: 600;">Full Trail &rarr;</a>
@@ -304,6 +312,73 @@
         </div>
       </div>
     </div>
+
+    <!-- Public Contact & Helpdesk Inquiries -->
+    <div id="contactInquiriesCard" class="card" style="box-shadow: none; margin-top: 1.25rem; border-top: 3px solid var(--civic-blue);">
+      <div class="card-header" style="margin-bottom: 0.85rem; padding-bottom: 0.6rem;">
+        <div>
+          <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="message-square" class="icon-sm" style="color: var(--civic-blue);"></i>
+            Helpdesk &amp; Contact Inquiries ({{ contact_messages|length if contact_messages is defined else 0 }})
+          </h3>
+          <span style="font-size: 0.78rem; color: var(--text-muted);">
+            Messages submitted via the public Contact Helpdesk form.
+          </span>
+        </div>
+        {% if unread_contact_count is defined and unread_contact_count > 0 %}
+          <span class="badge badge-escalated">{{ unread_contact_count }} Unread</span>
+        {% endif %}
+      </div>
+
+      {% if contact_messages is defined and contact_messages %}
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Sender</th>
+                <th>Contact</th>
+                <th>Message / Inquiry</th>
+                <th>Submitted</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in contact_messages %}
+                <tr>
+                  <td style="font-weight: 600;">{{ m.name }}</td>
+                  <td style="font-size: 0.84rem; color: var(--civic-blue);">{{ m.contact }}</td>
+                  <td style="font-size: 0.85rem; max-width: 420px; white-space: normal;">{{ m.message }}</td>
+                  <td style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap;">{{ m.created_at.strftime('%d %b %Y, %I:%M %p') }}</td>
+                  <td>
+                    {% if m.is_read %}
+                      <span class="badge badge-resolved">Reviewed</span>
+                    {% else %}
+                      <span class="badge badge-escalated">New</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if not m.is_read %}
+                      <form method="POST" action="{{ url_for('admin.mark_contact_message_read', msg_id=m.id) }}" style="margin: 0;">
+                        <button type="submit" class="btn btn-secondary btn-sm" style="white-space: nowrap; font-size: 0.75rem;">
+                          Mark Reviewed
+                        </button>
+                      </form>
+                    {% else %}
+                      <span style="font-size: 0.75rem; color: var(--text-muted);">&mdash;</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">
+          No contact inquiries received yet.
+        </div>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -311,9 +386,15 @@
 {% block extra_scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', () => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#cbd5e1' : '#334155';
+    const gridColor = isDark ? 'rgba(148, 163, 184, 0.14)' : 'rgba(0,0,0,0.05)';
+    const hasDeptData = {{ chart_data.dept_counts | tojson }}.some(v => v > 0);
+    const hasCatData = {{ chart_data.cat_counts | tojson }}.some(v => v > 0);
+
     // Dept Performance Chart
     const deptCtx = document.getElementById('deptChart');
-    if (deptCtx) {
+    if (deptCtx && typeof Chart !== 'undefined' && hasDeptData) {
       new Chart(deptCtx, {
         type: 'bar',
         data: {
@@ -330,8 +411,8 @@
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-            x: { grid: { display: false } }
+            y: { beginAtZero: true, ticks: { color: textColor, precision: 0, stepSize: 1 }, grid: { color: gridColor } },
+            x: { ticks: { color: textColor }, grid: { display: false } }
           }
         }
       });
@@ -339,20 +420,20 @@
 
     // Category Doughnut Chart
     const catCtx = document.getElementById('catChart');
-    if (catCtx) {
+    if (catCtx && typeof Chart !== 'undefined' && hasCatData) {
       new Chart(catCtx, {
         type: 'doughnut',
         data: {
           labels: {{ chart_data.cat_labels | tojson }},
           datasets: [{
             data: {{ chart_data.cat_counts | tojson }},
-            backgroundColor: ['#1e40af', '#0f766e', '#d97706', '#7c3aed', '#ec4899', '#64748b']
+            backgroundColor: ['#1e40af', '#0f766e', '#d97706', '#7c3aed', '#ec4899', '#64748b', '#06b6d4', '#16a34a']
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
+          plugins: { legend: { position: 'right', labels: { color: textColor, boxWidth: 12, font: { size: 11 } } } }
         }
       });
     }
@@ -363,8 +444,11 @@
       slaBtn.addEventListener('click', () => {
         slaBtn.disabled = true;
         slaBtn.classList.add('btn-loading');
-        fetch('/api/sla/check', { method: 'POST' })
-          .then(res => res.json())
+        fetch((window.getApiUrl ? window.getApiUrl('/api/sla/check') : '/api/sla/check'), { method: 'POST', credentials: 'include' })
+          .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+          })
           .then(data => {
             slaBtn.classList.remove('btn-loading');
             if (window.showToast) {

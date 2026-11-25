@@ -8,7 +8,9 @@ from app.models.feedback import Feedback
 from app.services.complaint_service import (
     create_complaint,
     transition_complaint_status,
-    get_complaint_9_stage_timeline
+    get_complaint_9_stage_timeline,
+    PENDING_STATUSES,
+    IN_PROGRESS_STATUSES,
 )
 from app.utils.decorators import login_required, role_required
 from app.utils.helpers import save_uploaded_file
@@ -28,8 +30,8 @@ def dashboard():
     complaints_query = Complaint.query.filter_by(citizen_id=user.id)
     
     total = complaints_query.count()
-    pending = complaints_query.filter(Complaint.status.in_(['Submitted', 'Under Review'])).count()
-    in_progress = complaints_query.filter(Complaint.status.in_(['Accepted', 'Assigned', 'In Progress', 'Work Completed', 'Verification Pending'])).count()
+    pending = complaints_query.filter(Complaint.status.in_(PENDING_STATUSES)).count()
+    in_progress = complaints_query.filter(Complaint.status.in_(IN_PROGRESS_STATUSES)).count()
     resolved = complaints_query.filter_by(status='Resolved').count()
     rejected = complaints_query.filter_by(status='Rejected').count()
     

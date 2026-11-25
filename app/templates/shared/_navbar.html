@@ -56,7 +56,11 @@
         {% endif %}
 
         <!-- Logout Button -->
-        <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary btn-sm nav-logout-btn" title="Sign Out" aria-label="Sign Out">
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary btn-sm nav-logout-btn" title="Sign Out" aria-label="Sign Out"
+          data-confirm-title="Sign Out of Portal"
+          data-confirm="Are you sure you want to end your current session and sign out?"
+          data-confirm-btn="Sign Out"
+          data-confirm-variant="warning">
           <i data-lucide="log-out" class="icon-sm"></i>
         </a>
       {% else %}

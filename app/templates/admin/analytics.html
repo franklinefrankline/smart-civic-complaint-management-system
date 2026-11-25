@@ -7,28 +7,150 @@
   {% include 'shared/_sidebar.html' %}
 
   <div class="dashboard-content">
-    <div style="margin-bottom: 2rem;">
-      <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
-        Civic Analytics & Resolution Metrics
-      </h1>
-      <p style="color: var(--text-muted); font-size: 0.92rem;">
-        Performance benchmarking across municipal departments and category distributions.
-      </p>
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+      <div>
+        <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-blue); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+          Executive Decision Support
+        </div>
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+          Civic Analytics & Resolution Metrics
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.92rem;">
+          Performance benchmarking across municipal departments and category distributions.
+        </p>
+      </div>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="{{ url_for('admin.export_complaints_csv') }}" class="btn btn-secondary btn-sm">
+          <i data-lucide="download" class="icon-sm"></i> Export CSV
+        </a>
+        <a href="{{ url_for('admin.complaints') }}" class="btn btn-primary btn-sm">
+          <i data-lucide="file-text" class="icon-sm"></i> View Complaints
+        </a>
+      </div>
     </div>
 
-    <!-- Analytics Charts Grid -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- Real-Time Analytics KPI Strip -->
+    <div class="stat-grid stagger-in" id="analyticsKpiGrid" style="margin-bottom: 1.5rem;">
+      <div class="stat-card">
+        <div class="stat-info">
+          <span class="stat-value" id="kpiTotal">{{ summary.total }}</span>
+          <span class="stat-label">Total Complaints</span>
+        </div>
+        <div class="stat-icon"><i data-lucide="folder"></i></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-info">
+          <span class="stat-value" id="kpiPending" style="color: #d97706;">{{ summary.pending }}</span>
+          <span class="stat-label">Pending / Submitted</span>
+        </div>
+        <div class="stat-icon" style="color: #d97706;"><i data-lucide="clock"></i></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-info">
+          <span class="stat-value" id="kpiInProgress" style="color: #3b82f6;">{{ summary.in_progress }}</span>
+          <span class="stat-label">In Progress</span>
+        </div>
+        <div class="stat-icon" style="color: #3b82f6;"><i data-lucide="activity"></i></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-info">
+          <span class="stat-value" id="kpiResolved" style="color: #16a34a;">{{ summary.resolved }}</span>
+          <span class="stat-label">Resolved (<span id="kpiRate">{{ summary.resolution_rate }}</span>%)</span>
+        </div>
+        <div class="stat-icon" style="color: #16a34a;"><i data-lucide="check-circle-2"></i></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-info">
+          <span class="stat-value" id="kpiOverdue" style="color: #dc2626;">{{ summary.overdue }}</span>
+          <span class="stat-label">SLA Overdue / Escalated</span>
+        </div>
+        <div class="stat-icon" style="color: #dc2626;"><i data-lucide="alert-triangle"></i></div>
+      </div>
+    </div>
+
+    <!-- Primary Analytics Charts Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
       <div class="card">
-        <h3 class="card-title" style="margin-bottom: 1rem;">Department Complaint Volume vs Resolution</h3>
-        <div style="height: 320px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 class="card-title" style="margin: 0;">Department Complaint Volume vs Resolution</h3>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Live MySQL Totals</span>
+        </div>
+        <div style="height: 320px; position: relative;">
           <canvas id="deptPerformanceChart"></canvas>
+          <div id="deptChartEmpty" class="analytics-empty-state" {% if summary.total > 0 %}hidden{% endif %} style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 1.5rem; color: var(--text-muted); background: var(--bg-surface);">
+            <i data-lucide="bar-chart-3" style="width: 40px; height: 40px; opacity: 0.45; margin-bottom: 0.65rem;"></i>
+            <p style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">No Complaints Registered Yet</p>
+            <p style="margin: 0.35rem 0 0; font-size: 0.82rem; max-width: 280px;">Department volume and resolution bars appear automatically as citizens submit grievances.</p>
+          </div>
         </div>
       </div>
 
       <div class="card">
-        <h3 class="card-title" style="margin-bottom: 1rem;">Grievances by Category</h3>
-        <div style="height: 320px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 class="card-title" style="margin: 0;">Grievances by Category</h3>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Active Share</span>
+        </div>
+        <div style="height: 320px; position: relative;">
           <canvas id="categoryBreakdownChart"></canvas>
+          <div id="categoryChartEmpty" class="analytics-empty-state" {% if cat_totals|sum > 0 %}hidden{% endif %} style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 1.5rem; color: var(--text-muted); background: var(--bg-surface);">
+            <i data-lucide="pie-chart" style="width: 40px; height: 40px; opacity: 0.45; margin-bottom: 0.65rem;"></i>
+            <p style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">No Category Data Yet</p>
+            <p style="margin: 0.35rem 0 0; font-size: 0.82rem; max-width: 280px;">Category distribution will appear once at least one complaint is recorded.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secondary Row: Status Breakdown + Department Resolution Table -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 class="card-title" style="margin: 0;">Workflow Status Breakdown</h3>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Current State</span>
+        </div>
+        <div style="height: 280px; position: relative;">
+          <canvas id="statusBreakdownChart"></canvas>
+          <div id="statusChartEmpty" class="analytics-empty-state" {% if summary.total > 0 %}hidden{% endif %} style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 1.5rem; color: var(--text-muted); background: var(--bg-surface);">
+            <i data-lucide="layers" style="width: 36px; height: 36px; opacity: 0.45; margin-bottom: 0.6rem;"></i>
+            <p style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.92rem;">Awaiting Complaint Activity</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 class="card-title" style="margin: 0;">Department Performance Summary</h3>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">{{ dept_rows|length }} Departments</span>
+        </div>
+        <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Department</th>
+                <th>Total</th>
+                <th>Pending</th>
+                <th>Active</th>
+                <th>Resolved</th>
+                <th>Rate</th>
+              </tr>
+            </thead>
+            <tbody id="deptAnalyticsTableBody">
+              {% for row in dept_rows %}
+                <tr>
+                  <td style="font-weight: 600;">{{ row.name }}</td>
+                  <td>{{ row.total }}</td>
+                  <td>{{ row.pending }}</td>
+                  <td>{{ row.in_progress }}</td>
+                  <td style="color: #16a34a; font-weight: 600;">{{ row.resolved }}</td>
+                  <td>
+                    <span class="badge" style="background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color);">
+                      {{ row.resolution_rate }}%
+                    </span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -38,53 +160,208 @@
 
 {% block extra_scripts %}
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // Dept Performance
-    const deptCtx = document.getElementById('deptPerformanceChart');
-    if (deptCtx) {
-      new Chart(deptCtx, {
-        type: 'bar',
-        data: {
-          labels: {{ dept_labels | tojson }},
-          datasets: [
-            {
-              label: 'Total Registered',
-              data: {{ dept_totals | tojson }},
-              backgroundColor: '#3b82f6'
-            },
-            {
-              label: 'Resolved',
-              data: {{ dept_resolved | tojson }},
-              backgroundColor: '#16a34a'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { y: { beginAtZero: true } }
-        }
-      });
+  (function() {
+    let payload = {{ analytics_payload | tojson }};
+    let deptChartInstance = null;
+    let catChartInstance = null;
+    let statusChartInstance = null;
+
+    const CATEGORY_COLORS = [
+      '#2563eb', '#0d9488', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4',
+      '#eab308', '#16a34a', '#f97316', '#6366f1', '#14b8a6', '#e11d48', '#64748b'
+    ];
+
+    function getThemeChartColors() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      return {
+        text: isDark ? '#cbd5e1' : '#334155',
+        muted: isDark ? '#94a3b8' : '#64748b',
+        grid: isDark ? 'rgba(148, 163, 184, 0.14)' : 'rgba(15, 23, 42, 0.08)'
+      };
     }
 
-    // Category Doughnut
-    const catCtx = document.getElementById('categoryBreakdownChart');
-    if (catCtx) {
-      new Chart(catCtx, {
-        type: 'pie',
-        data: {
-          labels: {{ cat_labels | tojson }},
-          datasets: [{
-            data: {{ cat_totals | tojson }},
-            backgroundColor: ['#2563eb', '#0d9488', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b', '#06b6d4', '#eab308']
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false
+    function toggleEmptyStates(data) {
+      const hasTotal = (data.summary && data.summary.total > 0);
+      const hasCats = Array.isArray(data.cat_totals) && data.cat_totals.some(v => v > 0);
+      const deptEmpty = document.getElementById('deptChartEmpty');
+      const catEmpty = document.getElementById('categoryChartEmpty');
+      const statusEmpty = document.getElementById('statusChartEmpty');
+      if (deptEmpty) deptEmpty.hidden = hasTotal;
+      if (catEmpty) catEmpty.hidden = hasCats;
+      if (statusEmpty) statusEmpty.hidden = hasTotal;
+    }
+
+    function updateDomMetrics(data) {
+      if (!data || !data.summary) return;
+      const s = data.summary;
+      const map = {
+        kpiTotal: s.total,
+        kpiPending: s.pending,
+        kpiInProgress: s.in_progress,
+        kpiResolved: s.resolved,
+        kpiRate: s.resolution_rate,
+        kpiOverdue: s.overdue
+      };
+      Object.entries(map).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(val);
+      });
+
+      const tbody = document.getElementById('deptAnalyticsTableBody');
+      if (tbody && Array.isArray(data.dept_rows)) {
+        tbody.innerHTML = data.dept_rows.map(row => {
+          const safeName = String(row.name || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+          return `<tr>
+            <td style="font-weight: 600;">${safeName}</td>
+            <td>${row.total}</td>
+            <td>${row.pending}</td>
+            <td>${row.in_progress}</td>
+            <td style="color: #16a34a; font-weight: 600;">${row.resolved}</td>
+            <td><span class="badge" style="background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color);">${row.resolution_rate}%</span></td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
+    function renderCharts(data) {
+      toggleEmptyStates(data);
+      updateDomMetrics(data);
+
+      if (typeof window.Chart === 'undefined') {
+        ['deptChartEmpty', 'categoryChartEmpty', 'statusChartEmpty'].forEach(id => {
+          const box = document.getElementById(id);
+          if (box && data.summary && data.summary.total > 0) {
+            box.hidden = false;
+            box.innerHTML = '<p style="margin:0;font-weight:600;color:var(--text-primary);">Chart library unavailable offline</p><p style="margin:0.35rem 0 0;font-size:0.82rem;">Review live KPI metrics and the department table below.</p>';
+          }
+        });
+        return;
+      }
+
+      const tc = getThemeChartColors();
+
+      const deptCtx = document.getElementById('deptPerformanceChart');
+      if (deptCtx) {
+        if (deptChartInstance) deptChartInstance.destroy();
+        deptChartInstance = new Chart(deptCtx, {
+          type: 'bar',
+          data: {
+            labels: data.dept_labels || [],
+            datasets: [
+              {
+                label: 'Total Registered',
+                data: data.dept_totals || [],
+                backgroundColor: '#3b82f6',
+                borderRadius: 4
+              },
+              {
+                label: 'Resolved',
+                data: data.dept_resolved || [],
+                backgroundColor: '#16a34a',
+                borderRadius: 4
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: tc.text } }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { color: tc.muted, precision: 0, stepSize: 1 },
+                grid: { color: tc.grid }
+              },
+              x: {
+                ticks: { color: tc.muted },
+                grid: { display: false }
+              }
+            }
+          }
+        });
+      }
+
+      const catCtx = document.getElementById('categoryBreakdownChart');
+      if (catCtx) {
+        if (catChartInstance) catChartInstance.destroy();
+        const catTotals = data.cat_totals || [];
+        catChartInstance = new Chart(catCtx, {
+          type: 'doughnut',
+          data: {
+            labels: data.cat_labels || [],
+            datasets: [{
+              data: catTotals,
+              backgroundColor: catTotals.map((_, idx) => CATEGORY_COLORS[idx % CATEGORY_COLORS.length]),
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: tc.text, boxWidth: 12, font: { size: 11 } }
+              }
+            }
+          }
+        });
+      }
+
+      const statusCtx = document.getElementById('statusBreakdownChart');
+      if (statusCtx) {
+        if (statusChartInstance) statusChartInstance.destroy();
+        statusChartInstance = new Chart(statusCtx, {
+          type: 'bar',
+          data: {
+            labels: data.status_labels || [],
+            datasets: [{
+              label: 'Complaints',
+              data: data.status_totals || [],
+              backgroundColor: ['#d97706', '#3b82f6', '#16a34a', '#f97316', '#ef4444'],
+              borderRadius: 4
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: { color: tc.muted, precision: 0, stepSize: 1 },
+                grid: { color: tc.grid }
+              },
+              y: {
+                ticks: { color: tc.text },
+                grid: { display: false }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    window.refreshAdminAnalytics = async function() {
+      try {
+        const res = await (window.apiFetch ? window.apiFetch('/api/admin/analytics-data') : fetch('/api/admin/analytics-data', { credentials: 'include' }));
+        if (!res.ok) return;
+        payload = await res.json();
+        renderCharts(payload);
+      } catch (_) {}
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderCharts(payload);
+      document.addEventListener('click', (e) => {
+        if (e.target.closest('.theme-toggle-btn, #themeToggle')) {
+          setTimeout(() => renderCharts(payload), 25);
         }
       });
-    }
-  });
+    });
+  })();
 </script>
 {% endblock %}

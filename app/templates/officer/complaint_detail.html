@@ -99,7 +99,11 @@
                 <summary class="btn btn-danger btn-sm" style="display: inline-flex; cursor: pointer;">
                   <i data-lucide="x" class="icon-sm"></i> Reject Complaint...
                 </summary>
-                <form method="POST" action="{{ url_for('officer.complaint_detail', complaint_id=complaint.id) }}" style="margin-top: 1rem; background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <form method="POST" action="{{ url_for('officer.complaint_detail', complaint_id=complaint.id) }}" style="margin-top: 1rem; background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);"
+                  data-confirm-title="Reject Complaint"
+                  data-confirm="Are you sure you want to reject complaint {{ complaint.complaint_ref }}? The citizen will be notified with your rejection reason."
+                  data-confirm-btn="Confirm Rejection"
+                  data-confirm-variant="danger">
                   <input type="hidden" name="action" value="reject">
                   <div class="form-group">
                     <label class="form-label">Mandatory Rejection Reason <span style="color: red;">*</span></label>
@@ -161,7 +165,11 @@
                   <summary class="btn btn-warning btn-sm" style="display: inline-flex; cursor: pointer; width: 100%; justify-content: center;">
                     <i data-lucide="rotate-ccw" class="icon-sm"></i> Return for Correction...
                   </summary>
-                  <form method="POST" action="{{ url_for('officer.complaint_detail', complaint_id=complaint.id) }}" style="margin-top: 1rem; background: var(--bg-surface); padding: 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                  <form method="POST" action="{{ url_for('officer.complaint_detail', complaint_id=complaint.id) }}" style="margin-top: 1rem; background: var(--bg-surface); padding: 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm);"
+                    data-confirm-title="Return Task for Rework"
+                    data-confirm="Are you sure you want to return this task to the field technician for correction?"
+                    data-confirm-btn="Return for Rework"
+                    data-confirm-variant="warning">
                     <input type="hidden" name="action" value="return_rework">
                     <div class="form-group">
                       <label class="form-label">Mandatory Correction Reason <span style="color: red;">*</span></label>

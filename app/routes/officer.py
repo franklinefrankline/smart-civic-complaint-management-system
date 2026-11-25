@@ -10,7 +10,8 @@ from app.services.complaint_service import (
     transition_complaint_status,
     assign_complaint_to_worker,
     officer_verify_work,
-    get_complaint_9_stage_timeline
+    get_complaint_9_stage_timeline,
+    IN_PROGRESS_STATUSES,
 )
 from app.services.audit_service import log_action
 from app.utils.decorators import login_required, role_required
@@ -188,7 +189,7 @@ def reports():
     
     total = len(complaints)
     resolved = len([c for c in complaints if c.status == 'Resolved'])
-    pending = len([c for c in complaints if c.status in ['Submitted', 'Under Review', 'Accepted', 'Assigned', 'In Progress']])
+    pending = len([c for c in complaints if c.status in (['Submitted', 'Under Review'] + IN_PROGRESS_STATUSES)])
     
     return render_template(
         'officer/reports.html',
@@ -201,9 +202,11 @@ def reports():
 @officer_bp.route('/incoming')
 def incoming():
     dept_id = g.user.department_id
-    query = Complaint.query.filter_by(department_id=dept_id, status='Submitted') if dept_id else Complaint.query.filter_by(id=-1)
+    query = Complaint.query.filter_by(department_id=dept_id).filter(
+        Complaint.status.in_(['Submitted', 'Assigned to Department'])
+    ) if dept_id else Complaint.query.filter_by(id=-1)
     incoming_list = query.order_by(Complaint.created_at.desc()).all()
-    return render_template('officer/complaints.html', complaints=incoming_list, current_status='Submitted', page_title='Incoming Complaints Requiring Review')
+    return render_template('officer/complaints.html', complaints=incoming_list, current_status='Assigned to Department', page_title='Incoming Complaints Requiring Review')
 
 @officer_bp.route('/verification')
 def verification():

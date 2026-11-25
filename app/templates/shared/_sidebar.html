@@ -19,6 +19,14 @@
       </div>
     </a>
     <div class="sidebar-header-actions" style="display: flex; align-items: center; gap: 0.35rem;">
+      {% if current_user %}
+      <button type="button" class="sidebar-header-theme-btn sidebar-header-notif-btn" id="notifToggleBtn" title="Notifications" aria-label="Notifications" style="position: relative;">
+        <i data-lucide="bell" class="icon-sm"></i>
+        <span id="notifBadge" class="notif-badge {% if unread_notifications_count > 0 %}badge-pulse{% endif %}" style="display: {% if unread_notifications_count > 0 %}inline-flex{% else %}none{% endif %}; position: absolute; top: -4px; right: -4px;">
+          {{ unread_notifications_count if unread_notifications_count <= 99 else '99+' }}
+        </span>
+      </button>
+      {% endif %}
       <button type="button" class="theme-toggle-btn sidebar-header-theme-btn" title="Toggle Theme" aria-label="Toggle Theme">
         <i data-lucide="moon" class="icon-sm theme-icon"></i>
       </button>
@@ -382,7 +390,11 @@
         <i data-lucide="home" class="icon-sm"></i>
         <span class="sidebar-label">Public Portal</span>
       </a>
-      <a href="{{ url_for('auth.logout') }}" class="sidebar-link sidebar-footer-link link-signout" title="Sign Out">
+      <a href="{{ url_for('auth.logout') }}" class="sidebar-link sidebar-footer-link link-signout" title="Sign Out"
+        data-confirm-title="Sign Out of Portal"
+        data-confirm="Are you sure you want to end your current session and sign out?"
+        data-confirm-btn="Sign Out"
+        data-confirm-variant="warning">
         <i data-lucide="log-out" class="icon-sm"></i>
         <span class="sidebar-label">Sign Out</span>
       </a>

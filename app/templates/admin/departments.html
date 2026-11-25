@@ -64,7 +64,11 @@
                 </td>
                 <td>
                   <div style="display: flex; gap: 0.35rem;">
-                    <form method="POST" action="{{ url_for('admin.departments') }}">
+                    <form method="POST" action="{{ url_for('admin.departments') }}"
+                      data-confirm-title="{{ 'Disable Department' if d.is_active else 'Enable Department' }}"
+                      data-confirm="Are you sure you want to {{ 'disable' if d.is_active else 'enable' }} the {{ d.name }} department?"
+                      data-confirm-btn="{{ 'Disable' if d.is_active else 'Enable' }}"
+                      data-confirm-variant="warning">
                       <input type="hidden" name="action" value="toggle">
                       <input type="hidden" name="department_id" value="{{ d.id }}">
                       <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">
@@ -72,7 +76,11 @@
                       </button>
                     </form>
 
-                    <form method="POST" action="{{ url_for('admin.departments') }}" onsubmit="return confirm('Safe Delete: Deletion is only allowed if no active complaints or categories exist. Proceed?');">
+                    <form method="POST" action="{{ url_for('admin.departments') }}"
+                      data-confirm-title="Delete Municipal Department"
+                      data-confirm="Safe Delete: Deletion of {{ d.name }} is only allowed if no active complaints or categories exist. Proceed?"
+                      data-confirm-btn="Delete Department"
+                      data-confirm-variant="danger">
                       <input type="hidden" name="action" value="delete">
                       <input type="hidden" name="department_id" value="{{ d.id }}">
                       <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">

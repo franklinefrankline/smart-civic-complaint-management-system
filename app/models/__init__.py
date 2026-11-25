@@ -6,6 +6,7 @@ from app.models.workflow import Worker, ComplaintAssignment, ComplaintStatusHist
 from app.models.attachment import ComplaintAttachment
 from app.models.notification import Notification
 from app.models.feedback import Feedback
+from app.models.contact import ContactMessage
 from app.models.audit import AuditLog, SystemSetting
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     'ComplaintAttachment',
     'Notification',
     'Feedback',
+    'ContactMessage',
     'AuditLog',
     'SystemSetting'
 ]

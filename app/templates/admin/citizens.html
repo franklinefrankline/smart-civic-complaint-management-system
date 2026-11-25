@@ -84,7 +84,11 @@
                 </td>
                 <td>
                   <div style="display: flex; gap: 0.4rem; align-items: center;">
-                    <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;">
+                    <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;"
+                      data-confirm-title="{{ 'Disable Citizen Account' if c.is_active else 'Activate Citizen Account' }}"
+                      data-confirm="Are you sure you want to {{ 'disable' if c.is_active else 'activate' }} citizen account {{ c.full_name }}?"
+                      data-confirm-btn="{{ 'Disable' if c.is_active else 'Activate' }}"
+                      data-confirm-variant="warning">
                       <input type="hidden" name="action" value="toggle_status">
                       <input type="hidden" name="user_id" value="{{ c.id }}">
                       <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
@@ -92,7 +96,10 @@
                       </button>
                     </form>
                     <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;"
-                      onsubmit="return confirm('Permanently delete citizen account {{ c.full_name }} ({{ c.email }})? All associated records will be removed. This cannot be undone.');">
+                      data-confirm-title="Delete Citizen Account"
+                      data-confirm="Permanently delete citizen account {{ c.full_name }} ({{ c.email }})? All associated records will be removed. This cannot be undone."
+                      data-confirm-btn="Delete Citizen"
+                      data-confirm-variant="danger">
                       <input type="hidden" name="action" value="delete_user">
                       <input type="hidden" name="user_id" value="{{ c.id }}">
                       <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">

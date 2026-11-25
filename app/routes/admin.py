@@ -12,11 +12,15 @@ from app.models.attachment import ComplaintAttachment
 from app.models.notification import Notification
 from app.models.audit import AuditLog
 from app.models.feedback import Feedback
+from app.models.contact import ContactMessage
 from app.services.complaint_service import (
     transition_complaint_status,
     assign_complaint_to_worker,
     assign_department_officer,
-    get_complaint_9_stage_timeline
+    get_complaint_9_stage_timeline,
+    build_admin_analytics_payload,
+    PENDING_STATUSES,
+    IN_PROGRESS_STATUSES,
 )
 from app.services.audit_service import log_action
 from app.utils.decorators import login_required, role_required
@@ -34,8 +38,8 @@ def dashboard():
     total_citizens = User.query.filter_by(role='citizen').count()
     total_complaints = Complaint.query.count()
     new_complaints = Complaint.query.filter_by(status='Submitted').count()
-    pending = Complaint.query.filter(Complaint.status.in_(['Submitted', 'Under Review'])).count()
-    in_progress = Complaint.query.filter(Complaint.status.in_(['Accepted', 'Assigned', 'In Progress', 'Work Completed', 'Verification Pending'])).count()
+    pending = Complaint.query.filter(Complaint.status.in_(PENDING_STATUSES)).count()
+    in_progress = Complaint.query.filter(Complaint.status.in_(IN_PROGRESS_STATUSES)).count()
     resolved = Complaint.query.filter_by(status='Resolved').count()
     rejected = Complaint.query.filter_by(status='Rejected').count()
     overdue = Complaint.query.filter((Complaint.is_escalated == True) | (Complaint.status == 'Escalated')).count()
@@ -43,15 +47,11 @@ def dashboard():
     recent_complaints = Complaint.query.order_by(Complaint.created_at.desc()).limit(7).all()
     recent_activities = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(8).all()
     
-    # Department breakdown
-    departments = Department.query.filter_by(is_active=True).all()
-    dept_labels = [d.name for d in departments]
-    dept_complaint_counts = [Complaint.query.filter_by(department_id=d.id).count() for d in departments]
-    
-    # Category distribution
-    categories = ComplaintCategory.query.filter_by(is_active=True).limit(6).all()
-    cat_labels = [c.name for c in categories]
-    cat_counts = [Complaint.query.filter_by(category_id=c.id).count() for c in categories]
+    analytics = build_admin_analytics_payload()
+    dept_labels = [r['name'] for r in analytics['dept_rows']]
+    dept_complaint_counts = [r['total'] for r in analytics['dept_rows']]
+    cat_labels = analytics['cat_labels'] if analytics['cat_labels'] else analytics['all_cat_labels'][:6]
+    cat_counts = analytics['cat_totals'] if analytics['cat_totals'] else analytics['all_cat_totals'][:6]
     
     pending_password_resets = User.query.filter_by(is_password_reset_required=True).count()
     
@@ -78,15 +78,30 @@ def dashboard():
     new_complaints_queue = Complaint.query.filter(
         (Complaint.status == 'Submitted') | (Complaint.assigned_officer_id.is_(None))
     ).order_by(Complaint.created_at.desc()).all()
-    
+
+    contact_messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).limit(20).all()
+    unread_contact_count = ContactMessage.query.filter_by(is_read=False).count()
+
     return render_template(
         'admin/dashboard.html',
         stats=stats,
         recent_complaints=recent_complaints,
         new_complaints_queue=new_complaints_queue,
         recent_activities=recent_activities,
-        chart_data=chart_data
+        chart_data=chart_data,
+        contact_messages=contact_messages,
+        unread_contact_count=unread_contact_count,
     )
+
+
+@admin_bp.route('/contact-messages/<int:msg_id>/read', methods=['POST'])
+def mark_contact_message_read(msg_id):
+    msg = db.session.get(ContactMessage, msg_id)
+    if msg:
+        msg.is_read = True
+        db.session.commit()
+        flash("Contact inquiry marked as reviewed.", "success")
+    return redirect(url_for('admin.dashboard') + '#contactInquiriesCard')
 
 @admin_bp.route('/complaints', strict_slashes=False)
 @admin_bp.route('/complaint', strict_slashes=False)
@@ -511,23 +526,19 @@ def workers():
 
 @admin_bp.route('/analytics')
 def analytics():
-    departments = Department.query.all()
-    categories = ComplaintCategory.query.all()
-    
-    dept_labels = [d.name for d in departments]
-    dept_totals = [d.complaints.count() for d in departments]
-    dept_resolved = [d.complaints.filter_by(status='Resolved').count() for d in departments]
-    
-    cat_labels = [c.name for c in categories]
-    cat_totals = [c.complaints.count() for c in categories]
-    
+    data = build_admin_analytics_payload()
     return render_template(
         'admin/analytics.html',
-        dept_labels=dept_labels,
-        dept_totals=dept_totals,
-        dept_resolved=dept_resolved,
-        cat_labels=cat_labels,
-        cat_totals=cat_totals
+        summary=data['summary'],
+        dept_labels=data['dept_labels'],
+        dept_totals=data['dept_totals'],
+        dept_resolved=data['dept_resolved'],
+        dept_rows=data['dept_rows'],
+        cat_labels=data['cat_labels'],
+        cat_totals=data['cat_totals'],
+        status_labels=data['status_labels'],
+        status_totals=data['status_totals'],
+        analytics_payload=data,
     )
 
 @admin_bp.route('/audit-logs')
@@ -676,7 +687,7 @@ def assignments():
     
     # Active complaints available for dispatch
     assignable_complaints = Complaint.query.filter(
-        Complaint.status.in_(['Submitted', 'Under Review', 'Accepted', 'In Progress', 'Assigned'])
+        Complaint.status.in_(['Submitted', 'Under Review', 'Assigned to Department', 'Officer Accepted', 'Accepted', 'In Progress', 'Assigned', 'Rework Required'])
     ).order_by(Complaint.created_at.desc()).all()
     
     # Active workers available for dispatch
@@ -707,7 +718,8 @@ def settings():
         flash("System configuration parameters updated.", "success")
         return redirect(url_for('admin.settings'))
     settings_list = SystemSetting.query.all()
-    return render_template('admin/settings.html', settings=settings_list)
+    settings_dict = {s.setting_key: s.setting_value for s in settings_list}
+    return render_template('admin/settings.html', settings=settings_list, settings_dict=settings_dict)
 
 @admin_bp.route('/clean-demo-data', methods=['POST'])
 def clean_demo_data():

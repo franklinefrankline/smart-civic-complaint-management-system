@@ -24,9 +24,9 @@
         <input type="text" name="search" class="form-control" placeholder="Search reference or task title..." value="{{ search_query }}" style="flex: 2; min-width: 220px;">
         <select name="status" class="form-control" style="flex: 1; min-width: 140px;">
           <option value="">All Statuses</option>
-          <option value="Assigned" {% if current_status == 'Assigned' %}selected{% endif %}>Assigned</option>
-          <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>In Progress</option>
-          <option value="Work Completed" {% if current_status == 'Work Completed' %}selected{% endif %}>Work Completed</option>
+          <option value="Assigned" {% if current_status in ['Assigned', 'Assigned to Worker'] %}selected{% endif %}>Assigned</option>
+          <option value="In Progress" {% if current_status in ['In Progress', 'Work Started', 'Rework Required'] %}selected{% endif %}>In Progress / Rework</option>
+          <option value="Work Completed" {% if current_status in ['Work Completed', 'Verification Pending'] %}selected{% endif %}>Work Completed / Pending Verif.</option>
           <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>Resolved</option>
         </select>
         <button type="submit" class="btn btn-primary btn-sm">Filter</button>

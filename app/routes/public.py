@@ -1,11 +1,14 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, g
+from app import db
 from app.models.department import Department
 from app.models.category import ComplaintCategory
 from app.models.complaint import Complaint
 from app.models.user import User
 from app.models.feedback import Feedback
+from app.models.contact import ContactMessage
 
 from app.services.complaint_service import get_complaint_9_stage_timeline
+from app.services.notification_service import notify_admins
 
 public_bp = Blueprint('public', __name__)
 
@@ -87,7 +90,34 @@ def track():
 @public_bp.route('/contact', methods=['GET', 'POST'])
 def contact():
     if request.method == 'POST':
-        flash("Thank you for reaching out. Your message has been routed to our civic helpdesk team.", "success")
+        name = (request.form.get('name') or '').strip()
+        contact_info = (request.form.get('contact') or '').strip()
+        message_text = (request.form.get('message') or '').strip()
+
+        if not name or not contact_info or not message_text:
+            flash("Please enter your name, email/phone, and inquiry message.", "danger")
+            return redirect(url_for('public.contact'))
+
+        user_id = session.get('user_id')
+        msg = ContactMessage(
+            name=name[:120],
+            contact=contact_info[:150],
+            message=message_text,
+            user_id=user_id,
+            is_read=False,
+        )
+        db.session.add(msg)
+        db.session.commit()
+
+        preview = (message_text[:160] + '...') if len(message_text) > 160 else message_text
+        notify_admins(
+            title=f"New Contact Inquiry: {name}",
+            message=f"From {name} ({contact_info}): {preview}",
+            notification_type='info',
+            link=url_for('admin.dashboard') + '#contactInquiriesCard',
+        )
+
+        flash("Thank you for reaching out. Your inquiry has been sent to the civic administration dashboard.", "success")
         return redirect(url_for('public.contact'))
     return render_template('public/contact.html')
 

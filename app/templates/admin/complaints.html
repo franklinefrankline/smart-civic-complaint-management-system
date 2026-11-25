@@ -31,11 +31,15 @@
           <option value="">All Statuses</option>
           <option value="Submitted" {% if current_status == 'Submitted' %}selected{% endif %}>Submitted</option>
           <option value="Under Review" {% if current_status == 'Under Review' %}selected{% endif %}>Under Review</option>
+          <option value="Assigned to Department" {% if current_status == 'Assigned to Department' %}selected{% endif %}>Assigned to Department</option>
+          <option value="Officer Accepted" {% if current_status == 'Officer Accepted' %}selected{% endif %}>Officer Accepted</option>
           <option value="Accepted" {% if current_status == 'Accepted' %}selected{% endif %}>Accepted</option>
+          <option value="Assigned to Worker" {% if current_status == 'Assigned to Worker' %}selected{% endif %}>Assigned to Worker</option>
           <option value="Assigned" {% if current_status == 'Assigned' %}selected{% endif %}>Assigned</option>
           <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>In Progress</option>
           <option value="Work Completed" {% if current_status == 'Work Completed' %}selected{% endif %}>Work Completed</option>
           <option value="Verification Pending" {% if current_status == 'Verification Pending' %}selected{% endif %}>Verification Pending</option>
+          <option value="Rework Required" {% if current_status == 'Rework Required' %}selected{% endif %}>Rework Required</option>
           <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>Resolved</option>
           <option value="Rejected" {% if current_status == 'Rejected' %}selected{% endif %}>Rejected</option>
           <option value="Reopened" {% if current_status == 'Reopened' %}selected{% endif %}>Reopened</option>

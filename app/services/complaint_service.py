@@ -14,6 +14,24 @@ from app.services.notification_service import (
 )
 from app.services.audit_service import log_action
 
+# Standardized workflow status groups used across dashboards, APIs, and queues
+PENDING_STATUSES = ['Submitted', 'Under Review']
+ASSIGNED_TO_WORKER_STATUSES = ['Assigned', 'Assigned to Worker']
+ACTIVE_WORK_STATUSES = ['In Progress', 'Work Started', 'Rework Required']
+COMPLETED_PENDING_VERIF_STATUSES = ['Work Completed', 'Verification Pending']
+IN_PROGRESS_STATUSES = [
+    'Assigned to Department',
+    'Officer Accepted',
+    'Accepted',
+    'Assigned to Worker',
+    'Assigned',
+    'Work Started',
+    'In Progress',
+    'Work Completed',
+    'Verification Pending',
+    'Rework Required',
+]
+
 # Valid status transitions mapping by role
 VALID_TRANSITIONS = {
     'admin': {
@@ -182,6 +200,7 @@ def create_complaint(citizen_id, title, description, category_id, priority,
                 file_path=att['file_path'],
                 file_size=att['file_size'],
                 mime_type=att['mime_type'],
+                file_data=att.get('file_data'),
                 remarks='Initial proof uploaded during complaint creation'
             )
             db.session.add(attachment_record)
@@ -191,6 +210,7 @@ def create_complaint(citizen_id, title, description, category_id, priority,
     # In-app notifications
     create_notification(
         user_id=citizen_id,
+        complaint_id=complaint.id,
         title="Complaint Submitted Successfully",
         message=f"Your complaint '{title}' was received. Reference ID: {complaint.complaint_ref}",
         link=f"/citizen/complaints/{complaint.id}",
@@ -201,7 +221,8 @@ def create_complaint(citizen_id, title, description, category_id, priority,
         title=f"New Complaint: {complaint.complaint_ref}",
         message=f"New complaint submitted in '{cat.name}': {title}",
         link=f"/admin/complaints/{complaint.id}",
-        notification_type='new_complaint'
+        notification_type='new_complaint',
+        complaint_id=complaint.id
     )
         
     log_action(
@@ -214,7 +235,7 @@ def create_complaint(citizen_id, title, description, category_id, priority,
     
     return complaint
 
-def transition_complaint_status(complaint, new_status, user, remarks=None, rejection_reason=None):
+def transition_complaint_status(complaint, new_status, user, remarks=None, rejection_reason=None, notify_citizen=True, notify_admin_on_staff_action=True):
     """
     Enforces role-based state machine transitions, records status history,
     sends contextual notifications, and updates audit logs.
@@ -228,6 +249,7 @@ def transition_complaint_status(complaint, new_status, user, remarks=None, rejec
         
     old_status = complaint.status
     complaint.status = new_status
+    complaint.updated_at = datetime.utcnow()
     
     if new_status == 'Rejected':
         if not rejection_reason or not rejection_reason.strip():
@@ -261,15 +283,27 @@ def transition_complaint_status(complaint, new_status, user, remarks=None, rejec
     db.session.add(hist)
     db.session.commit()
     
-    # Notify Citizen of status update
+    # Notify Citizen of status update (skip only if caller dispatches a custom notification)
     status_display = new_status.replace('_', ' ')
-    create_notification(
-        user_id=complaint.citizen_id,
-        title=f"Status Update: {complaint.complaint_ref}",
-        message=f"Your complaint is now '{status_display}'. Remarks: {remarks or 'No remarks provided'}",
-        link=f"/citizen/complaints/{complaint.id}",
-        notification_type='status_changed'
-    )
+    if notify_citizen:
+        create_notification(
+            user_id=complaint.citizen_id,
+            complaint_id=complaint.id,
+            title=f"Status Update: {complaint.complaint_ref}",
+            message=f"Your complaint is now '{status_display}'. Remarks: {remarks or 'No remarks provided'}",
+            link=f"/citizen/complaints/{complaint.id}",
+            notification_type='status_changed'
+        )
+
+    # Notify Admins when non-admin staff (Officer/Worker) transitions key workflow statuses
+    if notify_admin_on_staff_action and role in ('officer', 'worker', 'citizen'):
+        notify_admins(
+            title=f"{status_display}: {complaint.complaint_ref}",
+            message=f"{user.full_name} ({role.title()}) updated {complaint.complaint_ref} to '{status_display}'. {remarks or ''}".strip(),
+            link=f"/admin/complaints/{complaint.id}",
+            notification_type='status_changed',
+            complaint_id=complaint.id
+        )
     
     log_action(
         user_id=user.id,
@@ -302,6 +336,7 @@ def assign_department_officer(complaint, department_id, officer_id, assigned_by_
     complaint.officer_assigned_at = datetime.utcnow()
     complaint.admin_remarks = admin_remarks
     complaint.status = 'Assigned to Department'
+    complaint.updated_at = datetime.utcnow()
     
     # Create Assignment record
     assignment = ComplaintAssignment(
@@ -328,6 +363,7 @@ def assign_department_officer(complaint, department_id, officer_id, assigned_by_
     # Notify Department Officer
     create_notification(
         user_id=officer.id,
+        complaint_id=complaint.id,
         title=f"New Complaint Assigned: {complaint.complaint_ref}",
         message=f"Administrator assigned {complaint.complaint_ref} ('{complaint.title}') to your department queue. Remarks: {admin_remarks or 'None'}",
         link=f"/officer/complaints/{complaint.id}",
@@ -337,6 +373,7 @@ def assign_department_officer(complaint, department_id, officer_id, assigned_by_
     # Notify Citizen
     create_notification(
         user_id=complaint.citizen_id,
+        complaint_id=complaint.id,
         title="Department Assigned",
         message=f"Your complaint {complaint.complaint_ref} has been reviewed by the Administrator and assigned to the {dept.name} department.",
         link=f"/citizen/complaints/{complaint.id}",
@@ -385,6 +422,7 @@ def assign_complaint_to_worker(complaint, worker_user_id, assigned_by_user, inst
     complaint.worker_assigned_at = datetime.utcnow()
     complaint.officer_remarks = instructions
     complaint.status = 'Assigned to Worker'
+    complaint.updated_at = datetime.utcnow()
     
     hist = ComplaintStatusHistory(
         complaint_id=complaint.id,
@@ -396,11 +434,14 @@ def assign_complaint_to_worker(complaint, worker_user_id, assigned_by_user, inst
     db.session.add(hist)
     db.session.commit()
     
-    # Notify Worker
+    dept_name = complaint.department.name if complaint.department else (worker.department.name if worker.department else 'Civic Department')
+
+    # Notify Worker with complaint ID, location, department, and instructions
     create_notification(
         user_id=worker_user_id,
+        complaint_id=complaint.id,
         title=f"New Field Task Assigned: {complaint.complaint_ref}",
-        message=f"You have been assigned complaint {complaint.complaint_ref}: '{complaint.title}'. Instructions: {instructions or 'None'}",
+        message=f"Complaint {complaint.complaint_ref} ('{complaint.title}') | Dept: {dept_name} | Location: {complaint.full_address} | Instructions: {instructions or 'Standard inspection & repair'}",
         link=f"/worker/tasks/{complaint.id}",
         notification_type='assignment'
     )
@@ -408,11 +449,22 @@ def assign_complaint_to_worker(complaint, worker_user_id, assigned_by_user, inst
     # Notify Citizen
     create_notification(
         user_id=complaint.citizen_id,
+        complaint_id=complaint.id,
         title="Field Technician Assigned",
         message=f"A field technician ({worker.user.full_name}) has been dispatched to address your complaint {complaint.complaint_ref}.",
         link=f"/citizen/complaints/{complaint.id}",
         notification_type='status_changed'
     )
+
+    # Notify Admins if assigned by an officer
+    if assigned_by_user.role != 'admin':
+        notify_admins(
+            title=f"Worker Assigned: {complaint.complaint_ref}",
+            message=f"Officer {assigned_by_user.full_name} assigned {complaint.complaint_ref} to technician {worker.user.full_name}.",
+            link=f"/admin/complaints/{complaint.id}",
+            notification_type='assignment',
+            complaint_id=complaint.id
+        )
     
     log_action(
         user_id=assigned_by_user.id,
@@ -438,6 +490,7 @@ def officer_verify_work(complaint, officer_user, action, remarks, rework_reason=
         complaint.resolved_at = datetime.utcnow()
         complaint.verification_remarks = remarks or "Verified and approved by department officer."
         complaint.verified_at = datetime.utcnow()
+        complaint.updated_at = datetime.utcnow()
         
         # Decrement worker's active tasks and increment completed
         if complaint.assigned_worker_id:
@@ -460,6 +513,7 @@ def officer_verify_work(complaint, officer_user, action, remarks, rework_reason=
         # Notify Citizen
         create_notification(
             user_id=complaint.citizen_id,
+            complaint_id=complaint.id,
             title=f"Complaint Resolved: {complaint.complaint_ref}",
             message=f"Your complaint '{complaint.title}' has been successfully resolved and verified by Officer {officer_user.full_name}. Please rate our service.",
             link=f"/citizen/complaints/{complaint.id}",
@@ -471,7 +525,8 @@ def officer_verify_work(complaint, officer_user, action, remarks, rework_reason=
             title=f"Complaint Resolved: {complaint.complaint_ref}",
             message=f"Officer {officer_user.full_name} verified and resolved {complaint.complaint_ref} ({complaint.title}).",
             link=f"/admin/complaints/{complaint.id}",
-            notification_type='status_changed'
+            notification_type='status_changed',
+            complaint_id=complaint.id
         )
         
         log_action(
@@ -487,6 +542,8 @@ def officer_verify_work(complaint, officer_user, action, remarks, rework_reason=
             raise ValueError("A reason is mandatory when returning work for correction.")
             
         complaint.status = 'Rework Required'
+        complaint.verification_remarks = rework_reason.strip()
+        complaint.updated_at = datetime.utcnow()
         
         # Update latest assignment
         latest_assign = complaint.assignments.order_by(ComplaintAssignment.id.desc()).first()
@@ -507,6 +564,7 @@ def officer_verify_work(complaint, officer_user, action, remarks, rework_reason=
         if complaint.assigned_worker_id:
             create_notification(
                 user_id=complaint.assigned_worker_id,
+                complaint_id=complaint.id,
                 title=f"Rework Required: {complaint.complaint_ref}",
                 message=f"Officer {officer_user.full_name} returned task '{complaint.title}' for rework. Reason: {rework_reason.strip()}",
                 link=f"/worker/tasks/{complaint.id}",
@@ -516,10 +574,20 @@ def officer_verify_work(complaint, officer_user, action, remarks, rework_reason=
         # Notify Citizen
         create_notification(
             user_id=complaint.citizen_id,
+            complaint_id=complaint.id,
             title="Work In Progress Revision",
             message=f"Department officer inspected your complaint {complaint.complaint_ref} and requested additional adjustments from the field team.",
             link=f"/citizen/complaints/{complaint.id}",
             notification_type='status_changed'
+        )
+
+        # Notify Admins
+        notify_admins(
+            title=f"Rework Requested: {complaint.complaint_ref}",
+            message=f"Officer {officer_user.full_name} requested rework on {complaint.complaint_ref}. Reason: {rework_reason.strip()}",
+            link=f"/admin/complaints/{complaint.id}",
+            notification_type='rework_required',
+            complaint_id=complaint.id
         )
         
         log_action(
@@ -638,3 +706,118 @@ def get_complaint_9_stage_timeline(complaint):
         {'step': 9, 'title': 'Resolved', 'is_completed': is_resolved, 'timestamp': resolved_time, 'remarks': resolved_remarks, 'icon': 'award'}
     ]
     return stages
+
+
+def build_admin_analytics_payload():
+    """
+    Build real-time municipal analytics across departments, categories, and workflow statuses.
+    Attributes complaints with department_id=None to their category's default department so
+    newly submitted grievances appear immediately in department metrics before manual triage.
+    """
+    departments = Department.query.order_by(Department.id.asc()).all()
+    categories = ComplaintCategory.query.order_by(ComplaintCategory.id.asc()).all()
+    complaints = Complaint.query.all()
+
+    dept_buckets = {
+        d.id: {
+            'id': d.id,
+            'name': d.name,
+            'code': d.code,
+            'is_active': bool(d.is_active),
+            'total': 0,
+            'pending': 0,
+            'in_progress': 0,
+            'resolved': 0,
+            'overdue': 0,
+        }
+        for d in departments
+    }
+    unassigned_bucket = {
+        'id': None,
+        'name': 'Unassigned / Triage',
+        'code': 'TRIAGE',
+        'is_active': True,
+        'total': 0,
+        'pending': 0,
+        'in_progress': 0,
+        'resolved': 0,
+        'overdue': 0,
+    }
+    cat_counts = {c.id: 0 for c in categories}
+
+    total = len(complaints)
+    pending_count = 0
+    in_progress_count = 0
+    resolved_count = 0
+    rejected_count = 0
+    escalated_count = 0
+    overdue_count = 0
+
+    for c in complaints:
+        target_dept_id = c.department_id or (c.category.department_id if c.category else None)
+        bucket = dept_buckets.get(target_dept_id) if target_dept_id else unassigned_bucket
+        if bucket is None:
+            bucket = unassigned_bucket
+
+        bucket['total'] += 1
+        if c.status in PENDING_STATUSES:
+            pending_count += 1
+            bucket['pending'] += 1
+        elif c.status in IN_PROGRESS_STATUSES:
+            in_progress_count += 1
+            bucket['in_progress'] += 1
+        elif c.status == 'Resolved':
+            resolved_count += 1
+            bucket['resolved'] += 1
+        elif c.status == 'Rejected':
+            rejected_count += 1
+        elif c.status == 'Escalated':
+            escalated_count += 1
+
+        if c.is_overdue or c.is_escalated or c.status == 'Escalated':
+            overdue_count += 1
+            bucket['overdue'] += 1
+
+        if c.category_id in cat_counts:
+            cat_counts[c.category_id] += 1
+
+    dept_rows = []
+    for d in departments:
+        b = dept_buckets[d.id]
+        b['resolution_rate'] = round((b['resolved'] / b['total']) * 100, 1) if b['total'] else 0.0
+        dept_rows.append(b)
+    if unassigned_bucket['total'] > 0:
+        unassigned_bucket['resolution_rate'] = round((unassigned_bucket['resolved'] / unassigned_bucket['total']) * 100, 1)
+        dept_rows.append(unassigned_bucket)
+
+    cat_rows = [
+        {'id': c.id, 'name': c.name, 'total': cat_counts[c.id]}
+        for c in categories
+    ]
+    cat_rows.sort(key=lambda item: (-item['total'], item['id']))
+    active_cats = [item for item in cat_rows if item['total'] > 0]
+
+    resolution_rate = round((resolved_count / total) * 100, 1) if total else 0.0
+
+    return {
+        'summary': {
+            'total': total,
+            'pending': pending_count,
+            'in_progress': in_progress_count,
+            'resolved': resolved_count,
+            'rejected': rejected_count,
+            'escalated': escalated_count,
+            'overdue': overdue_count,
+            'resolution_rate': resolution_rate,
+        },
+        'dept_labels': [r['name'] for r in dept_rows],
+        'dept_totals': [r['total'] for r in dept_rows],
+        'dept_resolved': [r['resolved'] for r in dept_rows],
+        'dept_rows': dept_rows,
+        'cat_labels': [item['name'] for item in active_cats],
+        'cat_totals': [item['total'] for item in active_cats],
+        'all_cat_labels': [item['name'] for item in cat_rows],
+        'all_cat_totals': [item['total'] for item in cat_rows],
+        'status_labels': ['Pending / Submitted', 'In Progress', 'Resolved', 'Escalated', 'Rejected'],
+        'status_totals': [pending_count, in_progress_count, resolved_count, escalated_count, rejected_count],
+    }

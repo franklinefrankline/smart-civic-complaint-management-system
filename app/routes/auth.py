@@ -51,27 +51,27 @@ def login():
             flash("Welcome! Since this is your first login, please set a new password to activate your account.", "info")
             return redirect(url_for('auth.force_reset_password'))
 
-        # Set session
+        # Set session (always persistent so refreshes never unexpectedly log users out)
         session.clear()
         session['user_id'] = user.id
         session['user_role'] = user.role
         session['user_name'] = user.full_name
-        session.permanent = remember
+        session.permanent = True
         
         user.last_login_at = datetime.utcnow()
         db.session.commit()
         
-        log_action(user.id, 'USER_LOGIN', 'user', user.id, details={'role': user.role})
+        log_action(user.id, 'USER_LOGIN', 'user', user.id, details={'role': user.role, 'remember': remember})
         
-        # Route to respective dashboard
+        # Route to respective dashboard or safe relative next path
         role_dashboards = {
             'admin': 'admin.dashboard',
             'officer': 'officer.dashboard',
             'worker': 'worker.dashboard',
             'citizen': 'citizen.dashboard'
         }
-        next_page = request.args.get('next')
-        if next_page and not next_page.startswith('http'):
+        next_page = request.args.get('next', '').strip()
+        if next_page and next_page.startswith('/') and not next_page.startswith('//'):
             return redirect(next_page)
             
         return redirect(url_for(role_dashboards.get(user.role, 'public.index')))

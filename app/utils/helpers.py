@@ -6,11 +6,13 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 from flask import current_app
 
+
 def generate_complaint_ref():
     """Generates unique complaint reference ID: CMP-YYYYMM-XXXXX"""
     now = datetime.utcnow()
     rand_str = uuid.uuid4().hex[:5].upper()
     return f"CMP-{now.strftime('%Y%m')}-{rand_str}"
+
 
 def allowed_file(filename):
     """Validate allowed file extension against configuration"""
@@ -19,45 +21,63 @@ def allowed_file(filename):
     ext = filename.rsplit('.', 1)[1].lower()
     return ext in current_app.config['ALLOWED_EXTENSIONS']
 
+
 def save_uploaded_file(file_obj, subfolder='complaints'):
-    """Securely save uploaded file and return relative path and metadata"""
+    """
+    Validate uploaded file, read binary bytes for persistent DB storage,
+    and write a local copy to UPLOAD_FOLDER when writable.
+    """
     if not file_obj or file_obj.filename == '':
         return None
-        
+
     if not allowed_file(file_obj.filename):
         return None
-        
+
     orig_name = secure_filename(file_obj.filename)
     ext = orig_name.rsplit('.', 1)[1].lower() if '.' in orig_name else 'jpg'
     unique_filename = f"{uuid.uuid4().hex}_{int(datetime.utcnow().timestamp())}.{ext}"
-    
-    target_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], subfolder)
-    os.makedirs(target_dir, exist_ok=True)
-    
-    file_path = os.path.join(target_dir, unique_filename)
-    file_obj.save(file_path)
-    
-    file_size = os.path.getsize(file_path)
+
+    # Read binary bytes into memory for persistent DB storage
+    stream = file_obj.stream
+    try:
+        stream.seek(0)
+    except Exception:
+        pass
+    file_bytes = stream.read()
+    file_size = len(file_bytes)
+
+    # Best-effort disk cache write (ephemeral on Render, persistent locally)
+    try:
+        target_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], subfolder)
+        os.makedirs(target_dir, exist_ok=True)
+        file_path = os.path.join(target_dir, unique_filename)
+        with open(file_path, 'wb') as out_fp:
+            out_fp.write(file_bytes)
+    except Exception:
+        pass
+
     relative_path = f"uploads/{subfolder}/{unique_filename}"
-    
+
     return {
         'filename': unique_filename,
         'original_name': orig_name,
         'file_path': relative_path,
         'file_size': file_size,
-        'mime_type': file_obj.mimetype
+        'mime_type': file_obj.mimetype,
+        'file_data': file_bytes
     }
+
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
-    Calculate the great circle distance between two points 
+    Calculate the great circle distance between two points
     on the earth in meters
     """
     try:
         lat1, lon1, lat2, lon2 = float(lat1), float(lon1), float(lat2), float(lon2)
     except (TypeError, ValueError):
         return 9999999.0
-        
+
     R = 6371000  # Radius of earth in meters
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
@@ -70,6 +90,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
+
 
 def validate_password_strength(password):
     """
@@ -85,12 +106,14 @@ def validate_password_strength(password):
         return False, "Password must contain at least one digit."
     return True, ""
 
+
 def validate_mobile_number(mobile):
     """Validate 10-15 digit mobile number format"""
     cleaned = re.sub(r'[\s\-\+\(\)]', '', mobile)
     if not re.match(r'^\d{10,15}$', cleaned):
         return False, "Mobile number must be between 10 and 15 digits."
     return True, cleaned
+
 
 def validate_email(email):
     """Validate email address format"""

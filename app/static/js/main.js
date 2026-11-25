@@ -1,6 +1,140 @@
 // Smart Civic Complaint System - Master UI & Interaction Engine
 // Consistent 60fps transitions, accessible reduced-motion, loading states, and live micro-interactions
 
+(function() {
+  function getApiBase() {
+    const meta = document.querySelector('meta[name="api-base-url"]');
+    return meta ? (meta.getAttribute('content') || '').replace(/\/+$/, '') : '';
+  }
+
+  window.getApiUrl = function(path) {
+    const base = getApiBase();
+    if (!base) return path;
+    if (/^https?:\/\//i.test(path)) return path;
+    return base + (path.startsWith('/') ? path : '/' + path);
+  };
+
+  window.apiFetch = function(path, options) {
+    const opts = Object.assign({ credentials: 'include' }, options || {});
+    return fetch(window.getApiUrl(path), opts);
+  };
+
+  // Global Full-Screen Page Loader Controller (#020D1C + Exact Animated GIF)
+  let loaderTimeoutId = null;
+  let activeRetryHandler = null;
+
+  function getLoaderEls() {
+    return {
+      overlay: document.getElementById('globalPageLoader'),
+      img: document.getElementById('globalPageLoaderImg'),
+      errBox: document.getElementById('globalPageLoaderError'),
+      errMsg: document.getElementById('globalPageLoaderErrorText'),
+      retryBtn: document.getElementById('globalPageLoaderRetryBtn')
+    };
+  }
+
+  function clearLoaderTimers() {
+    if (loaderTimeoutId) {
+      clearTimeout(loaderTimeoutId);
+      loaderTimeoutId = null;
+    }
+    if (window.__loaderFailsafeTimer) {
+      clearTimeout(window.__loaderFailsafeTimer);
+      window.__loaderFailsafeTimer = null;
+    }
+  }
+
+  window.showGlobalLoaderError = function(message, retryCallback) {
+    const { overlay, img, errBox, errMsg, retryBtn } = getLoaderEls();
+    if (!overlay) return;
+    clearLoaderTimers();
+    activeRetryHandler = typeof retryCallback === 'function' ? retryCallback : function() { window.location.reload(); };
+    if (img) img.hidden = true;
+    if (errMsg) errMsg.textContent = message || 'Unable to load page content. Please check your connection and try again.';
+    if (errBox) errBox.hidden = false;
+    overlay.classList.remove('is-hidden');
+    overlay.setAttribute('aria-busy', 'false');
+    document.body.classList.add('loader-locked');
+    if (retryBtn && !retryBtn.dataset.boundRetry) {
+      retryBtn.dataset.boundRetry = '1';
+      retryBtn.addEventListener('click', function() {
+        const cb = activeRetryHandler || function() { window.location.reload(); };
+        window.showGlobalLoader({ timeoutMs: 20000, onRetry: cb });
+        cb();
+      });
+    }
+  };
+
+  window.showGlobalLoader = function(options) {
+    const opts = options || {};
+    const { overlay, img, errBox, retryBtn } = getLoaderEls();
+    if (!overlay) return;
+    clearLoaderTimers();
+    if (img) img.hidden = false;
+    if (errBox) errBox.hidden = true;
+    overlay.classList.remove('is-hidden');
+    overlay.setAttribute('aria-busy', 'true');
+    document.body.classList.add('loader-locked');
+    activeRetryHandler = typeof opts.onRetry === 'function' ? opts.onRetry : null;
+    if (retryBtn && !retryBtn.dataset.boundRetry) {
+      retryBtn.dataset.boundRetry = '1';
+      retryBtn.addEventListener('click', function() {
+        const cb = activeRetryHandler || function() { window.location.reload(); };
+        window.showGlobalLoader({ timeoutMs: 20000, onRetry: cb });
+        cb();
+      });
+    }
+    const timeoutMs = typeof opts.timeoutMs === 'number' ? opts.timeoutMs : 20000;
+    if (timeoutMs > 0) {
+      loaderTimeoutId = setTimeout(function() {
+        if (!overlay.classList.contains('is-hidden')) {
+          window.showGlobalLoaderError(
+            navigator.onLine === false
+              ? 'You appear to be offline. Please check your connection and retry.'
+              : 'Loading took longer than expected. Please try again.',
+            activeRetryHandler || function() { window.location.reload(); }
+          );
+        }
+      }, timeoutMs);
+    }
+  };
+
+  window.hideGlobalLoader = function() {
+    const { overlay, img, errBox } = getLoaderEls();
+    if (!overlay) return;
+    clearLoaderTimers();
+    overlay.classList.add('is-hidden');
+    overlay.setAttribute('aria-busy', 'false');
+    document.body.classList.remove('loader-locked');
+    document.documentElement.classList.remove('loader-locked');
+    if (errBox) errBox.hidden = true;
+    if (img) img.hidden = false;
+  };
+
+  window.addEventListener('pageshow', function(e) {
+    if (e.persisted) {
+      window.hideGlobalLoader();
+      if (window.finishProgressBar) window.finishProgressBar();
+    }
+  });
+
+  window.handleSmartBack = function(fallbackUrl) {
+    const fallback = fallbackUrl || '/';
+    try {
+      if (window.history.length > 1 && document.referrer) {
+        const refUrl = new URL(document.referrer, window.location.origin);
+        if (refUrl.origin === window.location.origin && refUrl.href !== window.location.href) {
+          window.showGlobalLoader({ timeoutMs: 20000 });
+          window.history.back();
+          return;
+        }
+      }
+    } catch (_) {}
+    window.showGlobalLoader({ timeoutMs: 20000 });
+    window.location.href = fallback;
+  };
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Accessibility Motion Preference Detection
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -124,43 +258,216 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 7. Form Submission Loading States & Double-Submit Protection
+  // 7. Centralized Form Validation (Zero Native Tooltips), Confirmation Delegation & Double-Submit Protection
   initFormInteractions();
 
+  function getFriendlyValidationMessage(el) {
+    const labelEl = el.closest('.form-group, .auth-input-group')?.querySelector('label');
+    const rawLabel = labelEl ? labelEl.textContent.replace(/\*/g, '').trim() : (el.getAttribute('name') || 'This field');
+    const v = el.validity;
+    if (v.valueMissing) return `${rawLabel} is required.`;
+    if (v.typeMismatch && el.type === 'email') return 'Please enter a valid email address.';
+    if (v.tooShort) return `${rawLabel} must be at least ${el.minLength} characters.`;
+    if (v.tooLong) return `${rawLabel} must be no more than ${el.maxLength} characters.`;
+    if (v.patternMismatch) return `Please enter a valid ${rawLabel.toLowerCase()} format.`;
+    if (v.rangeUnderflow) return `${rawLabel} must be at least ${el.min}.`;
+    if (v.rangeOverflow) return `${rawLabel} must be at most ${el.max}.`;
+    return el.validationMessage || `Please check ${rawLabel}.`;
+  }
+
+  function clearFieldValidation(el) {
+    el.classList.remove('is-invalid');
+    const group = el.closest('.form-group, .auth-input-group') || el.parentElement;
+    if (group) {
+      const existingErr = group.querySelector('.field-validation-error');
+      if (existingErr) existingErr.remove();
+    }
+  }
+
+  function showFieldValidation(el, message) {
+    clearFieldValidation(el);
+    el.classList.add('is-invalid', 'input-error-shake');
+    setTimeout(() => el.classList.remove('input-error-shake'), 400);
+
+    const group = el.closest('.form-group, .auth-input-group') || el.parentElement;
+    if (group) {
+      const errDiv = document.createElement('div');
+      errDiv.className = 'field-validation-error';
+      errDiv.innerHTML = `<i data-lucide="alert-circle" class="icon-xs"></i><span>${escapeHtml(message)}</span>`;
+      group.appendChild(errDiv);
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  function isElementVisible(el) {
+    return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  }
+
   function initFormInteractions() {
-    document.querySelectorAll('form').forEach(form => {
-      form.addEventListener('submit', (e) => {
-        // Run native validity check
-        if (!form.checkValidity()) {
-          // Find first invalid input and apply shake animation
-          const firstInvalid = form.querySelector(':invalid');
-          if (firstInvalid) {
-            firstInvalid.classList.add('input-error-shake');
-            firstInvalid.focus();
-            setTimeout(() => {
-              firstInvalid.classList.remove('input-error-shake');
-            }, 400);
+    // Suppress browser-native validation tooltips on all forms
+    document.querySelectorAll('form').forEach(f => {
+      f.noValidate = true;
+    });
+
+    // Clear validation state as soon as the user updates an input
+    document.addEventListener('input', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('is-invalid')) {
+        clearFieldValidation(e.target);
+      }
+    });
+    document.addEventListener('change', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('is-invalid')) {
+        clearFieldValidation(e.target);
+      }
+    });
+
+    // Suppress any residual native invalid tooltip events globally
+    document.addEventListener('invalid', (e) => {
+      e.preventDefault();
+    }, true);
+
+    // Delegated form submit handler: custom validation -> custom confirm -> loading lock
+    document.addEventListener('submit', async (e) => {
+      const form = e.target;
+      if (!form || form.tagName !== 'FORM') return;
+      form.noValidate = true;
+
+      // Skip forms with dedicated custom AJAX validation managers (e.g. addUserForm)
+      if (form.id === 'addUserForm') return;
+
+      // 1. Custom in-page validation (no native browser tooltips)
+      const controls = Array.from(form.querySelectorAll('input, select, textarea'));
+      let firstInvalid = null;
+      let firstMsg = null;
+
+      controls.forEach(el => {
+        if (el.disabled || el.type === 'hidden') return;
+        clearFieldValidation(el);
+        if (!el.checkValidity()) {
+          const msg = getFriendlyValidationMessage(el);
+          if (isElementVisible(el)) {
+            showFieldValidation(el, msg);
           }
-          return;
-        }
-
-        // Form is valid: start loading animation
-        const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
-        if (submitBtn && !submitBtn.disabled) {
-          submitBtn.classList.add('btn-loading');
-          submitBtn.disabled = true;
-
-          // Start top navigation bar
-          startProgressBar();
-
-          // Safety fallback: re-enable after 8.5 seconds in case of slow network or aborted navigation
-          setTimeout(() => {
-            submitBtn.classList.remove('btn-loading');
-            submitBtn.disabled = false;
-            finishProgressBar();
-          }, 8500);
+          if (!firstInvalid) {
+            firstInvalid = el;
+            firstMsg = msg;
+          }
         }
       });
+
+      if (firstInvalid) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (isElementVisible(firstInvalid)) {
+          firstInvalid.focus();
+        }
+        if (window.showToast && firstMsg) {
+          window.showToast(firstMsg, 'warning', 'Please Check Required Fields', 4500);
+        }
+        return;
+      }
+
+      // 2. Dynamic conditional confirmation (e.g. Reject status in admin status override)
+      const newStatusSel = form.querySelector('select[name="new_status"]');
+      const actionInput = form.querySelector('input[name="action"]');
+      let dynamicConfirmMsg = form.getAttribute('data-confirm');
+      let dynamicConfirmTitle = form.getAttribute('data-confirm-title') || 'Confirm Action';
+      let dynamicConfirmBtn = form.getAttribute('data-confirm-btn') || 'Confirm';
+      let dynamicVariant = form.getAttribute('data-confirm-variant') || 'danger';
+
+      if (!dynamicConfirmMsg && actionInput && actionInput.value === 'change_status' && newStatusSel) {
+        dynamicConfirmTitle = 'Confirm Status Update';
+        dynamicConfirmMsg = `Are you sure you want to change the complaint status to "${newStatusSel.value}"?`;
+        dynamicConfirmBtn = 'Update Status';
+        dynamicVariant = newStatusSel.value === 'Rejected' ? 'danger' : 'warning';
+      }
+
+      if (dynamicConfirmMsg && form.dataset.confirmed !== '1') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const confirmed = await window.showConfirm({
+          title: dynamicConfirmTitle,
+          message: dynamicConfirmMsg,
+          confirmText: dynamicConfirmBtn,
+          cancelText: 'Cancel',
+          variant: dynamicVariant
+        });
+        if (!confirmed) return;
+
+        form.dataset.confirmed = '1';
+        const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+        if (submitBtn) {
+          submitBtn.classList.add('btn-loading');
+          submitBtn.disabled = true;
+        }
+        startProgressBar();
+        if (!form.hasAttribute('data-no-loader') && form.getAttribute('target') !== '_blank') {
+          window.showGlobalLoader({ timeoutMs: 25000 });
+        }
+        HTMLFormElement.prototype.submit.call(form);
+        return;
+      }
+
+      // 3. Normal valid submit: prevent duplicate clicks & show full-page loader when navigating
+      if (e.defaultPrevented) return;
+      const actionAttr = (form.getAttribute('action') || '').toLowerCase();
+      const isExportOrBlank = form.getAttribute('target') === '_blank' ||
+        actionAttr.includes('/export') ||
+        actionAttr.includes('/download') ||
+        form.hasAttribute('data-ajax') ||
+        form.hasAttribute('data-no-loader');
+
+      const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+      if (submitBtn && !submitBtn.disabled) {
+        submitBtn.classList.add('btn-loading');
+        submitBtn.disabled = true;
+        startProgressBar();
+        if (!isExportOrBlank) {
+          window.showGlobalLoader({ timeoutMs: 25000 });
+        }
+        setTimeout(() => {
+          submitBtn.classList.remove('btn-loading');
+          submitBtn.disabled = false;
+          finishProgressBar();
+        }, 8500);
+      } else if (!isExportOrBlank) {
+        window.showGlobalLoader({ timeoutMs: 25000 });
+      }
+    });
+
+    // Delegated custom confirmation for links/buttons (e.g., Sign Out / Logout)
+    document.addEventListener('click', async (e) => {
+      const target = e.target.closest('a[data-confirm], button[data-confirm]:not([type="submit"])');
+      if (!target) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const confirmed = await window.showConfirm({
+        title: target.getAttribute('data-confirm-title') || 'Confirm Action',
+        message: target.getAttribute('data-confirm'),
+        confirmText: target.getAttribute('data-confirm-btn') || 'Confirm',
+        cancelText: 'Cancel',
+        variant: target.getAttribute('data-confirm-variant') || 'warning'
+      });
+
+      if (confirmed) {
+        const href = target.getAttribute('href');
+        if (href) {
+          startProgressBar();
+          if (navigator.onLine === false) {
+            window.showGlobalLoaderError('You appear to be offline. Please check your connection and retry.', () => {
+              window.location.href = href;
+            });
+            return;
+          }
+          window.showGlobalLoader({
+            timeoutMs: 20000,
+            onRetry: () => { window.location.href = href; }
+          });
+          window.location.href = href;
+        }
+      }
     });
   }
 
@@ -188,51 +495,177 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 200);
   };
 
-  // Page Link Click Progress Triggers
-  document.querySelectorAll('a[href]:not([target="_blank"]):not([href^="#"]):not([href^="javascript:"])').forEach(link => {
-    link.addEventListener('click', (e) => {
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      const href = link.getAttribute('href');
-      if (href && !href.startsWith('#') && href !== '') {
-        startProgressBar();
+  // Delegated Full-Page Navigation Link Click Triggers (works for dynamic & static links, excludes exports/downloads/background actions)
+  document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    const link = e.target.closest('a[href]');
+    if (!link) return;
+    if (link.hasAttribute('data-confirm') || link.hasAttribute('download') || link.hasAttribute('data-no-loader')) return;
+    if (link.getAttribute('target') === '_blank') return;
+
+    const href = (link.getAttribute('href') || '').trim();
+    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    const lowerHref = href.toLowerCase();
+    if (lowerHref.includes('/export') || lowerHref.includes('/download') || lowerHref.includes('/attachments/') || lowerHref.includes('/proofs/')) return;
+
+    startProgressBar();
+    if (navigator.onLine === false) {
+      e.preventDefault();
+      window.showGlobalLoaderError('You appear to be offline. Please check your connection and retry.', () => {
+        window.location.href = href;
+      });
+      return;
+    }
+
+    try {
+      const dest = new URL(link.href, window.location.origin);
+      if (dest.origin === window.location.origin) {
+        window.showGlobalLoader({
+          timeoutMs: 20000,
+          onRetry: () => { window.location.href = dest.href; }
+        });
       }
-    });
+    } catch (_) {
+      window.showGlobalLoader({ timeoutMs: 20000 });
+    }
   });
 
-  // 9. Toast Notification System
-  window.showToast = function(message, type = 'info', title = null, duration = 4000) {
+  // 9. Centralized Website Notification & Confirmation System
+  // Reusable providers/APIs: ToastNotification, ToastContainer, ConfirmDialog, NotificationProvider, useNotification, useConfirmation
+  let activeConfirmResolve = null;
+  let lastTriggerElement = null;
+
+  window.showConfirm = function(options) {
+    const opts = typeof options === 'string' ? { message: options } : (options || {});
+    const modal = document.getElementById('sccmtConfirmModal');
+    const titleEl = document.getElementById('sccmtConfirmTitle');
+    const msgEl = document.getElementById('sccmtConfirmMessage');
+    const cancelBtn = document.getElementById('sccmtConfirmCancelBtn');
+    const okBtn = document.getElementById('sccmtConfirmOkBtn');
+    const iconWrap = document.getElementById('sccmtConfirmIconWrap');
+
+    if (!modal || !titleEl || !msgEl || !cancelBtn || !okBtn) {
+      return Promise.resolve(false);
+    }
+
+    if (activeConfirmResolve) {
+      activeConfirmResolve(false);
+      activeConfirmResolve = null;
+    }
+
+    lastTriggerElement = document.activeElement;
+    const variant = opts.variant || 'danger';
+    titleEl.textContent = opts.title || 'Confirm Action';
+    msgEl.textContent = opts.message || 'Are you sure you want to proceed?';
+    cancelBtn.textContent = opts.cancelText || 'Cancel';
+    okBtn.textContent = opts.confirmText || 'Confirm';
+
+    // Reset button & icon classes
+    okBtn.className = 'btn btn-sm ' + (
+      variant === 'danger' ? 'btn-danger' :
+      variant === 'warning' ? 'btn-warning-confirm' :
+      'btn-primary'
+    );
+
+    if (iconWrap) {
+      iconWrap.className = `confirm-modal-icon variant-${variant}`;
+      const iconName = variant === 'danger' ? 'alert-triangle' : (variant === 'warning' ? 'alert-circle' : 'help-circle');
+      iconWrap.innerHTML = `<i data-lucide="${iconName}" class="icon-md"></i>`;
+      if (window.lucide) lucide.createIcons();
+    }
+
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+      modal.classList.add('show');
+      cancelBtn.focus();
+    });
+
+    return new Promise((resolve) => {
+      activeConfirmResolve = resolve;
+
+      function finish(result) {
+        if (!activeConfirmResolve) return;
+        const cb = activeConfirmResolve;
+        activeConfirmResolve = null;
+
+        modal.classList.remove('show');
+        setTimeout(() => {
+          modal.style.display = 'none';
+          if (lastTriggerElement && typeof lastTriggerElement.focus === 'function') {
+            lastTriggerElement.focus();
+          }
+        }, 200);
+
+        cancelBtn.removeEventListener('click', onCancel);
+        okBtn.removeEventListener('click', onOk);
+        modal.removeEventListener('click', onBackdrop);
+        document.removeEventListener('keydown', onKeyDown);
+        cb(result);
+      }
+
+      function onCancel() { finish(false); }
+      function onOk() { finish(true); }
+      function onBackdrop(ev) {
+        if (ev.target === modal) finish(false);
+      }
+      function onKeyDown(ev) {
+        if (ev.key === 'Escape') {
+          ev.preventDefault();
+          finish(false);
+        }
+      }
+
+      cancelBtn.addEventListener('click', onCancel);
+      okBtn.addEventListener('click', onOk);
+      modal.addEventListener('click', onBackdrop);
+      document.addEventListener('keydown', onKeyDown);
+    });
+  };
+
+  window.showToast = function(message, type = 'info', title = null, duration = null) {
+    const normalizedType = type === 'danger' ? 'error' : type;
+    const defaultDurations = {
+      success: 3600,
+      error: 5000,
+      warning: 4500,
+      info: 4000
+    };
+    const finalDuration = duration || defaultDurations[normalizedType] || 4000;
+
     let container = document.getElementById('toastContainer');
     if (!container) {
       container = document.createElement('div');
       container.id = 'toastContainer';
       container.className = 'toast-container';
+      container.setAttribute('aria-live', 'polite');
       document.body.appendChild(container);
     }
 
     const iconMap = {
-      success: 'check-circle',
+      success: 'check-circle-2',
       error: 'alert-circle',
       warning: 'alert-triangle',
       info: 'info'
     };
 
     const titleMap = {
-      success: 'Operation Successful',
-      error: 'Notice Required',
-      warning: 'Attention',
-      info: 'Notification'
+      success: 'Success',
+      error: 'Error',
+      warning: 'Warning',
+      info: 'Information'
     };
 
     const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
+    toast.className = `toast toast-${normalizedType}`;
+    toast.setAttribute('role', normalizedType === 'error' ? 'alert' : 'status');
     toast.innerHTML = `
-      <div class="toast-icon"><i data-lucide="${iconMap[type] || 'info'}" class="icon-sm"></i></div>
+      <div class="toast-icon"><i data-lucide="${iconMap[normalizedType] || 'info'}" class="icon-sm"></i></div>
       <div class="toast-content">
-        <div class="toast-title">${escapeHtml(title || titleMap[type] || 'Update')}</div>
+        <div class="toast-title">${escapeHtml(title || titleMap[normalizedType] || 'Update')}</div>
         <div>${escapeHtml(message)}</div>
       </div>
       <button type="button" class="toast-close-btn" aria-label="Close notification">&times;</button>
-      <div class="toast-progress" style="animation-duration: ${duration}ms;"></div>
+      <div class="toast-progress" style="animation-duration: ${finalDuration}ms;"></div>
     `;
 
     container.appendChild(toast);
@@ -240,13 +673,12 @@ document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
     }
 
-    // Trigger smooth entrance
     requestAnimationFrame(() => {
       toast.classList.add('toast-show');
     });
 
     const closeBtn = toast.querySelector('.toast-close-btn');
-    let timer = setTimeout(dismiss, duration);
+    let timer = setTimeout(dismiss, finalDuration);
 
     function dismiss() {
       clearTimeout(timer);
@@ -257,6 +689,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     closeBtn.addEventListener('click', dismiss);
   };
+
+  window.NotificationProvider = {
+    notify: window.showToast,
+    success: (msg, title) => window.showToast(msg, 'success', title || 'Success', 3600),
+    error: (msg, title) => window.showToast(msg, 'error', title || 'Error', 5000),
+    warning: (msg, title) => window.showToast(msg, 'warning', title || 'Warning', 4500),
+    info: (msg, title) => window.showToast(msg, 'info', title || 'Information', 4000)
+  };
+  window.ToastContainer = { show: window.showToast };
+  window.ToastNotification = window.NotificationProvider;
+  window.ConfirmDialog = { open: window.showConfirm };
+  window.useNotification = () => window.NotificationProvider;
+  window.useConfirmation = () => window.showConfirm;
 
   function escapeHtml(str) {
     if (!str) return '';
@@ -700,6 +1145,75 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Finish top progress bar once DOM is completely rendered
+  // Finish top progress bar & smoothly hide initial global page loader once page content finishes loading
   finishProgressBar();
+
+  // Global Back Navigation Button Handler + Auto Injection for Dashboard Pages Without One
+  const dashContent = document.querySelector('.dashboard-content');
+  if (dashContent && !dashContent.querySelector('[data-back-nav]')) {
+    const hasExistingBackLink = Array.from(dashContent.querySelectorAll('a, button')).some(el => {
+      const txt = (el.textContent || '').trim().toLowerCase();
+      return txt.startsWith('← back') || txt.includes('back to ');
+    });
+    if (!hasExistingBackLink) {
+      const roleMatch = window.location.pathname.match(/^\/(admin|citizen|officer|worker)\//);
+      const fallbackUrl = roleMatch ? `/${roleMatch[1]}/dashboard` : '/';
+      const bar = document.createElement('div');
+      bar.className = 'page-back-bar';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-secondary btn-sm page-back-btn';
+      btn.setAttribute('data-back-nav', '');
+      btn.setAttribute('data-fallback-url', fallbackUrl);
+      btn.innerHTML = '<i data-lucide="arrow-left" class="icon-xs"></i><span>Back</span>';
+      bar.appendChild(btn);
+      dashContent.insertBefore(bar, dashContent.firstChild);
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const backBtn = e.target.closest('[data-back-nav]');
+    if (!backBtn) return;
+    e.preventDefault();
+    const fallbackUrl = backBtn.getAttribute('data-fallback-url') || '/';
+    window.handleSmartBack(fallbackUrl);
+  });
+
+  const initialLoaderImg = document.getElementById('globalPageLoaderImg');
+  if (initialLoaderImg) {
+    initialLoaderImg.addEventListener('error', () => {
+      // Fall back safely without breaking the page if an intermediary drops the GIF asset
+      if (navigator.onLine === false) {
+        window.showGlobalLoaderError('Unable to load application resources while offline. Please retry.', () => {
+          window.location.reload();
+        });
+      }
+    });
+  }
+
+  const startTs = window.__loaderStartTs || Date.now();
+  let initialHideDone = false;
+  function completeInitialPageLoad() {
+    if (initialHideDone) return;
+    initialHideDone = true;
+    const elapsed = Date.now() - startTs;
+    const minDisplayMs = 320;
+    const delay = elapsed < minDisplayMs ? (minDisplayMs - elapsed) : 0;
+    setTimeout(() => {
+      window.hideGlobalLoader();
+    }, delay);
+  }
+
+  if (document.readyState === 'complete') {
+    completeInitialPageLoad();
+  } else {
+    window.addEventListener('load', completeInitialPageLoad, { once: true });
+    // Failsafe in case external CDN resources (e.g. fonts/icons) hang while local app content is ready
+    setTimeout(() => {
+      if (!initialHideDone && document.readyState !== 'loading') {
+        completeInitialPageLoad();
+      }
+    }, 3500);
+  }
 });
