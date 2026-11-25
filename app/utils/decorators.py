@@ -63,15 +63,18 @@ def role_required(*allowed_roles):
                 flash("Please sign in to access this section.", "warning")
                 return redirect(url_for('auth.login', next=_relative_next_path()))
 
-            user = db.session.get(User, user_id)
-            if not user or not user.is_active:
-                session.clear()
-                if _is_api_or_ajax():
-                    return jsonify({'success': False, 'message': 'Account inactive or unavailable.'}), 401
-                flash("Your account is inactive. Please contact support.", "danger")
-                return redirect(url_for('auth.login'))
-
-            g.user = user
+            cached_user = getattr(g, 'user', None)
+            if cached_user is not None and getattr(cached_user, 'id', None) == user_id and cached_user.is_active:
+                user = cached_user
+            else:
+                user = db.session.get(User, user_id)
+                if not user or not user.is_active:
+                    session.clear()
+                    if _is_api_or_ajax():
+                        return jsonify({'success': False, 'message': 'Account inactive or unavailable.'}), 401
+                    flash("Your account is inactive. Please contact support.", "danger")
+                    return redirect(url_for('auth.login'))
+                g.user = user
 
             if user.role not in allowed_roles:
                 if _is_api_or_ajax():

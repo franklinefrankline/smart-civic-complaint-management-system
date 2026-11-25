@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from sqlalchemy import func, case
 from app import db
 from app.models.complaint import Complaint
 from app.models.workflow import ComplaintStatusHistory, ComplaintAssignment, Worker
@@ -204,35 +205,37 @@ def create_complaint(citizen_id, title, description, category_id, priority,
                 remarks='Initial proof uploaded during complaint creation'
             )
             db.session.add(attachment_record)
-            
-    db.session.commit()
-    
-    # In-app notifications
+
+    # In-app notifications & audit log committed in a single database transaction
     create_notification(
         user_id=citizen_id,
         complaint_id=complaint.id,
         title="Complaint Submitted Successfully",
         message=f"Your complaint '{title}' was received. Reference ID: {complaint.complaint_ref}",
         link=f"/citizen/complaints/{complaint.id}",
-        notification_type='complaint_created'
+        notification_type='complaint_created',
+        commit=False,
     )
-    
+
     notify_admins(
         title=f"New Complaint: {complaint.complaint_ref}",
         message=f"New complaint submitted in '{cat.name}': {title}",
         link=f"/admin/complaints/{complaint.id}",
         notification_type='new_complaint',
-        complaint_id=complaint.id
+        complaint_id=complaint.id,
+        commit=False,
     )
-        
+
     log_action(
         user_id=citizen_id,
         action='CREATE_COMPLAINT',
         entity_type='complaint',
         entity_id=complaint.id,
-        details={'ref': complaint.complaint_ref, 'category': cat.name, 'priority': priority}
+        details={'ref': complaint.complaint_ref, 'category': cat.name, 'priority': priority},
+        commit=False,
     )
-    
+
+    db.session.commit()
     return complaint
 
 def transition_complaint_status(complaint, new_status, user, remarks=None, rejection_reason=None, notify_citizen=True, notify_admin_on_staff_action=True):
@@ -281,8 +284,7 @@ def transition_complaint_status(complaint, new_status, user, remarks=None, rejec
         remarks=remarks
     )
     db.session.add(hist)
-    db.session.commit()
-    
+
     # Notify Citizen of status update (skip only if caller dispatches a custom notification)
     status_display = new_status.replace('_', ' ')
     if notify_citizen:
@@ -292,7 +294,8 @@ def transition_complaint_status(complaint, new_status, user, remarks=None, rejec
             title=f"Status Update: {complaint.complaint_ref}",
             message=f"Your complaint is now '{status_display}'. Remarks: {remarks or 'No remarks provided'}",
             link=f"/citizen/complaints/{complaint.id}",
-            notification_type='status_changed'
+            notification_type='status_changed',
+            commit=False,
         )
 
     # Notify Admins when non-admin staff (Officer/Worker) transitions key workflow statuses
@@ -302,17 +305,20 @@ def transition_complaint_status(complaint, new_status, user, remarks=None, rejec
             message=f"{user.full_name} ({role.title()}) updated {complaint.complaint_ref} to '{status_display}'. {remarks or ''}".strip(),
             link=f"/admin/complaints/{complaint.id}",
             notification_type='status_changed',
-            complaint_id=complaint.id
+            complaint_id=complaint.id,
+            commit=False,
         )
-    
+
     log_action(
         user_id=user.id,
         action='UPDATE_STATUS',
         entity_type='complaint',
         entity_id=complaint.id,
-        details={'from': old_status, 'to': new_status, 'remarks': remarks}
+        details={'from': old_status, 'to': new_status, 'remarks': remarks},
+        commit=False,
     )
-    
+
+    db.session.commit()
     return complaint
 
 def assign_department_officer(complaint, department_id, officer_id, assigned_by_admin, admin_remarks=None):
@@ -358,35 +364,37 @@ def assign_department_officer(complaint, department_id, officer_id, assigned_by_
         remarks=f"Administrator assigned to {dept.name} (Officer: {officer.full_name}). Remarks: {admin_remarks or 'None'}"
     )
     db.session.add(hist)
-    db.session.commit()
-    
-    # Notify Department Officer
+
+    # Notify Department Officer & Citizen + Audit in one atomic commit
     create_notification(
         user_id=officer.id,
         complaint_id=complaint.id,
         title=f"New Complaint Assigned: {complaint.complaint_ref}",
         message=f"Administrator assigned {complaint.complaint_ref} ('{complaint.title}') to your department queue. Remarks: {admin_remarks or 'None'}",
         link=f"/officer/complaints/{complaint.id}",
-        notification_type='assignment'
+        notification_type='assignment',
+        commit=False,
     )
-    
-    # Notify Citizen
+
     create_notification(
         user_id=complaint.citizen_id,
         complaint_id=complaint.id,
         title="Department Assigned",
         message=f"Your complaint {complaint.complaint_ref} has been reviewed by the Administrator and assigned to the {dept.name} department.",
         link=f"/citizen/complaints/{complaint.id}",
-        notification_type='status_changed'
+        notification_type='status_changed',
+        commit=False,
     )
-    
+
     log_action(
         user_id=assigned_by_admin.id,
         action='ASSIGN_DEPARTMENT_OFFICER',
         entity_type='complaint',
         entity_id=complaint.id,
-        details={'dept_id': department_id, 'officer_id': officer_id, 'remarks': admin_remarks}
+        details={'dept_id': department_id, 'officer_id': officer_id, 'remarks': admin_remarks},
+        commit=False,
     )
+    db.session.commit()
     return assignment
 
 def assign_complaint_to_worker(complaint, worker_user_id, assigned_by_user, instructions=None):
@@ -432,48 +440,50 @@ def assign_complaint_to_worker(complaint, worker_user_id, assigned_by_user, inst
         remarks=f"Assigned to Field Technician {worker.user.full_name}. Instructions: {instructions or 'None'}"
     )
     db.session.add(hist)
-    db.session.commit()
-    
+
     dept_name = complaint.department.name if complaint.department else (worker.department.name if worker.department else 'Civic Department')
 
-    # Notify Worker with complaint ID, location, department, and instructions
+    # Notify Worker, Citizen, Admins + Audit in one atomic commit
     create_notification(
         user_id=worker_user_id,
         complaint_id=complaint.id,
         title=f"New Field Task Assigned: {complaint.complaint_ref}",
         message=f"Complaint {complaint.complaint_ref} ('{complaint.title}') | Dept: {dept_name} | Location: {complaint.full_address} | Instructions: {instructions or 'Standard inspection & repair'}",
         link=f"/worker/tasks/{complaint.id}",
-        notification_type='assignment'
+        notification_type='assignment',
+        commit=False,
     )
-    
-    # Notify Citizen
+
     create_notification(
         user_id=complaint.citizen_id,
         complaint_id=complaint.id,
         title="Field Technician Assigned",
         message=f"A field technician ({worker.user.full_name}) has been dispatched to address your complaint {complaint.complaint_ref}.",
         link=f"/citizen/complaints/{complaint.id}",
-        notification_type='status_changed'
+        notification_type='status_changed',
+        commit=False,
     )
 
-    # Notify Admins if assigned by an officer
     if assigned_by_user.role != 'admin':
         notify_admins(
             title=f"Worker Assigned: {complaint.complaint_ref}",
             message=f"Officer {assigned_by_user.full_name} assigned {complaint.complaint_ref} to technician {worker.user.full_name}.",
             link=f"/admin/complaints/{complaint.id}",
             notification_type='assignment',
-            complaint_id=complaint.id
+            complaint_id=complaint.id,
+            commit=False,
         )
-    
+
     log_action(
         user_id=assigned_by_user.id,
         action='ASSIGN_WORKER',
         entity_type='complaint',
         entity_id=complaint.id,
-        details={'worker_id': worker_user_id, 'instructions': instructions}
+        details={'worker_id': worker_user_id, 'instructions': instructions},
+        commit=False,
     )
-    
+
+    db.session.commit()
     return assignment
 
 def officer_verify_work(complaint, officer_user, action, remarks, rework_reason=None):
@@ -508,48 +518,48 @@ def officer_verify_work(complaint, officer_user, action, remarks, rework_reason=
             remarks=f"Verified and approved by Officer {officer_user.full_name}. Remarks: {remarks or 'Resolution approved'}"
         )
         db.session.add(hist)
-        db.session.commit()
-        
-        # Notify Citizen
+
         create_notification(
             user_id=complaint.citizen_id,
             complaint_id=complaint.id,
             title=f"Complaint Resolved: {complaint.complaint_ref}",
             message=f"Your complaint '{complaint.title}' has been successfully resolved and verified by Officer {officer_user.full_name}. Please rate our service.",
             link=f"/citizen/complaints/{complaint.id}",
-            notification_type='status_changed'
+            notification_type='status_changed',
+            commit=False,
         )
-        
-        # Notify Admin
+
         notify_admins(
             title=f"Complaint Resolved: {complaint.complaint_ref}",
             message=f"Officer {officer_user.full_name} verified and resolved {complaint.complaint_ref} ({complaint.title}).",
             link=f"/admin/complaints/{complaint.id}",
             notification_type='status_changed',
-            complaint_id=complaint.id
+            complaint_id=complaint.id,
+            commit=False,
         )
-        
+
         log_action(
             user_id=officer_user.id,
             action='VERIFY_RESOLVE',
             entity_type='complaint',
             entity_id=complaint.id,
-            details={'remarks': remarks}
+            details={'remarks': remarks},
+            commit=False,
         )
-        
+        db.session.commit()
+
     elif action == 'rework':
         if not rework_reason or not rework_reason.strip():
             raise ValueError("A reason is mandatory when returning work for correction.")
-            
+
         complaint.status = 'Rework Required'
         complaint.verification_remarks = rework_reason.strip()
         complaint.updated_at = datetime.utcnow()
-        
-        # Update latest assignment
+
         latest_assign = complaint.assignments.order_by(ComplaintAssignment.id.desc()).first()
         if latest_assign:
             latest_assign.status = 'Returned'
-            
+
         hist = ComplaintStatusHistory(
             complaint_id=complaint.id,
             changed_by_user_id=officer_user.id,
@@ -558,9 +568,7 @@ def officer_verify_work(complaint, officer_user, action, remarks, rework_reason=
             remarks=f"Returned for rework by Officer {officer_user.full_name}. Reason: {rework_reason.strip()}"
         )
         db.session.add(hist)
-        db.session.commit()
-        
-        # Notify Field Worker
+
         if complaint.assigned_worker_id:
             create_notification(
                 user_id=complaint.assigned_worker_id,
@@ -568,35 +576,38 @@ def officer_verify_work(complaint, officer_user, action, remarks, rework_reason=
                 title=f"Rework Required: {complaint.complaint_ref}",
                 message=f"Officer {officer_user.full_name} returned task '{complaint.title}' for rework. Reason: {rework_reason.strip()}",
                 link=f"/worker/tasks/{complaint.id}",
-                notification_type='rework_required'
+                notification_type='rework_required',
+                commit=False,
             )
-            
-        # Notify Citizen
+
         create_notification(
             user_id=complaint.citizen_id,
             complaint_id=complaint.id,
             title="Work In Progress Revision",
             message=f"Department officer inspected your complaint {complaint.complaint_ref} and requested additional adjustments from the field team.",
             link=f"/citizen/complaints/{complaint.id}",
-            notification_type='status_changed'
+            notification_type='status_changed',
+            commit=False,
         )
 
-        # Notify Admins
         notify_admins(
             title=f"Rework Requested: {complaint.complaint_ref}",
             message=f"Officer {officer_user.full_name} requested rework on {complaint.complaint_ref}. Reason: {rework_reason.strip()}",
             link=f"/admin/complaints/{complaint.id}",
             notification_type='rework_required',
-            complaint_id=complaint.id
+            complaint_id=complaint.id,
+            commit=False,
         )
-        
+
         log_action(
             user_id=officer_user.id,
             action='RETURN_REWORK',
             entity_type='complaint',
             entity_id=complaint.id,
-            details={'reason': rework_reason.strip()}
+            details={'reason': rework_reason.strip()},
+            commit=False,
         )
+        db.session.commit()
     else:
         raise ValueError(f"Unknown verification action: {action}")
         
@@ -708,15 +719,68 @@ def get_complaint_9_stage_timeline(complaint):
     return stages
 
 
+def get_complaint_aggregate_counts(*filters):
+    """
+    Compute complaint dashboard KPIs in a SINGLE SQL aggregate query instead of
+    7-8 sequential COUNT(*) round-trips.
+    """
+    row = (
+        db.session.query(
+            func.count(Complaint.id).label('total'),
+            func.sum(case((Complaint.status == 'Submitted', 1), else_=0)).label('submitted'),
+            func.sum(case((Complaint.status.in_(['Submitted', 'Assigned to Department']), 1), else_=0)).label('officer_new'),
+            func.sum(case((Complaint.status.in_(PENDING_STATUSES), 1), else_=0)).label('pending'),
+            func.sum(case((Complaint.status.in_(['Submitted', 'Under Review', 'Assigned to Department']), 1), else_=0)).label('officer_pending'),
+            func.sum(case((Complaint.status.in_(IN_PROGRESS_STATUSES), 1), else_=0)).label('in_progress'),
+            func.sum(case((Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES), 1), else_=0)).label('assigned'),
+            func.sum(case((Complaint.status.in_(ACTIVE_WORK_STATUSES), 1), else_=0)).label('active_work'),
+            func.sum(case((Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES), 1), else_=0)).label('completed_pending'),
+            func.sum(case((Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES + ['Resolved']), 1), else_=0)).label('worker_completed'),
+            func.sum(case((Complaint.status == 'Resolved', 1), else_=0)).label('resolved'),
+            func.sum(case((Complaint.status == 'Rejected', 1), else_=0)).label('rejected'),
+            func.sum(case(((Complaint.is_escalated == True) | (Complaint.status == 'Escalated'), 1), else_=0)).label('overdue'),
+        )
+        .filter(*filters)
+        .one()
+    )
+    return {
+        'total': int(row.total or 0),
+        'submitted': int(row.submitted or 0),
+        'officer_new': int(row.officer_new or 0),
+        'pending': int(row.pending or 0),
+        'officer_pending': int(row.officer_pending or 0),
+        'in_progress': int(row.in_progress or 0),
+        'assigned': int(row.assigned or 0),
+        'active_work': int(row.active_work or 0),
+        'completed_pending': int(row.completed_pending or 0),
+        'worker_completed': int(row.worker_completed or 0),
+        'resolved': int(row.resolved or 0),
+        'rejected': int(row.rejected or 0),
+        'overdue': int(row.overdue or 0),
+    }
+
+
 def build_admin_analytics_payload():
     """
-    Build real-time municipal analytics across departments, categories, and workflow statuses.
-    Attributes complaints with department_id=None to their category's default department so
-    newly submitted grievances appear immediately in department metrics before manual triage.
+    Build real-time municipal analytics across departments, categories, and workflow statuses
+    using lightweight column projections and a single outer-join query (zero N+1 category loads).
     """
     departments = Department.query.order_by(Department.id.asc()).all()
     categories = ComplaintCategory.query.order_by(ComplaintCategory.id.asc()).all()
-    complaints = Complaint.query.all()
+    now = datetime.utcnow()
+
+    complaint_rows = (
+        db.session.query(
+            Complaint.department_id,
+            ComplaintCategory.department_id.label('cat_dept_id'),
+            Complaint.category_id,
+            Complaint.status,
+            Complaint.is_escalated,
+            Complaint.sla_due_date,
+        )
+        .outerjoin(ComplaintCategory, Complaint.category_id == ComplaintCategory.id)
+        .all()
+    )
 
     dept_buckets = {
         d.id: {
@@ -745,7 +809,7 @@ def build_admin_analytics_payload():
     }
     cat_counts = {c.id: 0 for c in categories}
 
-    total = len(complaints)
+    total = len(complaint_rows)
     pending_count = 0
     in_progress_count = 0
     resolved_count = 0
@@ -753,33 +817,38 @@ def build_admin_analytics_payload():
     escalated_count = 0
     overdue_count = 0
 
-    for c in complaints:
-        target_dept_id = c.department_id or (c.category.department_id if c.category else None)
+    for dept_id, cat_dept_id, cat_id, status, is_escalated, sla_due_date in complaint_rows:
+        target_dept_id = dept_id or cat_dept_id
         bucket = dept_buckets.get(target_dept_id) if target_dept_id else unassigned_bucket
         if bucket is None:
             bucket = unassigned_bucket
 
         bucket['total'] += 1
-        if c.status in PENDING_STATUSES:
+        if status in PENDING_STATUSES:
             pending_count += 1
             bucket['pending'] += 1
-        elif c.status in IN_PROGRESS_STATUSES:
+        elif status in IN_PROGRESS_STATUSES:
             in_progress_count += 1
             bucket['in_progress'] += 1
-        elif c.status == 'Resolved':
+        elif status == 'Resolved':
             resolved_count += 1
             bucket['resolved'] += 1
-        elif c.status == 'Rejected':
+        elif status == 'Rejected':
             rejected_count += 1
-        elif c.status == 'Escalated':
+        elif status == 'Escalated':
             escalated_count += 1
 
-        if c.is_overdue or c.is_escalated or c.status == 'Escalated':
+        is_row_overdue = (
+            (status not in ('Resolved', 'Rejected') and sla_due_date is not None and now > sla_due_date)
+            or bool(is_escalated)
+            or status == 'Escalated'
+        )
+        if is_row_overdue:
             overdue_count += 1
             bucket['overdue'] += 1
 
-        if c.category_id in cat_counts:
-            cat_counts[c.category_id] += 1
+        if cat_id in cat_counts:
+            cat_counts[cat_id] += 1
 
     dept_rows = []
     for d in departments:

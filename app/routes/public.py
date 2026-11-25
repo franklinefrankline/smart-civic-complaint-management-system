@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, g
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, g, jsonify
 from app import db
 from app.models.department import Department
 from app.models.category import ComplaintCategory
@@ -7,8 +7,9 @@ from app.models.user import User
 from app.models.feedback import Feedback
 from app.models.contact import ContactMessage
 
-from app.services.complaint_service import get_complaint_9_stage_timeline
+from app.services.complaint_service import get_complaint_9_stage_timeline, get_complaint_aggregate_counts
 from app.services.notification_service import notify_admins
+from app.utils.decorators import _is_api_or_ajax
 
 public_bp = Blueprint('public', __name__)
 
@@ -18,8 +19,9 @@ def index():
     categories = ComplaintCategory.query.filter_by(is_active=True).limit(8).all()
     
     # Live stats (aggregated directly in SQL)
-    total_complaints = Complaint.query.count()
-    resolved_complaints = Complaint.query.filter_by(status='Resolved').count()
+    counts = get_complaint_aggregate_counts()
+    total_complaints = counts['total']
+    resolved_complaints = counts['resolved']
     active_departments = len(departments)
 
     avg_rating_val = db.session.query(db.func.avg(Feedback.rating)).scalar()
@@ -93,7 +95,10 @@ def contact():
         message_text = (request.form.get('message') or '').strip()
 
         if not name or not contact_info or not message_text:
-            flash("Please enter your name, email/phone, and inquiry message.", "danger")
+            err_msg = "Please enter your name, contact info, and inquiry message."
+            if _is_api_or_ajax():
+                return jsonify({'success': False, 'message': err_msg}), 400
+            flash(err_msg, "danger")
             return redirect(url_for('public.contact'))
 
         user_id = session.get('user_id')
@@ -105,7 +110,6 @@ def contact():
             is_read=False,
         )
         db.session.add(msg)
-        db.session.commit()
 
         preview = (message_text[:160] + '...') if len(message_text) > 160 else message_text
         notify_admins(
@@ -113,9 +117,14 @@ def contact():
             message=f"From {name} ({contact_info}): {preview}",
             notification_type='info',
             link=url_for('admin.dashboard') + '#contactInquiriesCard',
+            commit=False,
         )
+        db.session.commit()
 
-        flash("Thank you for reaching out. Your inquiry has been sent to the civic administration dashboard.", "success")
+        ok_msg = "Thank you for reaching out. Your inquiry has been sent to the civic administration dashboard."
+        if _is_api_or_ajax():
+            return jsonify({'success': True, 'message': ok_msg})
+        flash(ok_msg, "success")
         return redirect(url_for('public.contact'))
     return render_template('public/contact.html')
 

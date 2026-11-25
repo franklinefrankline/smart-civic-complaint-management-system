@@ -4,6 +4,9 @@ from app import db
 
 class ContactMessage(db.Model):
     __tablename__ = 'contact_messages'
+    __table_args__ = (
+        db.Index('idx_contact_read_created', 'is_read', 'created_at'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)

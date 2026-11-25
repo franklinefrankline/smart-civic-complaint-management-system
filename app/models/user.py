@@ -4,6 +4,10 @@ from app import db
 
 class User(db.Model):
     __tablename__ = 'users'
+    __table_args__ = (
+        db.Index('idx_users_role_active', 'role', 'is_active'),
+        db.Index('idx_users_dept', 'department_id'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     role = db.Column(db.Enum('citizen', 'admin', 'officer', 'worker'), nullable=False, default='citizen')

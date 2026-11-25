@@ -82,6 +82,45 @@ def _run_safe_schema_migrations(app):
             if 'idx_notif_complaint' not in existing_indexes:
                 conn.execute(text('CREATE INDEX idx_notif_complaint ON notifications (complaint_id)'))
 
+        # Non-destructive performance indexes for existing production tables
+        index_specs = {
+            'complaints': [
+                ('idx_comp_status', 'status'),
+                ('idx_comp_citizen_created', 'citizen_id, created_at'),
+                ('idx_comp_dept_status_created', 'department_id, status, created_at'),
+                ('idx_comp_officer_created', 'assigned_officer_id, created_at'),
+                ('idx_comp_worker', 'assigned_worker_id'),
+                ('idx_comp_category', 'category_id'),
+                ('idx_comp_priority', 'priority'),
+                ('idx_comp_created', 'created_at'),
+                ('idx_comp_updated', 'updated_at'),
+            ],
+            'complaint_assignments': [
+                ('idx_assign_to_status', 'assigned_to_user_id, status'),
+                ('idx_assign_complaint', 'complaint_id'),
+            ],
+            'complaint_status_history': [
+                ('idx_hist_complaint_created', 'complaint_id, created_at'),
+            ],
+            'users': [
+                ('idx_users_role_active', 'role, is_active'),
+                ('idx_users_dept', 'department_id'),
+            ],
+            'contact_messages': [
+                ('idx_contact_read_created', 'is_read, created_at'),
+            ],
+        }
+        for tbl_name, idx_list in index_specs.items():
+            if tbl_name not in table_names:
+                continue
+            existing_tbl_indexes = {idx['name'] for idx in inspector.get_indexes(tbl_name)}
+            for idx_name, cols_expr in idx_list:
+                if idx_name not in existing_tbl_indexes:
+                    try:
+                        conn.execute(text(f'CREATE INDEX {idx_name} ON {tbl_name} ({cols_expr})'))
+                    except Exception:
+                        pass
+
 
 def _wants_json_response():
     return (
@@ -165,25 +204,33 @@ def create_app(config_name=None):
     # Context processor for templates
     @app.context_processor
     def inject_global_data():
+        if request.path.startswith('/api/') or request.path.startswith('/static/'):
+            return {}
+
         from app.utils.translations import get_translation
         from app.models.user import User
         from app.models.notification import Notification
 
         current_lang = session.get('lang', 'en')
 
-        user = None
         user_id = session.get('user_id')
+        cached_user = getattr(g, 'user', None)
+        user = cached_user if (user_id and cached_user is not None and getattr(cached_user, 'id', None) == user_id) else None
         unread_notifications_count = 0
-        if user_id:
+        if user is None and user_id:
             try:
                 user = db.session.get(User, user_id)
-                if user:
-                    unread_notifications_count = Notification.query.filter_by(
-                        user_id=user.id, is_read=False
-                    ).count()
             except Exception:
                 db.session.rollback()
                 user = None
+
+        if user:
+            try:
+                unread_notifications_count = Notification.query.filter_by(
+                    user_id=user.id, is_read=False
+                ).count()
+            except Exception:
+                db.session.rollback()
 
         def t(key, default=None):
             return get_translation(key, current_lang, default)

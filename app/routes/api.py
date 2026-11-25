@@ -12,6 +12,7 @@ from app.services.complaint_service import (
     find_potential_duplicates,
     suggest_department_by_category,
     build_admin_analytics_payload,
+    get_complaint_aggregate_counts,
     PENDING_STATUSES,
     IN_PROGRESS_STATUSES,
 )
@@ -42,18 +43,13 @@ def api_health():
 
 @api_bp.route('/stats/summary')
 def stats_summary():
-    total = Complaint.query.count()
-    resolved = Complaint.query.filter_by(status='Resolved').count()
-    pending = Complaint.query.filter(Complaint.status.in_(PENDING_STATUSES)).count()
-    in_progress = Complaint.query.filter(Complaint.status.in_(IN_PROGRESS_STATUSES)).count()
-    overdue = Complaint.query.filter_by(is_escalated=True).count()
-
+    counts = get_complaint_aggregate_counts()
     return jsonify({
-        'total': total,
-        'resolved': resolved,
-        'pending': pending,
-        'in_progress': in_progress,
-        'overdue': overdue
+        'total': counts['total'],
+        'resolved': counts['resolved'],
+        'pending': counts['pending'],
+        'in_progress': counts['in_progress'],
+        'overdue': counts['overdue']
     })
 
 

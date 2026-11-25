@@ -1,5 +1,6 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g, jsonify
+from sqlalchemy.orm import joinedload
 from app import db
 from app.models.complaint import Complaint
 from app.models.workflow import ComplaintAssignment, Worker, ComplaintStatusHistory
@@ -7,6 +8,7 @@ from app.models.attachment import ComplaintAttachment
 from app.services.complaint_service import (
     transition_complaint_status,
     get_complaint_9_stage_timeline,
+    get_complaint_aggregate_counts,
     ASSIGNED_TO_WORKER_STATUSES,
     ACTIVE_WORK_STATUSES,
     COMPLETED_PENDING_VERIF_STATUSES,
@@ -14,7 +16,7 @@ from app.services.complaint_service import (
 from app.services.notification_service import create_notification, notify_admins, notify_department_officers
 from app.services.audit_service import log_action
 from app.utils.helpers import save_uploaded_file
-from app.utils.decorators import login_required, role_required
+from app.utils.decorators import login_required, role_required, _is_api_or_ajax
 
 worker_bp = Blueprint('worker', __name__)
 
@@ -27,29 +29,34 @@ def before_request():
 @worker_bp.route('/dashboard')
 def dashboard():
     worker_user_id = g.user.id
-    
-    # Query tasks assigned to this worker
-    assignments = ComplaintAssignment.query.filter_by(assigned_to_user_id=worker_user_id).all()
-    assigned_complaint_ids = [a.complaint_id for a in assignments]
-    
-    query = Complaint.query.filter(Complaint.id.in_(assigned_complaint_ids)) if assigned_complaint_ids else Complaint.query.filter_by(id=-1)
-    
-    total = query.count()
-    new_tasks = query.filter(Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES)).count()
-    in_progress = query.filter(Complaint.status.in_(ACTIVE_WORK_STATUSES)).count()
-    completed = query.filter(Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES + ['Resolved'])).count()
-    
-    active_tasks = query.filter(
-        Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES + ACTIVE_WORK_STATUSES)
-    ).order_by(Complaint.priority.desc()).all()
-    
+    assigned_complaint_ids = [
+        r[0]
+        for r in db.session.query(ComplaintAssignment.complaint_id)
+        .filter_by(assigned_to_user_id=worker_user_id)
+        .distinct()
+        .all()
+    ]
+
+    if assigned_complaint_ids:
+        counts = get_complaint_aggregate_counts(Complaint.id.in_(assigned_complaint_ids))
+        active_tasks = (
+            Complaint.query.filter(Complaint.id.in_(assigned_complaint_ids))
+            .filter(Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES + ACTIVE_WORK_STATUSES))
+            .options(joinedload(Complaint.category), joinedload(Complaint.department))
+            .order_by(Complaint.priority.desc())
+            .all()
+        )
+    else:
+        counts = get_complaint_aggregate_counts(Complaint.id == -1)
+        active_tasks = []
+
     stats = {
-        'total': total,
-        'new_tasks': new_tasks,
-        'in_progress': in_progress,
-        'completed': completed
+        'total': counts['total'],
+        'new_tasks': counts['assigned'],
+        'in_progress': counts['active_work'],
+        'completed': counts['worker_completed']
     }
-    
+
     return render_template(
         'worker/dashboard.html',
         stats=stats,
@@ -60,11 +67,20 @@ def dashboard():
 @worker_bp.route('/task', strict_slashes=False)
 def tasks():
     worker_user_id = g.user.id
-    assignments = ComplaintAssignment.query.filter_by(assigned_to_user_id=worker_user_id).all()
-    assigned_complaint_ids = [a.complaint_id for a in assignments]
-    
-    query = Complaint.query.filter(Complaint.id.in_(assigned_complaint_ids)) if assigned_complaint_ids else Complaint.query.filter_by(id=-1)
-    
+    assigned_complaint_ids = [
+        r[0]
+        for r in db.session.query(ComplaintAssignment.complaint_id)
+        .filter_by(assigned_to_user_id=worker_user_id)
+        .distinct()
+        .all()
+    ]
+
+    query = (
+        Complaint.query.filter(Complaint.id.in_(assigned_complaint_ids))
+        .options(joinedload(Complaint.category), joinedload(Complaint.department))
+        if assigned_complaint_ids else Complaint.query.filter_by(id=-1)
+    )
+
     status = request.args.get('status')
     if status:
         if status in ASSIGNED_TO_WORKER_STATUSES:
@@ -75,16 +91,17 @@ def tasks():
             query = query.filter(Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES))
         else:
             query = query.filter_by(status=status)
-        
+
     search = request.args.get('search', '').strip()
     if search:
         query = query.filter(
             (Complaint.complaint_ref.ilike(f'%{search}%')) |
             (Complaint.title.ilike(f'%{search}%'))
         )
-        
-    task_list = query.order_by(Complaint.created_at.desc()).all()
-    return render_template('worker/tasks.html', tasks=task_list, current_status=status, search_query=search)
+
+    page = max(1, request.args.get('page', 1, type=int))
+    pagination = query.order_by(Complaint.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
+    return render_template('worker/tasks.html', tasks=pagination.items, pagination=pagination, current_status=status, search_query=search)
 
 @worker_bp.route('/tasks/<int:complaint_id>', methods=['GET', 'POST'], strict_slashes=False)
 @worker_bp.route('/task/<int:complaint_id>', methods=['GET', 'POST'], strict_slashes=False)
@@ -107,20 +124,30 @@ def task_detail(complaint_id):
     if request.method == 'POST':
         action = request.form.get('action')
         remarks = request.form.get('remarks', '').strip()
-        
+        is_ajax = _is_api_or_ajax()
+        success_msg = None
+
         try:
             if action == 'start_work':
-                # Worker starts field work (notifies Citizen & Admins via transition_complaint_status)
-                transition_complaint_status(complaint, 'In Progress', g.user, remarks=remarks or "Field technician started site work.")
-                assignment.status = 'In Progress'
+                # Worker starts field work in one atomic transaction
+                old_status = complaint.status
+                complaint.status = 'In Progress'
                 complaint.updated_at = datetime.utcnow()
+                assignment.status = 'In Progress'
 
-                # Check for "Before Work" image
+                db.session.add(ComplaintStatusHistory(
+                    complaint_id=complaint.id,
+                    changed_by_user_id=g.user.id,
+                    previous_status=old_status,
+                    new_status='In Progress',
+                    remarks=remarks or "Field technician started site work."
+                ))
+
                 before_img = request.files.get('before_image')
                 if before_img and before_img.filename != '':
                     saved = save_uploaded_file(before_img, 'proofs')
                     if saved:
-                        att = ComplaintAttachment(
+                        db.session.add(ComplaintAttachment(
                             complaint_id=complaint.id,
                             uploaded_by_user_id=g.user.id,
                             attachment_type='before_work',
@@ -131,12 +158,26 @@ def task_detail(complaint_id):
                             mime_type=saved['mime_type'],
                             file_data=saved.get('file_data'),
                             remarks='Pre-work site condition'
-                        )
-                        db.session.add(att)
+                        ))
 
-                db.session.commit()
-
-                # Notify Department Officer that worker started work
+                start_remarks = remarks or "Field technician started site work."
+                create_notification(
+                    user_id=complaint.citizen_id,
+                    complaint_id=complaint.id,
+                    title=f"Status Update: {complaint.complaint_ref}",
+                    message=f"Your complaint is now 'In Progress'. Remarks: {start_remarks}",
+                    link=f"/citizen/complaints/{complaint.id}",
+                    notification_type='status_changed',
+                    commit=False,
+                )
+                notify_admins(
+                    title=f"In Progress: {complaint.complaint_ref}",
+                    message=f"{g.user.full_name} (Worker) updated {complaint.complaint_ref} to 'In Progress'. {start_remarks}",
+                    link=f"/admin/complaints/{complaint.id}",
+                    notification_type='status_changed',
+                    complaint_id=complaint.id,
+                    commit=False,
+                )
                 if complaint.assigned_officer_id:
                     create_notification(
                         complaint.assigned_officer_id,
@@ -144,7 +185,8 @@ def task_detail(complaint_id):
                         f"Field technician {g.user.full_name} started work on '{complaint.title}'.",
                         link=f"/officer/complaints/{complaint.id}",
                         notification_type='status_changed',
-                        complaint_id=complaint.id
+                        complaint_id=complaint.id,
+                        commit=False,
                     )
                 elif complaint.department_id:
                     notify_department_officers(
@@ -153,14 +195,25 @@ def task_detail(complaint_id):
                         f"Field technician {g.user.full_name} started work on '{complaint.title}'.",
                         link=f"/officer/complaints/{complaint.id}",
                         notification_type='status_changed',
-                        complaint_id=complaint.id
+                        complaint_id=complaint.id,
+                        commit=False,
                     )
-
-                flash("Task marked In Progress.", "success")
+                log_action(
+                    user_id=g.user.id,
+                    action='UPDATE_STATUS',
+                    entity_type='complaint',
+                    entity_id=complaint.id,
+                    details={'from': old_status, 'to': 'In Progress', 'remarks': start_remarks},
+                    commit=False,
+                )
+                db.session.commit()
+                success_msg = "Task marked In Progress."
 
             elif action == 'update_progress':
                 progress_notes = request.form.get('progress_notes', '').strip()
                 if not progress_notes:
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': "Please provide progress details."}), 400
                     flash("Please provide progress details.", "danger")
                     return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
                 hist = ComplaintStatusHistory(
@@ -172,7 +225,6 @@ def task_detail(complaint_id):
                 )
                 complaint.updated_at = datetime.utcnow()
                 db.session.add(hist)
-                db.session.commit()
                 if complaint.assigned_officer_id:
                     create_notification(
                         complaint.assigned_officer_id,
@@ -180,29 +232,33 @@ def task_detail(complaint_id):
                         f"Field worker {g.user.full_name} posted progress: {progress_notes}",
                         link=f"/officer/complaints/{complaint.id}",
                         notification_type='status_changed',
-                        complaint_id=complaint.id
+                        complaint_id=complaint.id,
+                        commit=False,
                     )
-                flash("Progress update recorded successfully.", "info")
+                db.session.commit()
+                success_msg = "Progress update recorded successfully."
 
             elif action == 'submit_completion':
-                # Worker finishes work and submits for officer verification
                 if not remarks:
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': "Please provide completion notes describing work executed."}), 400
                     flash("Please provide completion notes describing work executed.", "danger")
                     return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
 
                 after_img = request.files.get('after_image')
                 if not after_img or after_img.filename == '':
-                    # Check if an after_work image was already uploaded earlier
                     existing_after = ComplaintAttachment.query.filter_by(
                         complaint_id=complaint.id, attachment_type='after_work'
                     ).first()
                     if not existing_after:
+                        if is_ajax:
+                            return jsonify({'success': False, 'message': "A completed work photo (after-work proof) is required for submission."}), 400
                         flash("A completed work photo (after-work proof) is required for submission.", "danger")
                         return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
                 else:
                     saved = save_uploaded_file(after_img, 'proofs')
                     if saved:
-                        att = ComplaintAttachment(
+                        db.session.add(ComplaintAttachment(
                             complaint_id=complaint.id,
                             uploaded_by_user_id=g.user.id,
                             attachment_type='after_work',
@@ -213,24 +269,22 @@ def task_detail(complaint_id):
                             mime_type=saved['mime_type'],
                             file_data=saved.get('file_data'),
                             remarks='Completed work site photo'
-                        )
-                        db.session.add(att)
+                        ))
 
-                # Transition status without duplicating Citizen/Admin notifications
-                transition_complaint_status(
-                    complaint,
-                    'Verification Pending',
-                    g.user,
-                    remarks=f"Work completed: {remarks}. Awaiting officer verification.",
-                    notify_citizen=False,
-                    notify_admin_on_staff_action=False
-                )
+                old_status = complaint.status
+                comp_remarks = f"Work completed: {remarks}. Awaiting officer verification."
+                complaint.status = 'Verification Pending'
                 assignment.status = 'Completed'
                 assignment.completed_at = datetime.utcnow()
                 complaint.updated_at = datetime.utcnow()
-                db.session.commit()
+                db.session.add(ComplaintStatusHistory(
+                    complaint_id=complaint.id,
+                    changed_by_user_id=g.user.id,
+                    previous_status=old_status,
+                    new_status='Verification Pending',
+                    remarks=comp_remarks
+                ))
 
-                # Notify Department Officer (single dedicated notification)
                 if complaint.assigned_officer_id:
                     create_notification(
                         complaint.assigned_officer_id,
@@ -238,7 +292,8 @@ def task_detail(complaint_id):
                         f"Worker {g.user.full_name} has completed work on '{complaint.title}' and submitted verification evidence.",
                         link=f"/officer/complaints/{complaint.id}",
                         notification_type='verification_pending',
-                        complaint_id=complaint.id
+                        complaint_id=complaint.id,
+                        commit=False,
                     )
                 elif complaint.department_id:
                     notify_department_officers(
@@ -247,34 +302,56 @@ def task_detail(complaint_id):
                         f"Worker {g.user.full_name} has completed work on '{complaint.title}' and submitted verification evidence.",
                         link=f"/officer/complaints/{complaint.id}",
                         notification_type='verification_pending',
-                        complaint_id=complaint.id
+                        complaint_id=complaint.id,
+                        commit=False,
                     )
 
-                # Notify Citizen (single dedicated notification)
                 create_notification(
                     complaint.citizen_id,
                     f"Work Completed: {complaint.complaint_ref}",
                     f"Field repairs for '{complaint.title}' are complete and currently undergoing department officer verification.",
                     link=f"/citizen/complaints/{complaint.id}",
                     notification_type='status_changed',
-                    complaint_id=complaint.id
+                    complaint_id=complaint.id,
+                    commit=False,
                 )
 
-                # Notify Admins (single dedicated notification)
                 notify_admins(
                     title=f"Completion Evidence Submitted: {complaint.complaint_ref}",
                     message=f"Technician {g.user.full_name} submitted completion evidence for {complaint.complaint_ref}. Pending officer verification.",
                     link=f"/admin/complaints/{complaint.id}",
                     notification_type='verification_pending',
-                    complaint_id=complaint.id
+                    complaint_id=complaint.id,
+                    commit=False,
                 )
 
-                flash("Work submitted successfully! Now pending officer verification.", "success")
-                
+                log_action(
+                    user_id=g.user.id,
+                    action='UPDATE_STATUS',
+                    entity_type='complaint',
+                    entity_id=complaint.id,
+                    details={'from': old_status, 'to': 'Verification Pending', 'remarks': comp_remarks},
+                    commit=False,
+                )
+                db.session.commit()
+                success_msg = "Work submitted successfully! Now pending officer verification."
+
+            if is_ajax:
+                return jsonify({
+                    'success': True,
+                    'message': success_msg or "Task updated.",
+                    'status': complaint.status,
+                    'reload_sections': True
+                })
+            if success_msg:
+                flash(success_msg, "info" if action == 'update_progress' else "success")
+
         except Exception as e:
             db.session.rollback()
+            if is_ajax:
+                return jsonify({'success': False, 'message': f"Update failed: {str(e)}"}), 400
             flash(f"Update failed: {str(e)}", "danger")
-            
+
         return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
         
     stages = get_complaint_9_stage_timeline(complaint)
@@ -316,6 +393,9 @@ def profile():
             user.is_password_reset_required = False
             user.password_changed_at = datetime.utcnow()
         db.session.commit()
-        flash("Worker profile updated successfully.", "success")
+        msg = "Worker profile updated successfully."
+        if _is_api_or_ajax():
+            return jsonify({'success': True, 'message': msg})
+        flash(msg, "success")
         return redirect(url_for('worker.profile'))
     return render_template('worker/profile.html', user=user)

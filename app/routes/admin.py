@@ -2,6 +2,8 @@ import csv
 import io
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, Response, jsonify
+from sqlalchemy import func, case
+from sqlalchemy.orm import joinedload
 from app import db
 from app.models.complaint import Complaint
 from app.models.department import Department
@@ -18,12 +20,13 @@ from app.services.complaint_service import (
     assign_complaint_to_worker,
     assign_department_officer,
     get_complaint_9_stage_timeline,
+    get_complaint_aggregate_counts,
     build_admin_analytics_payload,
     PENDING_STATUSES,
     IN_PROGRESS_STATUSES,
 )
 from app.services.audit_service import log_action
-from app.utils.decorators import login_required, role_required
+from app.utils.decorators import login_required, role_required, _is_api_or_ajax
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -35,49 +38,71 @@ def before_request():
 
 @admin_bp.route('/dashboard')
 def dashboard():
-    total_citizens = User.query.filter_by(role='citizen').count()
-    total_complaints = Complaint.query.count()
-    new_complaints = Complaint.query.filter_by(status='Submitted').count()
-    pending = Complaint.query.filter(Complaint.status.in_(PENDING_STATUSES)).count()
-    in_progress = Complaint.query.filter(Complaint.status.in_(IN_PROGRESS_STATUSES)).count()
-    resolved = Complaint.query.filter_by(status='Resolved').count()
-    rejected = Complaint.query.filter_by(status='Rejected').count()
-    overdue = Complaint.query.filter((Complaint.is_escalated == True) | (Complaint.status == 'Escalated')).count()
-    
-    recent_complaints = Complaint.query.order_by(Complaint.created_at.desc()).limit(7).all()
-    recent_activities = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(8).all()
-    
+    # Single SQL aggregate for all complaint dashboard KPIs (replaces 8 COUNT queries)
+    counts = get_complaint_aggregate_counts()
+
+    # Single SQL aggregate for citizen count and pending password resets
+    user_row = db.session.query(
+        func.sum(case((User.role == 'citizen', 1), else_=0)).label('citizens'),
+        func.sum(case((User.is_password_reset_required == True, 1), else_=0)).label('resets'),
+    ).one()
+
+    recent_complaints = (
+        Complaint.query.options(
+            joinedload(Complaint.category),
+            joinedload(Complaint.department),
+            joinedload(Complaint.citizen),
+        )
+        .order_by(Complaint.created_at.desc())
+        .limit(7)
+        .all()
+    )
+    recent_activities = (
+        AuditLog.query.options(joinedload(AuditLog.user))
+        .order_by(AuditLog.created_at.desc())
+        .limit(8)
+        .all()
+    )
+
     analytics = build_admin_analytics_payload()
     dept_labels = [r['name'] for r in analytics['dept_rows']]
     dept_complaint_counts = [r['total'] for r in analytics['dept_rows']]
     cat_labels = analytics['cat_labels'] if analytics['cat_labels'] else analytics['all_cat_labels'][:6]
     cat_counts = analytics['cat_totals'] if analytics['cat_totals'] else analytics['all_cat_totals'][:6]
-    
-    pending_password_resets = User.query.filter_by(is_password_reset_required=True).count()
-    
+
     stats = {
-        'citizens': total_citizens,
-        'total': total_complaints,
-        'new': new_complaints,
-        'pending': pending,
-        'in_progress': in_progress,
-        'resolved': resolved,
-        'rejected': rejected,
-        'overdue': overdue,
-        'pending_password_resets': pending_password_resets
+        'citizens': int(user_row.citizens or 0),
+        'total': counts['total'],
+        'new': counts['submitted'],
+        'pending': counts['pending'],
+        'in_progress': counts['in_progress'],
+        'resolved': counts['resolved'],
+        'rejected': counts['rejected'],
+        'overdue': counts['overdue'],
+        'pending_password_resets': int(user_row.resets or 0)
     }
-    
+
     chart_data = {
         'dept_labels': dept_labels,
         'dept_counts': dept_complaint_counts,
         'cat_labels': cat_labels,
         'cat_counts': cat_counts,
-        'status_counts': [pending, in_progress, resolved, rejected]
+        'status_counts': [counts['pending'], counts['in_progress'], counts['resolved'], counts['rejected']]
     }
-    
-    new_complaints_queue = Complaint.query.filter(
-        (Complaint.status == 'Submitted') | (Complaint.assigned_officer_id.is_(None))
-    ).order_by(Complaint.created_at.desc()).all()
+
+    new_complaints_queue = (
+        Complaint.query.filter(
+            (Complaint.status == 'Submitted') | (Complaint.assigned_officer_id.is_(None))
+        )
+        .options(
+            joinedload(Complaint.category),
+            joinedload(Complaint.department),
+            joinedload(Complaint.citizen),
+        )
+        .order_by(Complaint.created_at.desc())
+        .limit(50)
+        .all()
+    )
 
     contact_messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).limit(20).all()
     unread_contact_count = ContactMessage.query.filter_by(is_read=False).count()
@@ -100,14 +125,25 @@ def mark_contact_message_read(msg_id):
     if msg:
         msg.is_read = True
         db.session.commit()
+        if _is_api_or_ajax():
+            unread_count = ContactMessage.query.filter_by(is_read=False).count()
+            return jsonify({'success': True, 'message': "Contact inquiry marked as reviewed.", 'unread_contact_count': unread_count})
         flash("Contact inquiry marked as reviewed.", "success")
+    elif _is_api_or_ajax():
+        return jsonify({'success': False, 'message': "Contact inquiry not found."}), 404
     return redirect(url_for('admin.dashboard') + '#contactInquiriesCard')
 
 @admin_bp.route('/complaints', strict_slashes=False)
 @admin_bp.route('/complaint', strict_slashes=False)
 def complaints():
-    query = Complaint.query
-    
+    query = Complaint.query.options(
+        joinedload(Complaint.category),
+        joinedload(Complaint.department),
+        joinedload(Complaint.citizen),
+        joinedload(Complaint.assigned_officer),
+        joinedload(Complaint.assigned_worker),
+    )
+
     search = request.args.get('search', '').strip()
     if search:
         query = query.filter(
@@ -115,30 +151,32 @@ def complaints():
             (Complaint.title.ilike(f'%{search}%')) |
             (Complaint.description.ilike(f'%{search}%'))
         )
-        
+
     status = request.args.get('status')
     if status:
         query = query.filter_by(status=status)
-        
+
     department_id = request.args.get('department_id', type=int)
     if department_id:
         query = query.filter_by(department_id=department_id)
-        
+
     category_id = request.args.get('category_id', type=int)
     if category_id:
         query = query.filter_by(category_id=category_id)
-        
+
     priority = request.args.get('priority')
     if priority:
         query = query.filter_by(priority=priority)
-        
-    complaint_list = query.order_by(Complaint.created_at.desc()).all()
+
+    page = max(1, request.args.get('page', 1, type=int))
+    pagination = query.order_by(Complaint.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
     departments = Department.query.filter_by(is_active=True).all()
     categories = ComplaintCategory.query.filter_by(is_active=True).all()
-    
+
     return render_template(
         'admin/complaints.html',
-        complaints=complaint_list,
+        complaints=pagination.items,
+        pagination=pagination,
         departments=departments,
         categories=categories,
         current_status=status,
@@ -159,62 +197,79 @@ def complaint_detail(complaint_id):
     history = complaint.status_history.all()
     attachments = complaint.attachments.all()
     departments = Department.query.filter_by(is_active=True).all()
-    officers = User.query.filter_by(role='officer', is_active=True).all()
-    workers = Worker.query.filter_by(is_available=True).all()
+    officers = User.query.filter_by(role='officer', is_active=True).options(joinedload(User.department)).all()
+    workers = Worker.query.filter_by(is_available=True).options(joinedload(Worker.user), joinedload(Worker.department)).all()
     stages = get_complaint_9_stage_timeline(complaint)
-    
+
     if request.method == 'POST':
         action = request.form.get('action')
         remarks = request.form.get('remarks', '').strip()
-        
+        is_ajax = _is_api_or_ajax()
+        success_msg = None
+
         try:
             if action == 'assign_department_officer':
                 dept_id = request.form.get('department_id', type=int)
                 officer_id = request.form.get('officer_id', type=int)
                 admin_remarks = request.form.get('admin_remarks', '').strip()
                 if not dept_id or not officer_id:
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': "Please select both a department and an active department officer."}), 400
                     flash("Please select both a department and an active department officer.", "danger")
                 else:
                     assign_department_officer(complaint, dept_id, officer_id, g.user, admin_remarks=admin_remarks)
-                    flash(f"Complaint {complaint.complaint_ref} successfully assigned to Department Officer.", "success")
-                    
+                    success_msg = f"Complaint {complaint.complaint_ref} successfully assigned to Department Officer."
+
             elif action == 'assign_department':
                 dept_id = request.form.get('department_id', type=int)
                 if dept_id:
                     complaint.department_id = dept_id
+                    log_action(g.user.id, 'ASSIGN_DEPARTMENT', 'complaint', complaint.id, details={'dept_id': dept_id}, commit=False)
                     db.session.commit()
-                    log_action(g.user.id, 'ASSIGN_DEPARTMENT', 'complaint', complaint.id, details={'dept_id': dept_id})
-                    flash("Department reassigned successfully.", "success")
-                    
+                    success_msg = "Department reassigned successfully."
+
             elif action == 'assign_worker':
                 worker_user_id = request.form.get('worker_user_id', type=int)
                 instructions = request.form.get('instructions', '')
                 if worker_user_id:
                     assign_complaint_to_worker(complaint, worker_user_id, g.user, instructions)
-                    flash("Field worker assigned successfully.", "success")
-                    
+                    success_msg = "Field worker assigned successfully."
+
             elif action == 'change_status':
                 new_status = request.form.get('new_status')
                 rejection_reason = request.form.get('rejection_reason', '')
                 transition_complaint_status(complaint, new_status, g.user, remarks=remarks, rejection_reason=rejection_reason)
-                flash(f"Status updated to '{new_status}'.", "success")
-                
+                success_msg = f"Status updated to '{new_status}'."
+
             elif action == 'change_priority':
                 new_priority = request.form.get('new_priority')
                 if new_priority in ['low', 'medium', 'high', 'urgent']:
                     complaint.priority = new_priority
+                    log_action(g.user.id, 'UPDATE_PRIORITY', 'complaint', complaint.id, details={'priority': new_priority}, commit=False)
                     db.session.commit()
-                    log_action(g.user.id, 'UPDATE_PRIORITY', 'complaint', complaint.id, details={'priority': new_priority})
-                    flash(f"Priority changed to {new_priority.upper()}.", "success")
-                    
+                    success_msg = f"Priority changed to {new_priority.upper()}."
+
             elif action == 'escalate':
                 transition_complaint_status(complaint, 'Escalated', g.user, remarks=remarks or "Administrative escalation")
-                flash("Complaint escalated.", "warning")
-                
+                success_msg = "Complaint escalated."
+
+            if is_ajax:
+                return jsonify({
+                    'success': True,
+                    'message': success_msg or "Action completed successfully.",
+                    'status': complaint.status,
+                    'priority': complaint.priority,
+                    'reload_sections': True
+                })
+            if success_msg:
+                flash(success_msg, "warning" if action == 'escalate' else "success")
+
         except Exception as e:
             db.session.rollback()
+            if is_ajax:
+                return jsonify({'success': False, 'message': f"Action failed: {str(e)}"}), 400
             flash(f"Action failed: {str(e)}", "danger")
-            
+
         return redirect(url_for('admin.complaint_detail', complaint_id=complaint.id))
         
     return render_template(
@@ -345,37 +400,39 @@ def users():
             u = User.query.get(uid)
             if u and u.id != g.user.id:
                 u.is_active = not u.is_active
+                log_action(g.user.id, 'TOGGLE_USER_STATUS', 'user', u.id, details={'active': u.is_active}, commit=False)
                 db.session.commit()
-                log_action(g.user.id, 'TOGGLE_USER_STATUS', 'user', u.id, details={'active': u.is_active})
-                flash(f"Account for {u.full_name} updated.", "info")
+                msg = f"Account for {u.full_name} updated."
+                if _is_api_or_ajax():
+                    return jsonify({'success': True, 'message': msg, 'is_active': u.is_active, 'reload_sections': True})
+                flash(msg, "info")
+            elif _is_api_or_ajax():
+                return jsonify({'success': False, 'message': "Cannot modify that account."}), 400
             redirect_to = request.referrer or url_for('admin.users')
             return redirect(redirect_to)
 
         elif action == 'delete_user':
             uid = request.form.get('user_id', type=int)
             u = User.query.get(uid)
+            is_ajax = _is_api_or_ajax()
             if not u:
+                if is_ajax:
+                    return jsonify({'success': False, 'message': "User account not found."}), 404
                 flash("User account not found.", "danger")
             elif u.id == g.user.id:
+                if is_ajax:
+                    return jsonify({'success': False, 'message': "Security restriction: You cannot delete your own active administrator account."}), 400
                 flash("Security restriction: You cannot delete your own active administrator account.", "danger")
             else:
                 user_name = u.full_name
                 user_email = u.email
 
-                # 1. Clean up user notifications
                 Notification.query.filter_by(user_id=u.id).delete()
-
-                # 2. If user is a worker, remove assignments to worker
                 if u.is_worker or u.worker_profile:
                     ComplaintAssignment.query.filter_by(assigned_to_user_id=u.id).delete()
-
-                # 3. Clean up assignments made by officer
                 ComplaintAssignment.query.filter_by(assigned_by_user_id=u.id).delete()
-
-                # 4. Status history changes by user
                 ComplaintStatusHistory.query.filter_by(changed_by_user_id=u.id).update({'changed_by_user_id': None})
 
-                # 5. Clean up complaints filed by citizen
                 user_complaints = Complaint.query.filter_by(citizen_id=u.id).all()
                 for c in user_complaints:
                     Feedback.query.filter_by(complaint_id=c.id).delete()
@@ -384,27 +441,28 @@ def users():
                     ComplaintAssignment.query.filter_by(complaint_id=c.id).delete()
                     db.session.delete(c)
 
-                # 6. Any remaining feedbacks, attachments, audit logs
                 Feedback.query.filter_by(citizen_id=u.id).delete()
                 ComplaintAttachment.query.filter_by(uploaded_by_user_id=u.id).delete()
                 AuditLog.query.filter_by(user_id=u.id).update({'user_id': None})
 
-                # 7. Delete the user record
                 db.session.delete(u)
+                log_action(g.user.id, 'DELETE_USER', 'user', uid, details={'name': user_name, 'email': user_email}, commit=False)
                 db.session.commit()
 
-                log_action(g.user.id, 'DELETE_USER', 'user', uid, details={'name': user_name, 'email': user_email})
-                flash(f"Account for {user_name} ({user_email}) has been permanently deleted.", "success")
+                msg = f"Account for {user_name} ({user_email}) has been permanently deleted."
+                if is_ajax:
+                    return jsonify({'success': True, 'message': msg, 'reload_sections': True})
+                flash(msg, "success")
 
             redirect_to = request.referrer or url_for('admin.users')
             return redirect(redirect_to)
 
         return redirect(url_for('admin.users'))
-        
+
     role_filter = request.args.get('role')
     search = request.args.get('search', '').strip()
-    
-    query = User.query
+
+    query = User.query.options(joinedload(User.department))
     if role_filter:
         query = query.filter_by(role=role_filter)
     if search:
@@ -413,56 +471,72 @@ def users():
             (User.email.ilike(f'%{search}%')) |
             (User.mobile_number.ilike(f'%{search}%'))
         )
-        
-    user_list = query.order_by(User.created_at.desc()).all()
+
+    page = max(1, request.args.get('page', 1, type=int))
+    pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
     departments = Department.query.filter_by(is_active=True).all()
-    
-    return render_template('admin/users.html', users=user_list, departments=departments, current_role=role_filter, search_query=search)
+
+    return render_template('admin/users.html', users=pagination.items, pagination=pagination, departments=departments, current_role=role_filter, search_query=search)
 
 @admin_bp.route('/departments', methods=['GET', 'POST'])
 def departments():
     if request.method == 'POST':
         action = request.form.get('action')
-        
+        is_ajax = _is_api_or_ajax()
+
         if action == 'create':
             name = request.form.get('name', '').strip()
             code = request.form.get('code', '').strip().upper()
             description = request.form.get('description', '').strip()
             email = request.form.get('contact_email', '').strip()
             phone = request.form.get('contact_phone', '').strip()
-            
+
             if Department.query.filter_by(name=name).first() or Department.query.filter_by(code=code).first():
+                if is_ajax:
+                    return jsonify({'success': False, 'message': "Department with this name or code already exists."}), 400
                 flash("Department with this name or code already exists.", "danger")
             else:
                 dept = Department(name=name, code=code, description=description, contact_email=email, contact_phone=phone)
                 db.session.add(dept)
+                db.session.flush()
+                log_action(g.user.id, 'CREATE_DEPARTMENT', 'department', dept.id, details={'code': code}, commit=False)
                 db.session.commit()
-                log_action(g.user.id, 'CREATE_DEPARTMENT', 'department', dept.id, details={'code': code})
-                flash(f"Department '{name}' created successfully.", "success")
-                
+                msg = f"Department '{name}' created successfully."
+                if is_ajax:
+                    return jsonify({'success': True, 'message': msg, 'reload_sections': True})
+                flash(msg, "success")
+
         elif action == 'toggle':
             dept_id = request.form.get('department_id', type=int)
             d = Department.query.get(dept_id)
             if d:
                 d.is_active = not d.is_active
                 db.session.commit()
-                flash(f"Department status updated.", "info")
-                
+                if is_ajax:
+                    return jsonify({'success': True, 'message': "Department status updated.", 'reload_sections': True})
+                flash("Department status updated.", "info")
+
         elif action == 'delete':
             dept_id = request.form.get('department_id', type=int)
             d = Department.query.get(dept_id)
             if d:
-                # Safe delete check: verify no complaints attached
                 if d.complaints.count() > 0 or d.categories.count() > 0:
-                    flash("Cannot delete department because active complaints or categories are associated with it.", "warning")
+                    msg = "Cannot delete department because active complaints or categories are associated with it."
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': msg}), 400
+                    flash(msg, "warning")
                 else:
                     db.session.delete(d)
+                    log_action(g.user.id, 'DELETE_DEPARTMENT', 'department', dept_id, commit=False)
                     db.session.commit()
-                    log_action(g.user.id, 'DELETE_DEPARTMENT', 'department', dept_id)
+                    if is_ajax:
+                        return jsonify({'success': True, 'message': "Department deleted safely.", 'reload_sections': True})
                     flash("Department deleted safely.", "success")
-                    
+
+        if is_ajax:
+            return jsonify({'success': False, 'message': "Invalid action or department not found."}), 400
         return redirect(url_for('admin.departments'))
-        
+
     dept_list = Department.query.all()
     return render_template('admin/departments.html', departments=dept_list)
 
@@ -470,12 +544,15 @@ def departments():
 def workers():
     if request.method == 'POST':
         action = request.form.get('action')
+        is_ajax = _is_api_or_ajax()
         if action == 'toggle_availability':
             wid = request.form.get('worker_id', type=int)
             w = Worker.query.get(wid)
             if w:
                 w.is_available = not w.is_available
                 db.session.commit()
+                if is_ajax:
+                    return jsonify({'success': True, 'message': "Worker availability updated.", 'reload_sections': True})
                 flash("Worker availability updated.", "info")
         elif action == 'add_worker':
             full_name = request.form.get('full_name', '').strip()
@@ -484,13 +561,19 @@ def workers():
             dept_id = request.form.get('department_id', type=int)
             designation = request.form.get('designation', '').strip() or 'Field Technician'
             password = request.form.get('password', 'Welcome@123')
-            
+
+            err_msg = None
             if not full_name or not email or not mobile or not dept_id:
-                flash("All fields including assigned department are required.", "danger")
+                err_msg = "All fields including assigned department are required."
             elif User.query.filter_by(email=email).first():
-                flash("A user with this email address already exists.", "danger")
+                err_msg = "A user with this email address already exists."
             elif User.query.filter_by(mobile_number=mobile).first():
-                flash("A user with this mobile number already exists.", "danger")
+                err_msg = "A user with this mobile number already exists."
+
+            if err_msg:
+                if is_ajax:
+                    return jsonify({'success': False, 'message': err_msg}), 400
+                flash(err_msg, "danger")
             else:
                 new_worker_user = User(
                     full_name=full_name,
@@ -514,13 +597,17 @@ def workers():
                     active_task_count=0
                 )
                 db.session.add(new_worker)
+                db.session.flush()
+                log_action(g.user.id, 'CREATE_WORKER', 'worker', new_worker.id, details={'email': email, 'dept_id': dept_id}, commit=False)
                 db.session.commit()
 
-                log_action(g.user.id, 'CREATE_WORKER', 'worker', new_worker.id, details={'email': email, 'dept_id': dept_id})
-                flash(f"Field technician '{full_name}' created successfully with pending initial password reset.", "success")
+                msg = f"Field technician '{full_name}' created successfully with pending initial password reset."
+                if is_ajax:
+                    return jsonify({'success': True, 'message': msg, 'reload_sections': True})
+                flash(msg, "success")
         return redirect(url_for('admin.workers'))
-        
-    worker_list = Worker.query.all()
+
+    worker_list = Worker.query.options(joinedload(Worker.user), joinedload(Worker.department)).all()
     departments = Department.query.filter_by(is_active=True).all()
     return render_template('admin/workers.html', workers=worker_list, departments=departments)
 
@@ -660,38 +747,50 @@ def officers():
 def assignments():
     if request.method == 'POST':
         action = request.form.get('action')
+        is_ajax = _is_api_or_ajax()
         if action == 'assign_worker':
             complaint_id = request.form.get('complaint_id', type=int)
             worker_user_id = request.form.get('worker_user_id', type=int)
             instructions = request.form.get('instructions', '').strip()
-            
+
             complaint = Complaint.query.get(complaint_id)
             if not complaint:
+                if is_ajax:
+                    return jsonify({'success': False, 'message': "Selected complaint could not be found."}), 404
                 flash("Selected complaint could not be found.", "danger")
             elif not worker_user_id:
+                if is_ajax:
+                    return jsonify({'success': False, 'message': "Please select an available field technician to dispatch."}), 400
                 flash("Please select an available field technician to dispatch.", "danger")
             else:
                 try:
                     assign_complaint_to_worker(complaint, worker_user_id, g.user, instructions=instructions)
-                    flash(f"Work order dispatched for {complaint.complaint_ref} successfully.", "success")
+                    msg = f"Work order dispatched for {complaint.complaint_ref} successfully."
+                    if is_ajax:
+                        return jsonify({'success': True, 'message': msg, 'reload_sections': True})
+                    flash(msg, "success")
                 except Exception as e:
                     db.session.rollback()
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': f"Dispatch failed: {str(e)}"}), 400
                     flash(f"Dispatch failed: {str(e)}", "danger")
             return redirect(url_for('admin.assignments'))
 
     status_filter = request.args.get('status')
-    query = ComplaintAssignment.query
+    query = ComplaintAssignment.query.options(
+        joinedload(ComplaintAssignment.complaint),
+        joinedload(ComplaintAssignment.assigned_to),
+        joinedload(ComplaintAssignment.assigned_by),
+    )
     if status_filter:
         query = query.filter_by(status=status_filter)
-    assignment_list = query.order_by(ComplaintAssignment.assigned_at.desc()).all()
-    
-    # Active complaints available for dispatch
+    assignment_list = query.order_by(ComplaintAssignment.assigned_at.desc()).limit(100).all()
+
     assignable_complaints = Complaint.query.filter(
         Complaint.status.in_(['Submitted', 'Under Review', 'Assigned to Department', 'Officer Accepted', 'Accepted', 'In Progress', 'Assigned', 'Rework Required'])
     ).order_by(Complaint.created_at.desc()).all()
-    
-    # Active workers available for dispatch
-    workers = Worker.query.filter_by(is_available=True).all()
+
+    workers = Worker.query.filter_by(is_available=True).options(joinedload(Worker.user), joinedload(Worker.department)).all()
 
     return render_template(
         'admin/assignments.html',
@@ -713,9 +812,12 @@ def settings():
                     setting.setting_value = val
                 else:
                     db.session.add(SystemSetting(setting_key=k, setting_value=val))
+        log_action(g.user.id, 'UPDATE_SETTINGS', 'system_settings', 'all', commit=False)
         db.session.commit()
-        log_action(g.user.id, 'UPDATE_SETTINGS', 'system_settings', 'all')
-        flash("System configuration parameters updated.", "success")
+        msg = "System configuration parameters updated."
+        if _is_api_or_ajax():
+            return jsonify({'success': True, 'message': msg})
+        flash(msg, "success")
         return redirect(url_for('admin.settings'))
     settings_list = SystemSetting.query.all()
     settings_dict = {s.setting_key: s.setting_value for s in settings_list}

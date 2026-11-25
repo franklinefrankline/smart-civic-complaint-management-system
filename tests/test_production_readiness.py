@@ -658,6 +658,75 @@ class ProductionReadinessTestCase(unittest.TestCase):
         self.assertIn('chart.umd.min.js', a_client.get('/admin/dashboard').get_data(as_text=True))
         self.assertIn('chart.umd.min.js', a_client.get('/admin/analytics').get_data(as_text=True))
 
+    def test_indexes_pagination_and_async_json_button_actions(self):
+        from sqlalchemy import inspect
+        insp = inspect(db.engine)
+        comp_indexes = {idx['name'] for idx in insp.get_indexes('complaints')}
+        self.assertIn('idx_comp_status', comp_indexes)
+        self.assertIn('idx_comp_dept_status_created', comp_indexes)
+
+        # Citizen submits complaint -> Admin assigns via AJAX JSON -> Officer assigns worker via AJAX JSON -> Worker updates via AJAX JSON -> Officer resolves via AJAX JSON -> Citizen feedback via AJAX JSON
+        ajax_headers = {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}
+
+        c_client = self.app.test_client()
+        c_client.post('/auth/login', data={'login_id': 'citizen@prod.gov', 'password': 'Citizen@123'})
+        res_sub = c_client.post('/citizen/complaints/new', data={
+            'title': 'Async button workflow leak test',
+            'category_id': self.cat.id,
+            'department_id': self.dept.id,
+            'priority': 'high',
+            'description': 'Testing non-blocking async JSON action buttons end to end.',
+            'ward_number': '5',
+            'city': 'Chennai'
+        }, follow_redirects=False)
+        comp_id = int(res_sub.headers['Location'].rstrip('/').split('/')[-1])
+
+        a_client = self.app.test_client()
+        a_client.post('/auth/login', data={'login_id': 'admin@prod.gov', 'password': 'Admin@123'})
+        r1 = a_client.post(f'/admin/complaints/{comp_id}', data={
+            'action': 'assign_department_officer',
+            'department_id': self.dept.id,
+            'officer_id': self.officer.id,
+            'admin_remarks': 'Fast async route'
+        }, headers=ajax_headers)
+        self.assertEqual(r1.status_code, 200)
+        self.assertTrue(r1.get_json()['success'])
+        self.assertEqual(r1.get_json()['status'], 'Assigned to Department')
+
+        o_client = self.app.test_client()
+        o_client.post('/auth/login', data={'login_id': 'officer@prod.gov', 'password': 'Officer@123'})
+        r2 = o_client.post(f'/officer/complaint/{comp_id}', data={
+            'action': 'assign_worker',
+            'worker_user_id': self.worker.id,
+            'instructions': 'Dispatch immediately'
+        }, headers=ajax_headers)
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(r2.get_json()['status'], 'Assigned to Worker')
+
+        w_client = self.app.test_client()
+        w_client.post('/auth/login', data={'login_id': 'worker@prod.gov', 'password': 'Worker@123'})
+        r3 = w_client.post(f'/worker/task/{comp_id}', data={
+            'action': 'start_work',
+            'remarks': 'Started site work cleanly'
+        }, headers=ajax_headers)
+        self.assertEqual(r3.status_code, 200)
+        self.assertEqual(r3.get_json()['status'], 'In Progress')
+
+        # Contact inquiry AJAX submission + Admin Mark Reviewed AJAX
+        r_contact = self.client.post('/contact', data={
+            'name': 'Async Contact',
+            'contact': 'async@test.gov',
+            'message': 'Fast AJAX inquiry submission verification.'
+        }, headers=ajax_headers)
+        self.assertEqual(r_contact.status_code, 200)
+        self.assertTrue(r_contact.get_json()['success'])
+
+        from app.models.contact import ContactMessage
+        msg = ContactMessage.query.filter_by(name='Async Contact').first()
+        r_mark = a_client.post(f'/admin/contact-messages/{msg.id}/read', headers=ajax_headers)
+        self.assertEqual(r_mark.status_code, 200)
+        self.assertTrue(r_mark.get_json()['success'])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -4,7 +4,7 @@ from flask import request
 from app import db
 from app.models.audit import AuditLog
 
-def log_action(user_id, action, entity_type, entity_id=None, details=None, ip_address=None, user_agent=None):
+def log_action(user_id, action, entity_type, entity_id=None, details=None, ip_address=None, user_agent=None, commit=True):
     """
     Log an administrative, operational or user action to the audit_logs table
     """
@@ -29,7 +29,8 @@ def log_action(user_id, action, entity_type, entity_id=None, details=None, ip_ad
             details=details_str
         )
         db.session.add(log_entry)
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return log_entry
     except Exception as e:
         db.session.rollback()

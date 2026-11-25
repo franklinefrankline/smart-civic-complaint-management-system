@@ -1,5 +1,6 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g, session, jsonify
+from sqlalchemy.orm import joinedload
 from app import db
 from app.models.complaint import Complaint
 from app.models.category import ComplaintCategory
@@ -9,10 +10,11 @@ from app.services.complaint_service import (
     create_complaint,
     transition_complaint_status,
     get_complaint_9_stage_timeline,
+    get_complaint_aggregate_counts,
     PENDING_STATUSES,
     IN_PROGRESS_STATUSES,
 )
-from app.utils.decorators import login_required, role_required
+from app.utils.decorators import login_required, role_required, _is_api_or_ajax
 from app.utils.helpers import save_uploaded_file
 from app.services.audit_service import log_action
 
@@ -27,32 +29,34 @@ def before_request():
 @citizen_bp.route('/dashboard')
 def dashboard():
     user = g.user
-    complaints_query = Complaint.query.filter_by(citizen_id=user.id)
-    
-    total = complaints_query.count()
-    pending = complaints_query.filter(Complaint.status.in_(PENDING_STATUSES)).count()
-    in_progress = complaints_query.filter(Complaint.status.in_(IN_PROGRESS_STATUSES)).count()
-    resolved = complaints_query.filter_by(status='Resolved').count()
-    rejected = complaints_query.filter_by(status='Rejected').count()
-    
-    recent_complaints = complaints_query.order_by(Complaint.created_at.desc()).limit(5).all()
-    
+    counts = get_complaint_aggregate_counts(Complaint.citizen_id == user.id)
+    recent_complaints = (
+        Complaint.query.filter_by(citizen_id=user.id)
+        .options(joinedload(Complaint.category), joinedload(Complaint.department))
+        .order_by(Complaint.created_at.desc())
+        .limit(5)
+        .all()
+    )
+
     stats = {
-        'total': total,
-        'pending': pending,
-        'in_progress': in_progress,
-        'resolved': resolved,
-        'rejected': rejected
+        'total': counts['total'],
+        'pending': counts['pending'],
+        'in_progress': counts['in_progress'],
+        'resolved': counts['resolved'],
+        'rejected': counts['rejected']
     }
-    
+
     return render_template('citizen/dashboard.html', stats=stats, recent_complaints=recent_complaints)
 
 @citizen_bp.route('/complaints', strict_slashes=False)
 @citizen_bp.route('/complaint', strict_slashes=False)
 def complaints():
     user = g.user
-    query = Complaint.query.filter_by(citizen_id=user.id)
-    
+    query = Complaint.query.filter_by(citizen_id=user.id).options(
+        joinedload(Complaint.category),
+        joinedload(Complaint.department),
+    )
+
     # Search
     search = request.args.get('search', '').strip()
     if search:
@@ -61,26 +65,28 @@ def complaints():
             (Complaint.title.ilike(f'%{search}%')) |
             (Complaint.description.ilike(f'%{search}%'))
         )
-        
+
     # Filters
     status = request.args.get('status')
     if status:
         query = query.filter_by(status=status)
-        
+
     category_id = request.args.get('category_id', type=int)
     if category_id:
         query = query.filter_by(category_id=category_id)
-        
+
     priority = request.args.get('priority')
     if priority:
         query = query.filter_by(priority=priority)
-        
-    complaint_list = query.order_by(Complaint.created_at.desc()).all()
+
+    page = max(1, request.args.get('page', 1, type=int))
+    pagination = query.order_by(Complaint.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
     categories = ComplaintCategory.query.filter_by(is_active=True).all()
-    
+
     return render_template(
         'citizen/complaints_list.html',
-        complaints=complaint_list,
+        complaints=pagination.items,
+        pagination=pagination,
         categories=categories,
         current_status=status,
         current_category=category_id,
@@ -189,42 +195,59 @@ def complaint_detail(complaint_id):
 def reopen_complaint(complaint_id):
     user = g.user
     complaint = Complaint.query.filter_by(id=complaint_id, citizen_id=user.id).first_or_404()
-    
+
     if complaint.status != 'Resolved':
-        flash("Only resolved complaints can be reopened.", "warning")
+        msg = "Only resolved complaints can be reopened."
+        if _is_api_or_ajax():
+            return jsonify({'success': False, 'message': msg}), 400
+        flash(msg, "warning")
         return redirect(url_for('citizen.complaint_detail', complaint_id=complaint.id))
-        
+
     reason = request.form.get('reopen_reason', '').strip()
     if not reason or len(reason) < 10:
-        flash("Please provide a comprehensive explanation for reopening this issue.", "danger")
+        msg = "Please provide a comprehensive explanation for reopening this issue."
+        if _is_api_or_ajax():
+            return jsonify({'success': False, 'message': msg}), 400
+        flash(msg, "danger")
         return redirect(url_for('citizen.complaint_detail', complaint_id=complaint.id))
-        
+
     try:
         transition_complaint_status(complaint, 'Reopened', user, remarks=f"Reopened by citizen: {reason}")
-        flash("Complaint has been reopened for departmental review.", "info")
+        msg = "Complaint has been reopened for departmental review."
+        if _is_api_or_ajax():
+            return jsonify({'success': True, 'message': msg, 'status': complaint.status, 'reload_sections': True})
+        flash(msg, "info")
     except Exception as e:
+        if _is_api_or_ajax():
+            return jsonify({'success': False, 'message': f"Failed to reopen complaint: {str(e)}"}), 400
         flash(f"Failed to reopen complaint: {str(e)}", "danger")
-        
+
     return redirect(url_for('citizen.complaint_detail', complaint_id=complaint.id))
 
 @citizen_bp.route('/complaints/<int:complaint_id>/feedback', methods=['POST'])
 def submit_feedback(complaint_id):
     user = g.user
     complaint = Complaint.query.filter_by(id=complaint_id, citizen_id=user.id).first_or_404()
-    
+
     if complaint.status != 'Resolved':
-        flash("Feedback can only be submitted after complaint resolution.", "warning")
+        msg = "Feedback can only be submitted after complaint resolution."
+        if _is_api_or_ajax():
+            return jsonify({'success': False, 'message': msg}), 400
+        flash(msg, "warning")
         return redirect(url_for('citizen.complaint_detail', complaint_id=complaint.id))
-        
+
     rating = request.form.get('rating', type=int)
     comment = request.form.get('comment', '').strip()
     speed_rating = request.form.get('response_speed_rating', type=int)
     quality_rating = request.form.get('work_quality_rating', type=int)
-    
+
     if not rating or rating < 1 or rating > 5:
-        flash("Please select a rating between 1 and 5 stars.", "danger")
+        msg = "Please select a rating between 1 and 5 stars."
+        if _is_api_or_ajax():
+            return jsonify({'success': False, 'message': msg}), 400
+        flash(msg, "danger")
         return redirect(url_for('citizen.complaint_detail', complaint_id=complaint.id))
-        
+
     existing = Feedback.query.filter_by(complaint_id=complaint.id).first()
     if existing:
         existing.rating = rating
@@ -243,11 +266,14 @@ def submit_feedback(complaint_id):
             is_satisfied=rating >= 3
         )
         db.session.add(fb)
-        
+
+    log_action(user.id, 'SUBMIT_FEEDBACK', 'complaint', complaint.id, details={'rating': rating}, commit=False)
     db.session.commit()
-    log_action(user.id, 'SUBMIT_FEEDBACK', 'complaint', complaint.id, details={'rating': rating})
-    
-    flash("Thank you! Your feedback helps us improve civic governance services.", "success")
+
+    msg = "Thank you! Your feedback helps us improve civic governance services."
+    if _is_api_or_ajax():
+        return jsonify({'success': True, 'message': msg, 'reload_sections': True})
+    flash(msg, "success")
     return redirect(url_for('citizen.complaint_detail', complaint_id=complaint.id))
 
 @citizen_bp.route('/profile', methods=['GET', 'POST'])
@@ -259,22 +285,25 @@ def profile():
         city = request.form.get('city', '').strip()
         ward_number = request.form.get('ward_number', '').strip()
         new_password = request.form.get('new_password', '')
-        
+
         if full_name:
             user.full_name = full_name
         user.address = address
         user.city = city
         user.ward_number = ward_number
-        
+
         if new_password:
             user.set_password(new_password)
             user.is_password_reset_required = False
             user.password_changed_at = datetime.utcnow()
-            
+
         db.session.commit()
-        flash("Profile information updated successfully.", "success")
+        msg = "Profile information updated successfully."
+        if _is_api_or_ajax():
+            return jsonify({'success': True, 'message': msg})
+        flash(msg, "success")
         return redirect(url_for('citizen.profile'))
-        
+
     return render_template('citizen/profile.html', user=user)
 
 @citizen_bp.route('/notifications')

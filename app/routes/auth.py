@@ -57,6 +57,7 @@ def login():
         session['user_role'] = user.role
         session['user_name'] = user.full_name
         session.permanent = True
+        g.user = user
         
         user.last_login_at = datetime.utcnow()
         db.session.commit()
@@ -160,6 +161,7 @@ def logout():
     if user_id:
         log_action(user_id, 'USER_LOGOUT', 'user', user_id)
     session.clear()
+    g.pop('user', None)
     flash("You have been signed out successfully.", "info")
     return redirect(url_for('public.index'))
 

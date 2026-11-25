@@ -48,12 +48,14 @@ def check_and_escalate_overdue_complaints():
         )
         db.session.add(hist)
         
-        # Notify admins and department officers
+        # Notify admins and department officers (staged in single batch commit)
         notify_admins(
             title=f"SLA Breached: {complaint.complaint_ref}",
             message=f"Complaint '{complaint.title}' ({complaint.priority.upper()}) is overdue and escalated.",
             link=f"/admin/complaints/{complaint.id}",
-            notification_type='escalation'
+            notification_type='escalation',
+            complaint_id=complaint.id,
+            commit=False,
         )
         if complaint.department_id:
             notify_department_officers(
@@ -61,15 +63,18 @@ def check_and_escalate_overdue_complaints():
                 title=f"URGENT: Complaint Escalated {complaint.complaint_ref}",
                 message=f"Complaint '{complaint.title}' exceeded SLA target and has been escalated.",
                 link=f"/officer/complaints/{complaint.id}",
-                notification_type='escalation'
+                notification_type='escalation',
+                complaint_id=complaint.id,
+                commit=False,
             )
-            
+
         log_action(
             user_id=None,
             action='AUTO_ESCALATE_OVERDUE',
             entity_type='complaint',
             entity_id=complaint.id,
-            details={'ref': complaint.complaint_ref, 'sla_due_date': str(complaint.sla_due_date)}
+            details={'ref': complaint.complaint_ref, 'sla_due_date': str(complaint.sla_due_date)},
+            commit=False,
         )
         escalated_count += 1
         

@@ -3,6 +3,17 @@ from app import db
 
 class Complaint(db.Model):
     __tablename__ = 'complaints'
+    __table_args__ = (
+        db.Index('idx_comp_status', 'status'),
+        db.Index('idx_comp_citizen_created', 'citizen_id', 'created_at'),
+        db.Index('idx_comp_dept_status_created', 'department_id', 'status', 'created_at'),
+        db.Index('idx_comp_officer_created', 'assigned_officer_id', 'created_at'),
+        db.Index('idx_comp_worker', 'assigned_worker_id'),
+        db.Index('idx_comp_category', 'category_id'),
+        db.Index('idx_comp_priority', 'priority'),
+        db.Index('idx_comp_created', 'created_at'),
+        db.Index('idx_comp_updated', 'updated_at'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     complaint_ref = db.Column(db.String(50), unique=True, nullable=False, index=True)

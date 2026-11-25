@@ -4,7 +4,7 @@ from app.models.notification import Notification
 from app.models.user import User
 
 
-def create_notification(user_id, title, message, link=None, notification_type='info', complaint_id=None):
+def create_notification(user_id, title, message, link=None, notification_type='info', complaint_id=None, commit=True):
     """Create in-app notification permanently in the database for a given user."""
     try:
         notif = Notification(
@@ -16,39 +16,67 @@ def create_notification(user_id, title, message, link=None, notification_type='i
             notification_type=notification_type
         )
         db.session.add(notif)
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return notif
     except Exception:
         db.session.rollback()
         return None
 
 
-def notify_admins(title, message, link=None, notification_type='admin_alert', complaint_id=None):
-    """Broadcast notification to all active administrators."""
-    admins = User.query.filter_by(role='admin', is_active=True).all()
-    for admin in admins:
-        create_notification(
-            admin.id,
-            title,
-            message,
+def notify_admins(title, message, link=None, notification_type='admin_alert', complaint_id=None, commit=True):
+    """Broadcast notification to all active administrators in a single batch insert."""
+    admin_ids = [r[0] for r in db.session.query(User.id).filter_by(role='admin', is_active=True).all()]
+    if not admin_ids:
+        return []
+    notifs = [
+        Notification(
+            user_id=aid,
+            complaint_id=complaint_id,
+            title=title,
+            message=message,
             link=link,
             notification_type=notification_type,
-            complaint_id=complaint_id
         )
+        for aid in admin_ids
+    ]
+    try:
+        db.session.add_all(notifs)
+        if commit:
+            db.session.commit()
+        return notifs
+    except Exception:
+        db.session.rollback()
+        return []
 
 
-def notify_department_officers(department_id, title, message, link=None, notification_type='dept_alert', complaint_id=None):
-    """Broadcast notification to all officers belonging to a department."""
-    officers = User.query.filter_by(role='officer', department_id=department_id, is_active=True).all()
-    for officer in officers:
-        create_notification(
-            officer.id,
-            title,
-            message,
+def notify_department_officers(department_id, title, message, link=None, notification_type='dept_alert', complaint_id=None, commit=True):
+    """Broadcast notification to all officers belonging to a department in a single batch insert."""
+    officer_ids = [
+        r[0]
+        for r in db.session.query(User.id).filter_by(role='officer', department_id=department_id, is_active=True).all()
+    ]
+    if not officer_ids:
+        return []
+    notifs = [
+        Notification(
+            user_id=oid,
+            complaint_id=complaint_id,
+            title=title,
+            message=message,
             link=link,
             notification_type=notification_type,
-            complaint_id=complaint_id
         )
+        for oid in officer_ids
+    ]
+    try:
+        db.session.add_all(notifs)
+        if commit:
+            db.session.commit()
+        return notifs
+    except Exception:
+        db.session.rollback()
+        return []
 
 
 def mark_as_read(notification_id, user_id):

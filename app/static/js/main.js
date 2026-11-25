@@ -410,29 +410,147 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!confirmed) return;
 
         form.dataset.confirmed = '1';
-        const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+      }
+
+      // 3. Progressive Async Action Submission (Zero full-page reload for dashboard actions & contact form)
+      const method = (form.getAttribute('method') || 'GET').toUpperCase();
+      const actionAttr = (form.getAttribute('action') || window.location.pathname).trim();
+      const lowerAction = actionAttr.toLowerCase();
+      const inDashboard = Boolean(form.closest('.dashboard-content'));
+      const isExportOrBlank = form.getAttribute('target') === '_blank' ||
+        lowerAction.includes('/export') ||
+        lowerAction.includes('/download') ||
+        form.hasAttribute('data-ajax') ||
+        form.hasAttribute('data-full-reload');
+
+      const isAsyncPostAction = method === 'POST' && !isExportOrBlank &&
+        !lowerAction.includes('/auth/') &&
+        !lowerAction.includes('/clean-demo-data') &&
+        !lowerAction.endsWith('/complaints/new') &&
+        (inDashboard || lowerAction.endsWith('/contact'));
+
+      const isAsyncGetFilter = method === 'GET' && inDashboard && !isExportOrBlank && !form.hasAttribute('data-no-async');
+
+      const submitBtn = e.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
+
+      if (isAsyncGetFilter) {
+        e.preventDefault();
+        const params = new URLSearchParams(new FormData(form));
+        const basePath = actionAttr.split('?')[0] || window.location.pathname;
+        const nextUrl = params.toString() ? `${basePath}?${params.toString()}` : basePath;
         if (submitBtn) {
           submitBtn.classList.add('btn-loading');
           submitBtn.disabled = true;
         }
         startProgressBar();
-        if (!form.hasAttribute('data-no-loader') && form.getAttribute('target') !== '_blank') {
+        try {
+          if (window.history && window.history.pushState) {
+            window.history.pushState({}, '', nextUrl);
+          }
+          await window.refreshDashboardContent(nextUrl);
+        } catch (err) {
+          window.location.href = nextUrl;
+        } finally {
+          finishProgressBar();
+          if (submitBtn) {
+            submitBtn.classList.remove('btn-loading');
+            submitBtn.disabled = false;
+          }
+        }
+        return;
+      }
+
+      if (isAsyncPostAction) {
+        e.preventDefault();
+        if (submitBtn && submitBtn.disabled) return;
+        if (submitBtn) {
+          submitBtn.classList.add('btn-loading');
+          submitBtn.disabled = true;
+        }
+        startProgressBar();
+        const controller = new AbortController();
+        const reqTimeout = setTimeout(() => controller.abort(), 25000);
+        try {
+          const targetUrl = window.getApiUrl ? window.getApiUrl(actionAttr) : actionAttr;
+          const res = await fetch(targetUrl, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json'
+            },
+            credentials: 'include',
+            signal: controller.signal
+          });
+          clearTimeout(reqTimeout);
+          const contentType = res.headers.get('content-type') || '';
+          if (!contentType.includes('application/json')) {
+            if (res.redirected && res.url) {
+              window.location.href = res.url;
+              return;
+            }
+            throw new Error(`Unexpected response (${res.status})`);
+          }
+          const data = await res.json();
+          if (!res.ok || data.success === false) {
+            throw new Error(data.message || `Action failed (${res.status})`);
+          }
+
+          if (window.showToast && data.message) {
+            window.showToast(data.message, 'success');
+          }
+
+          // Optimistic instant DOM updates for contact message review & public contact inquiry
+          if (lowerAction.includes('/contact-messages/') && lowerAction.endsWith('/read')) {
+            const row = form.closest('tr, .contact-inquiry-row, div');
+            const badge = document.createElement('span');
+            badge.className = 'badge badge-resolved';
+            badge.textContent = 'Reviewed';
+            form.replaceWith(badge);
+            const unreadPill = document.querySelector('#contactInquiriesCard .badge');
+            if (unreadPill && typeof data.unread_contact_count === 'number') {
+              unreadPill.textContent = data.unread_contact_count > 0 ? `${data.unread_contact_count} Unread` : 'All Reviewed';
+            }
+          } else if (lowerAction.endsWith('/contact')) {
+            form.reset();
+          } else if (data.reload_sections && window.refreshDashboardContent) {
+            await window.refreshDashboardContent();
+          }
+          window.dispatchEvent(new Event('focus'));
+        } catch (err) {
+          clearTimeout(reqTimeout);
+          const errMsg = err && err.name === 'AbortError'
+            ? 'Request timed out. Please check your connection and try again.'
+            : (err && err.message ? err.message : 'Operation failed. Please try again.');
+          if (window.showToast) {
+            window.showToast(errMsg, 'error');
+          }
+        } finally {
+          form.dataset.confirmed = '';
+          finishProgressBar();
+          if (submitBtn && submitBtn.isConnected) {
+            submitBtn.classList.remove('btn-loading');
+            submitBtn.disabled = false;
+          }
+        }
+        return;
+      }
+
+      // 4. Full-page navigation submit (login, register, new complaint): protect double submit
+      if (e.defaultPrevented) return;
+      if (form.dataset.confirmed === '1') {
+        if (submitBtn) {
+          submitBtn.classList.add('btn-loading');
+          submitBtn.disabled = true;
+        }
+        startProgressBar();
+        if (!isExportOrBlank) {
           window.scheduleNavigationLoader({ timeoutMs: 25000 }, 350);
         }
         HTMLFormElement.prototype.submit.call(form);
         return;
       }
 
-      // 3. Normal valid submit: prevent duplicate clicks & show full-page loader when navigating
-      if (e.defaultPrevented) return;
-      const actionAttr = (form.getAttribute('action') || '').toLowerCase();
-      const isExportOrBlank = form.getAttribute('target') === '_blank' ||
-        actionAttr.includes('/export') ||
-        actionAttr.includes('/download') ||
-        form.hasAttribute('data-ajax') ||
-        form.hasAttribute('data-no-loader');
-
-      const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
       if (submitBtn && !submitBtn.disabled) {
         submitBtn.classList.add('btn-loading');
         submitBtn.disabled = true;
@@ -444,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
           submitBtn.classList.remove('btn-loading');
           submitBtn.disabled = false;
           finishProgressBar();
-        }, 8500);
+        }, 12000);
       } else if (!isExportOrBlank) {
         window.scheduleNavigationLoader({ timeoutMs: 25000 }, 350);
       }
@@ -486,7 +604,46 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 8. Top Page Progress Bar
+  // 8. Top Page Progress Bar & Background Dashboard Section Refresh (Zero Full-Page Reload)
+  let activeRefreshController = null;
+  window.refreshDashboardContent = async function(targetUrl) {
+    const dashContent = document.querySelector('.dashboard-content');
+    if (!dashContent) {
+      window.location.href = targetUrl || window.location.href;
+      return;
+    }
+    if (activeRefreshController) {
+      try { activeRefreshController.abort(); } catch (_) {}
+    }
+    activeRefreshController = new AbortController();
+    const fetchUrl = targetUrl || window.location.href;
+    const prevScrollTop = dashContent.scrollTop;
+    const prevWinY = window.scrollY;
+    const res = await fetch(fetchUrl, {
+      credentials: 'include',
+      headers: { 'X-Async-Partial': '1' },
+      signal: activeRefreshController.signal
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const html = await res.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const nextDash = doc.querySelector('.dashboard-content');
+    if (!nextDash) {
+      window.location.href = fetchUrl;
+      return;
+    }
+    dashContent.innerHTML = nextDash.innerHTML;
+    dashContent.querySelectorAll('form').forEach(f => { f.noValidate = true; });
+    if (window.initStarRatings) window.initStarRatings(dashContent);
+    if (typeof window.filterOfficersByDept === 'function') {
+      const deptSel = dashContent.querySelector('#admin_dept_select');
+      if (deptSel) window.filterOfficersByDept(deptSel.value);
+    }
+    if (window.lucide) lucide.createIcons();
+    dashContent.scrollTop = prevScrollTop;
+    window.scrollTo(0, prevWinY);
+  };
+
   window.startProgressBar = function() {
     let bar = document.getElementById('pageProgressBar');
     if (!bar) {
@@ -510,9 +667,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 200);
   };
 
-  // Delegated Full-Page Navigation Link Click Triggers (works for dynamic & static links, excludes exports/downloads/background actions)
-  document.addEventListener('click', (e) => {
+  // Delegated Async Pagination & Full-Page Navigation Link Click Triggers
+  document.addEventListener('click', async (e) => {
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    const pageLink = e.target.closest('a.pagination-link[href]');
+    if (pageLink && pageLink.closest('.dashboard-content')) {
+      e.preventDefault();
+      const nextUrl = pageLink.href;
+      startProgressBar();
+      try {
+        if (window.history && window.history.pushState) {
+          window.history.pushState({}, '', nextUrl);
+        }
+        await window.refreshDashboardContent(nextUrl);
+      } catch (_) {
+        window.location.href = nextUrl;
+      } finally {
+        finishProgressBar();
+      }
+      return;
+    }
     const link = e.target.closest('a[href]');
     if (!link) return;
     if (link.hasAttribute('data-confirm') || link.hasAttribute('download') || link.hasAttribute('data-no-loader')) return;
@@ -725,28 +899,33 @@ document.addEventListener('DOMContentLoaded', () => {
     return div.innerHTML;
   }
 
-  // 10. Star Rating Interactive Widget
-  document.querySelectorAll('.star-rating').forEach(ratingWidget => {
-    const input = ratingWidget.querySelector('input[type="hidden"]');
-    const stars = ratingWidget.querySelectorAll('.star');
+  // 10. Star Rating Interactive Widget (Reusable on async content swaps)
+  window.initStarRatings = function(rootEl) {
+    (rootEl || document).querySelectorAll('.star-rating').forEach(ratingWidget => {
+      if (ratingWidget.dataset.boundStars === '1') return;
+      ratingWidget.dataset.boundStars = '1';
+      const input = ratingWidget.querySelector('input[type="hidden"]');
+      const stars = ratingWidget.querySelectorAll('.star');
 
-    stars.forEach((star, index) => {
-      star.addEventListener('click', () => {
-        const value = index + 1;
-        if (input) input.value = value;
-        updateStars(stars, value);
+      stars.forEach((star, index) => {
+        star.addEventListener('click', () => {
+          const value = index + 1;
+          if (input) input.value = value;
+          updateStars(stars, value);
+        });
+
+        star.addEventListener('mouseenter', () => {
+          updateStars(stars, index + 1);
+        });
       });
 
-      star.addEventListener('mouseenter', () => {
-        updateStars(stars, index + 1);
+      ratingWidget.addEventListener('mouseleave', () => {
+        const currentVal = input ? parseInt(input.value) || 0 : 0;
+        updateStars(stars, currentVal);
       });
     });
-
-    ratingWidget.addEventListener('mouseleave', () => {
-      const currentVal = input ? parseInt(input.value) || 0 : 0;
-      updateStars(stars, currentVal);
-    });
-  });
+  };
+  window.initStarRatings(document);
 
   function updateStars(stars, activeCount) {
     stars.forEach((star, idx) => {

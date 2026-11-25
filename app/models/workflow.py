@@ -31,6 +31,10 @@ class Worker(db.Model):
 
 class ComplaintAssignment(db.Model):
     __tablename__ = 'complaint_assignments'
+    __table_args__ = (
+        db.Index('idx_assign_to_status', 'assigned_to_user_id', 'status'),
+        db.Index('idx_assign_complaint', 'complaint_id'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     complaint_id = db.Column(db.Integer, db.ForeignKey('complaints.id', ondelete='CASCADE'), nullable=False)
@@ -51,6 +55,9 @@ class ComplaintAssignment(db.Model):
 
 class ComplaintStatusHistory(db.Model):
     __tablename__ = 'complaint_status_history'
+    __table_args__ = (
+        db.Index('idx_hist_complaint_created', 'complaint_id', 'created_at'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     complaint_id = db.Column(db.Integer, db.ForeignKey('complaints.id', ondelete='CASCADE'), nullable=False)

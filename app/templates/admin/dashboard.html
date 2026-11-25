@@ -455,10 +455,13 @@
           })
           .then(data => {
             slaBtn.classList.remove('btn-loading');
+            slaBtn.disabled = false;
             if (window.showToast) {
               window.showToast(`SLA Evaluation Complete: ${data.escalated_count} overdue complaints flagged.`, 'success', 'SLA Adherence');
             }
-            setTimeout(() => location.reload(), 1200);
+            if (data.escalated_count > 0 && window.refreshDashboardContent) {
+              window.refreshDashboardContent();
+            }
           })
           .catch(err => {
             slaBtn.classList.remove('btn-loading');
