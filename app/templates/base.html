@@ -45,13 +45,13 @@
   </style>
 
   <!-- Master Stylesheet -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261125b') }}">
   
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Lucide Icons (pinned + deferred so HTML rendering is never blocked) -->
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" defer></script>
   
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Chart.js (deferred so non-chart pages never wait on CDN download) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
   
   {% block extra_head %}{% endblock %}
 </head>
@@ -87,9 +87,24 @@
   <!-- Top Navigation Progress Indicator -->
   <div id="pageProgressBar"></div>
 
-  <!-- Global Navigation Bar (Rendered ONLY on Home, Sign In, and Sign Up pages) -->
+  <!-- Global Navigation Bar (Rendered consistently across ALL public-facing pages) -->
+  {% set public_nav_endpoints = [
+    'public.index',
+    'public.about',
+    'public.how_it_works',
+    'public.departments',
+    'public.track',
+    'public.contact',
+    'public.privacy',
+    'public.cookies',
+    'public.terms',
+    'auth.login',
+    'auth.register',
+    'auth.forgot_password',
+    'auth.force_reset_password'
+  ] %}
   {% block navbar %}
-    {% if request.endpoint in ['public.index', 'auth.login', 'auth.register'] %}
+    {% if request.endpoint in public_nav_endpoints or (request.endpoint is none and code is defined) %}
       {% include 'shared/_navbar.html' %}
     {% endif %}
   {% endblock %}
@@ -343,8 +358,8 @@
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
   <!-- Master Application Scripts -->
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/main.js', v='20261125b') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/notifications.js', v='20261125b') }}" defer></script>
   
   {% block extra_scripts %}{% endblock %}
 </body>

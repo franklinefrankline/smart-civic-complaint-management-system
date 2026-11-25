@@ -112,7 +112,7 @@
   };
 
   window.addEventListener('pageshow', function(e) {
-    if (e.persisted) {
+    if (e.persisted || document.readyState === 'complete') {
       window.hideGlobalLoader();
       if (window.finishProgressBar) window.finishProgressBar();
     }
@@ -747,16 +747,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const mobileToggle = document.getElementById('mobileNavToggle');
   const navLinks = document.querySelector('.nav-links');
   if (mobileToggle) {
-    mobileToggle.addEventListener('click', () => {
+    mobileToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
       const sidebar = document.getElementById('dashboardSidebar');
       if (sidebar) {
         if (window.toggleMobileSidebar) {
           window.toggleMobileSidebar();
         }
       } else if (navLinks) {
-        navLinks.classList.toggle('mobile-open');
+        const isOpen = navLinks.classList.toggle('mobile-open');
+        mobileToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
       }
     });
+
+    if (navLinks) {
+      document.addEventListener('click', (e) => {
+        if (navLinks.classList.contains('mobile-open') && !navLinks.contains(e.target) && !mobileToggle.contains(e.target)) {
+          navLinks.classList.remove('mobile-open');
+          mobileToggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && navLinks.classList.contains('mobile-open')) {
+          navLinks.classList.remove('mobile-open');
+          mobileToggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
   }
 
   // 12. Modal Accessibility & Animation Controller
@@ -1192,28 +1209,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const startTs = window.__loaderStartTs || Date.now();
-  let initialHideDone = false;
-  function completeInitialPageLoad() {
-    if (initialHideDone) return;
-    initialHideDone = true;
-    const elapsed = Date.now() - startTs;
-    const minDisplayMs = 320;
-    const delay = elapsed < minDisplayMs ? (minDisplayMs - elapsed) : 0;
-    setTimeout(() => {
-      window.hideGlobalLoader();
-    }, delay);
-  }
-
-  if (document.readyState === 'complete') {
-    completeInitialPageLoad();
+  // Dismiss initial #globalPageLoader cleanly once DOM & deferred scripts finish (no multi-second CDN blocking)
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.hideGlobalLoader());
+    });
   } else {
-    window.addEventListener('load', completeInitialPageLoad, { once: true });
-    // Failsafe in case external CDN resources (e.g. fonts/icons) hang while local app content is ready
-    setTimeout(() => {
-      if (!initialHideDone && document.readyState !== 'loading') {
-        completeInitialPageLoad();
-      }
-    }, 3500);
+    window.hideGlobalLoader();
   }
 });

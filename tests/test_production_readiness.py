@@ -553,6 +553,45 @@ class ProductionReadinessTestCase(unittest.TestCase):
         db.session.refresh(msg)
         self.assertTrue(msg.is_read)
 
+    def test_global_navbar_consistent_across_all_public_pages(self):
+        public_nav_pages = [
+            ('/', '/'),
+            ('/about', '/about'),
+            ('/how-it-works', '/how-it-works'),
+            ('/departments', '/departments'),
+            ('/track', '/track'),
+            ('/contact', '/contact'),
+            ('/privacy', None),
+            ('/cookies', None),
+            ('/terms', None),
+            ('/auth/login', None),
+            ('/auth/register', None),
+            ('/auth/forgot-password', None),
+        ]
+        nav_hrefs = ['href="/"', 'href="/about"', 'href="/how-it-works"', 'href="/departments"', 'href="/track"', 'href="/contact"']
+
+        for route, active_href in public_nav_pages:
+            res = self.client.get(route)
+            self.assertEqual(res.status_code, 200, f"Public route {route} failed")
+            html = res.get_data(as_text=True)
+            self.assertIn('<nav class="navbar"', html, f"Global navbar missing on {route}")
+            self.assertIn('id="mobileNavToggle"', html, f"Mobile hamburger menu missing on {route}")
+            for h in nav_hrefs:
+                self.assertIn(h, html, f"Navbar link {h} missing on {route}")
+            if active_href:
+                self.assertIn(
+                    f'href="{active_href}" class="nav-link active" aria-current="page"',
+                    html,
+                    f"Active highlight missing for {active_href} on {route}"
+                )
+
+        # Verify sticky & responsive navbar CSS rules remain intact
+        css_path = os.path.join(self.app.static_folder, 'css', 'main.css')
+        with open(css_path, 'r', encoding='utf-8') as fh:
+            css = fh.read()
+        self.assertIn('position: sticky;', css)
+        self.assertIn('.nav-links.mobile-open {', css)
+
 
 if __name__ == '__main__':
     unittest.main()

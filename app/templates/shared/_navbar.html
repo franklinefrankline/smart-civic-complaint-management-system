@@ -7,13 +7,13 @@
     </a>
 
     <!-- Center Section: Horizontal Navigation Links -->
-    <ul class="nav-links">
-      <li><a href="{{ url_for('public.index') }}" class="nav-link {% if request.endpoint == 'public.index' %}active{% endif %}">{{ t('nav_home') }}</a></li>
-      <li><a href="{{ url_for('public.about') }}" class="nav-link {% if request.endpoint == 'public.about' %}active{% endif %}">{{ t('nav_about') }}</a></li>
-      <li><a href="{{ url_for('public.how_it_works') }}" class="nav-link {% if request.endpoint == 'public.how_it_works' %}active{% endif %}">{{ t('nav_how_it_works') }}</a></li>
-      <li><a href="{{ url_for('public.departments') }}" class="nav-link {% if request.endpoint == 'public.departments' %}active{% endif %}">{{ t('nav_departments') }}</a></li>
-      <li><a href="{{ url_for('public.track') }}" class="nav-link {% if request.endpoint == 'public.track' %}active{% endif %}">{{ t('nav_track') }}</a></li>
-      <li><a href="{{ url_for('public.contact') }}" class="nav-link {% if request.endpoint == 'public.contact' %}active{% endif %}">{{ t('nav_contact') }}</a></li>
+    <ul class="nav-links" id="primaryPublicNavLinks">
+      <li><a href="{{ url_for('public.index') }}" class="nav-link {% if request.endpoint == 'public.index' %}active{% endif %}" {% if request.endpoint == 'public.index' %}aria-current="page"{% endif %}>{{ t('nav_home') }}</a></li>
+      <li><a href="{{ url_for('public.about') }}" class="nav-link {% if request.endpoint == 'public.about' %}active{% endif %}" {% if request.endpoint == 'public.about' %}aria-current="page"{% endif %}>{{ t('nav_about') }}</a></li>
+      <li><a href="{{ url_for('public.how_it_works') }}" class="nav-link {% if request.endpoint == 'public.how_it_works' %}active{% endif %}" {% if request.endpoint == 'public.how_it_works' %}aria-current="page"{% endif %}>{{ t('nav_how_it_works') }}</a></li>
+      <li><a href="{{ url_for('public.departments') }}" class="nav-link {% if request.endpoint == 'public.departments' %}active{% endif %}" {% if request.endpoint == 'public.departments' %}aria-current="page"{% endif %}>{{ t('nav_departments') }}</a></li>
+      <li><a href="{{ url_for('public.track') }}" class="nav-link {% if request.endpoint == 'public.track' %}active{% endif %}" {% if request.endpoint == 'public.track' %}aria-current="page"{% endif %}>{{ t('nav_track') }}</a></li>
+      <li><a href="{{ url_for('public.contact') }}" class="nav-link {% if request.endpoint == 'public.contact' %}active{% endif %}" {% if request.endpoint == 'public.contact' %}aria-current="page"{% endif %}>{{ t('nav_contact') }}</a></li>
     </ul>
 
     <!-- Right Section: Action Controls -->
@@ -70,7 +70,7 @@
       {% endif %}
 
       <!-- Mobile Hamburger Toggle -->
-      <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation" title="Toggle navigation">
+      <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation" aria-controls="primaryPublicNavLinks" aria-expanded="false" title="Toggle navigation">
         <i data-lucide="menu" class="icon-md"></i>
       </button>
     </div>
