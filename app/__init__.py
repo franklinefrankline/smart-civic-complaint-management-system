@@ -18,15 +18,17 @@ def _run_safe_schema_migrations(app):
     inspector = inspect(db.engine)
     table_names = set(inspector.get_table_names())
     # Fast sentinel check so additional Gunicorn workers/cold boots skip full schema introspection once migrated
-    if {'complaints', 'contact_messages', 'notifications'}.issubset(table_names):
+    if {'complaints', 'contact_messages', 'notifications', 'workers'}.issubset(table_names):
         try:
             comp_idx = {idx['name'] for idx in inspector.get_indexes('complaints')}
             contact_idx = {idx['name'] for idx in inspector.get_indexes('contact_messages')}
             notif_idx = {idx['name'] for idx in inspector.get_indexes('notifications')}
+            worker_cols = {c['name'] for c in inspector.get_columns('workers')}
             if (
                 'idx_comp_updated' in comp_idx
                 and 'idx_contact_read_created' in contact_idx
                 and 'idx_notif_complaint' in notif_idx
+                and 'employee_id' in worker_cols
             ):
                 return
         except Exception:
@@ -96,6 +98,17 @@ def _run_safe_schema_migrations(app):
                 conn.execute(text('CREATE INDEX idx_notif_user_read ON notifications (user_id, is_read)'))
             if 'idx_notif_complaint' not in existing_indexes:
                 conn.execute(text('CREATE INDEX idx_notif_complaint ON notifications (complaint_id)'))
+
+        if 'workers' in table_names:
+            worker_cols = {c['name'] for c in inspector.get_columns('workers')}
+            if 'employee_id' not in worker_cols:
+                conn.execute(text('ALTER TABLE workers ADD COLUMN employee_id VARCHAR(50) NULL'))
+            worker_indexes = {idx['name'] for idx in inspector.get_indexes('workers')}
+            if 'idx_workers_employee_id' not in worker_indexes and 'employee_id' not in worker_indexes:
+                try:
+                    conn.execute(text('CREATE UNIQUE INDEX idx_workers_employee_id ON workers (employee_id)'))
+                except Exception:
+                    pass
 
         # Non-destructive performance indexes for existing production tables
         index_specs = {
@@ -173,21 +186,59 @@ def create_app(config_name=None):
     # Initialize extensions
     db.init_app(app)
 
+    # Register local timezone Jinja filter so all timestamps reflect user's local current time
+    from app.utils.helpers import format_local_time
+    app.jinja_env.filters['local_time'] = format_local_time
+
     # Import models so SQLAlchemy is aware of them
     from app import models
 
-    # Initialize database tables, safe migrations, and baseline departments
+    # Initialize database tables & additive-only migrations (NEVER drops, resets, or auto-seeds production)
+    app.config['DB_STARTUP_ERROR'] = app.config.get('DB_CONFIG_ERROR')
     with app.app_context():
-        try:
-            db.create_all()
-            _run_safe_schema_migrations(app)
-            if not app.config.get('TESTING'):
-                from app.models.department import Department
-                if not Department.query.first():
-                    from app.services.seed_service import seed_all
-                    seed_all()
-        except Exception as e:
-            app.logger.warning(f"DB startup initialization notice: {e}")
+        if app.config.get('TESTING'):
+            try:
+                db.create_all()
+                _run_safe_schema_migrations(app)
+            except Exception as e:
+                app.logger.warning(f"Test DB startup notice: {e}")
+        elif app.config.get('DB_STARTUP_ERROR'):
+            app.logger.critical(app.config['DB_STARTUP_ERROR'])
+        else:
+            try:
+                db.session.execute(text('SELECT 1'))
+                db.create_all()
+                _run_safe_schema_migrations(app)
+                auto_seed = os.environ.get('AUTO_SEED', '').lower() == 'true'
+                if auto_seed or not app.config.get('IS_CLOUD'):
+                    from app.models.department import Department
+                    from app.models.user import User
+                    if not Department.query.first() and not User.query.first():
+                        from app.services.seed_service import seed_all
+                        seed_all()
+            except Exception as e:
+                db.session.rollback()
+                app.config['DB_STARTUP_ERROR'] = (
+                    "Database connection failed during startup. Please verify persistent MySQL settings "
+                    "and ensure the database server is reachable."
+                )
+                app.logger.critical(f"Production DB connection failed (halting initialization): {type(e).__name__}")
+
+    @app.before_request
+    def guard_database_availability():
+        if app.config.get('DB_STARTUP_ERROR') and not request.path.startswith(('/static/', '/health', '/healthz', '/api/health')):
+            if _wants_json_response():
+                return jsonify({
+                    'success': False,
+                    'error': 'Database Unavailable',
+                    'message': app.config['DB_STARTUP_ERROR'],
+                }), 503
+            return render_template(
+                'public/error.html',
+                code=503,
+                title="Database Connection Unavailable",
+                message=app.config['DB_STARTUP_ERROR'],
+            ), 503
 
     # CORS preflight handler (strictly limited to configured allowed origins)
     @app.before_request
@@ -293,6 +344,13 @@ def create_app(config_name=None):
     @app.route('/health')
     @app.route('/healthz')
     def health_check():
+        if app.config.get('DB_STARTUP_ERROR'):
+            return jsonify({
+                'status': 'error',
+                'service': 'smart-civic-complaint-system',
+                'database': 'misconfigured',
+                'message': app.config['DB_STARTUP_ERROR'],
+            }), 503
         try:
             db.session.execute(text('SELECT 1'))
             return jsonify({

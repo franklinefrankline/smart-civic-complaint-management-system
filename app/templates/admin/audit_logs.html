@@ -53,7 +53,7 @@
             {% for log in logs %}
               <tr>
                 <td style="font-size: 0.82rem; font-family: monospace; color: var(--text-muted);">
-                  {{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                  {{ log.created_at | local_time('%Y-%m-%d %H:%M:%S') }}
                 </td>
                 <td>
                   <span class="badge" style="background: var(--bg-subtle); color: var(--civic-blue); font-weight: 700;">

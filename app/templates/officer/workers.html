@@ -1,54 +1,205 @@
 {% extends "base.html" %}
 
-{% block title %}Department Field Technicians | {{ t('app_name') }}{% endblock %}
+{% block title %}Manage Workers | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
   {% include 'shared/_sidebar.html' %}
 
   <div class="dashboard-content">
-    <div style="margin-bottom: 2rem;">
-      <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
-        Department Field Technicians
-      </h1>
-      <p style="color: var(--text-muted); font-size: 0.92rem;">
-        Available technician pool, active task allocations, and field contact numbers.
-      </p>
+    <!-- Page Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+      <div>
+        <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-teal); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+          {{ department.name if department else 'Department Operations' }}{% if department %} ({{ department.code }}){% endif %}
+        </div>
+        <h1 style="font-size: 1.65rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em;">
+          Manage Workers
+        </h1>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.2rem;">
+          Register new field workers, update staff credentials, manage duty status, and dispatch department tasks.
+        </p>
+      </div>
+
+      {% if department %}
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+        <button type="button" id="openAddWorkerModalBtn" onclick="openOfficerAddWorkerModal()" class="btn btn-primary btn-sm">
+          <i data-lucide="user-plus" class="icon-sm"></i> Add Worker
+        </button>
+        <a href="{{ url_for('officer.complaints') }}" class="btn btn-secondary btn-sm">
+          <i data-lucide="clipboard-list" class="icon-sm"></i> Department Complaints
+        </a>
+      </div>
+      {% endif %}
     </div>
 
+    <!-- Summary KPI Cards -->
+    <div class="stat-grid stagger-in" style="margin-bottom: 1.5rem;">
+      <div class="stat-card">
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.total }}</span>
+          <span class="stat-label">Department Workers</span>
+        </div>
+        <div class="stat-icon"><i data-lucide="users"></i></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-info">
+          <span class="stat-value" style="color: #16a34a;">{{ stats.active }}</span>
+          <span class="stat-label">Active Accounts</span>
+        </div>
+        <div class="stat-icon" style="color: #16a34a;"><i data-lucide="user-check"></i></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-info">
+          <span class="stat-value" style="color: #2563eb;">{{ stats.available }}</span>
+          <span class="stat-label">Available on Duty</span>
+        </div>
+        <div class="stat-icon" style="color: #2563eb;"><i data-lucide="hard-hat"></i></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-info">
+          <span class="stat-value" style="color: #7c3aed;">{{ stats.active_tasks }}</span>
+          <span class="stat-label">Assigned Active Tasks</span>
+        </div>
+        <div class="stat-icon" style="color: #7c3aed;"><i data-lucide="wrench"></i></div>
+      </div>
+    </div>
+
+    <!-- Search & Filter Toolbar -->
+    <div class="card" style="margin-bottom: 1.5rem; padding: 1.1rem 1.25rem;">
+      <form method="GET" action="{{ url_for('officer.workers') }}" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end;">
+        <div class="form-group" style="flex: 2; min-width: 220px; margin-bottom: 0;">
+          <label class="form-label" style="font-size: 0.78rem;">Search Workers</label>
+          <input type="text" name="search" class="form-control" value="{{ search_query or '' }}"
+            placeholder="Name, Employee ID, Email, Phone, or Designation...">
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 170px; margin-bottom: 0;">
+          <label class="form-label" style="font-size: 0.78rem;">Account &amp; Duty Filter</label>
+          <select name="status" class="form-control">
+            <option value="">All Workers</option>
+            <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active Accounts</option>
+            <option value="inactive" {% if current_status == 'inactive' %}selected{% endif %}>Deactivated Accounts</option>
+            <option value="available" {% if current_status == 'available' %}selected{% endif %}>Available on Duty</option>
+            <option value="busy" {% if current_status == 'busy' %}selected{% endif %}>Busy / Off-Duty</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i data-lucide="search" class="icon-xs"></i> Filter
+          </button>
+          {% if search_query or current_status %}
+          <a href="{{ url_for('officer.workers') }}" class="btn btn-secondary btn-sm">Reset</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+
+    <!-- Workers Table -->
     <div class="card">
       <div class="table-responsive">
         <table class="table">
           <thead>
             <tr>
-              <th>Technician Name</th>
-              <th>Mobile</th>
-              <th>Email</th>
-              <th>Active Workload</th>
-              <th>Completed Tasks</th>
-              <th>Duty Status</th>
+              <th>Worker &amp; Employee ID</th>
+              <th>Contact Details</th>
+              <th>Assigned Tasks</th>
+              <th>Availability</th>
+              <th>Account Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for w in workers %}
-              <tr>
-                <td><strong>{{ w.user.full_name }}</strong></td>
-                <td>{{ w.user.mobile_number }}</td>
-                <td>{{ w.user.email }}</td>
-                <td>
-                  <span class="badge" style="background: {% if w.active_task_count > 3 %}#fee2e2; color: #b91c1c;{% else %}#dbeafe; color: #1e40af;{% endif %}">
-                    {{ w.active_task_count }} active tasks
+            <tr>
+              <td>
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                  <strong style="color: var(--text-primary);">{{ w.user.full_name }}</strong>
+                  {% if w.employee_id %}
+                  <span style="font-family: monospace; font-size: 0.72rem; background: var(--bg-subtle); border: 1px solid var(--border-color); padding: 0.1rem 0.45rem; border-radius: 4px; color: var(--civic-blue); font-weight: 700;">
+                    {{ w.employee_id }}
                   </span>
-                </td>
-                <td>{{ w.completed_task_count }} resolved</td>
-                <td>
-                  {% if w.is_available %}
-                    <span class="badge badge-resolved">Available</span>
-                  {% else %}
-                    <span class="badge badge-rejected">Busy / Off-Duty</span>
                   {% endif %}
-                </td>
-              </tr>
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem;">
+                  {{ w.designation or 'Field Technician' }} &bull; {{ department.name if department else '' }}
+                </div>
+              </td>
+              <td>
+                <div style="font-size: 0.85rem; color: var(--text-primary);">{{ w.user.email }}</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">{{ w.user.mobile_number }}</div>
+              </td>
+              <td>
+                <span class="badge" style="background: {% if w.active_task_count > 3 %}#fee2e2; color: #b91c1c;{% else %}#dbeafe; color: #1e40af;{% endif %}">
+                  {{ w.active_task_count }} active
+                </span>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                  {{ w.completed_task_count }} resolved
+                </div>
+              </td>
+              <td>
+                {% if w.is_available and w.user.is_active %}
+                  <span class="badge badge-resolved">Available</span>
+                {% else %}
+                  <span class="badge badge-rejected">Busy / Off-Duty</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if w.user.is_active %}
+                  <span class="badge badge-resolved">Active</span>
+                {% else %}
+                  <span class="badge badge-rejected">Inactive</span>
+                {% endif %}
+              </td>
+              <td>
+                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center;">
+                  <button type="button" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.74rem;"
+                    onclick="openOfficerEditWorkerModal(this)"
+                    data-worker-id="{{ w.id }}"
+                    data-full-name="{{ w.user.full_name }}"
+                    data-email="{{ w.user.email }}"
+                    data-mobile="{{ w.user.mobile_number }}"
+                    data-employee-id="{{ w.employee_id or '' }}"
+                    data-designation="{{ w.designation or 'Field Technician' }}"
+                    data-account-status="{{ 'active' if w.user.is_active else 'inactive' }}"
+                    data-available="{{ '1' if w.is_available else '0' }}">
+                    <i data-lucide="pencil" class="icon-xs"></i> Edit
+                  </button>
+
+                  {% if w.user.is_active and assignable_complaints %}
+                  <button type="button" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.74rem;"
+                    onclick="openAssignComplaintModal('{{ w.id }}', '{{ w.user.full_name | e }}')">
+                    <i data-lucide="send" class="icon-xs"></i> Assign Task
+                  </button>
+                  {% endif %}
+
+                  <form method="POST" action="{{ url_for('officer.workers') }}" style="display: inline;"
+                    data-confirm-title="{{ 'Deactivate' if w.user.is_active else 'Activate' }} Worker Account"
+                    data-confirm="Are you sure you want to {{ 'deactivate' if w.user.is_active else 'activate' }} worker {{ w.user.full_name }}?"
+                    data-confirm-btn="{{ 'Deactivate' if w.user.is_active else 'Activate' }}"
+                    data-confirm-variant="{{ 'warning' if w.user.is_active else 'primary' }}">
+                    <input type="hidden" name="action" value="toggle_status">
+                    <input type="hidden" name="worker_id" value="{{ w.id }}">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.74rem;">
+                      {{ 'Deactivate' if w.user.is_active else 'Activate' }}
+                    </button>
+                  </form>
+
+                  <form method="POST" action="{{ url_for('officer.workers') }}" style="display: inline;">
+                    <input type="hidden" name="action" value="toggle_availability">
+                    <input type="hidden" name="worker_id" value="{{ w.id }}">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.74rem;">
+                      {{ 'Set Off-Duty' if w.is_available else 'Set Available' }}
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                No field workers found matching your filters in {{ department.name if department else 'this department' }}.
+              </td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -56,4 +207,317 @@
     </div>
   </div>
 </div>
+
+<!-- Add Worker Modal -->
+<div id="addWorkerModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="addWorkerModalTitle">
+  <div class="modal-dialog card" style="max-width: 540px; margin: auto; padding: 1.75rem 2rem; position: relative; max-height: 92vh; overflow-y: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <div>
+        <h3 id="addWorkerModalTitle" style="font-size: 1.25rem; font-weight: 700;">Add New Field Worker</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+          Worker will be registered strictly under {{ department.name if department else 'your department' }}.
+        </p>
+      </div>
+      <button type="button" onclick="closeModal('addWorkerModal')" aria-label="Close modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+
+    <div id="addWorkerErrorAlert" class="alert alert-danger" style="display: none; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.86rem;">
+      <i data-lucide="alert-circle" class="icon-sm" style="flex-shrink: 0;"></i>
+      <span id="addWorkerErrorMsg"></span>
+    </div>
+
+    <form id="officerAddWorkerForm" method="POST" action="{{ url_for('officer.workers') }}" data-custom-ajax="1" novalidate>
+      <input type="hidden" name="action" value="add_worker">
+
+      <div class="form-group">
+        <label class="form-label required">Full Name</label>
+        <input type="text" name="full_name" class="form-control" required placeholder="e.g. Rajesh Kumar">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
+        <div class="form-group">
+          <label class="form-label required">Email Address</label>
+          <input type="email" name="email" class="form-control" required placeholder="worker@civic.gov">
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Phone Number</label>
+          <input type="tel" name="mobile" class="form-control" required placeholder="9876543210" inputmode="numeric" maxlength="15">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
+        <div class="form-group">
+          <label class="form-label required">Employee ID</label>
+          <input type="text" name="employee_id" class="form-control" required placeholder="e.g. EMP-WTR-101" style="text-transform: uppercase;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Designation</label>
+          <input type="text" name="designation" class="form-control" placeholder="Field Technician">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 0.9rem;">
+        <div class="form-group">
+          <label class="form-label">Department (Locked)</label>
+          <input type="text" class="form-control" value="{{ department.name if department else 'Assigned Department' }}{% if department %} ({{ department.code }}){% endif %}" readonly style="background: var(--bg-subtle); cursor: not-allowed; font-weight: 600;">
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Account Status</label>
+          <select name="account_status" class="form-control" required>
+            <option value="active" selected>Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label required">Password</label>
+        <div class="password-input-wrapper" style="position: relative; display: flex; align-items: center; width: 100%;">
+          <input type="password" name="password" id="officerAddWorkerPassword" class="form-control" required minlength="6" placeholder="Minimum 6 characters" style="padding-right: 2.75rem;">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" aria-label="Toggle password visibility" tabindex="-1" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; padding: 0.25rem;">
+            <i data-lucide="eye" class="icon-sm"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+        <input type="checkbox" id="officerAddWorkerResetCheck" name="require_reset" value="1">
+        <label for="officerAddWorkerResetCheck" style="font-size: 0.82rem; color: var(--text-secondary); cursor: pointer; margin: 0;">
+          Require worker to change password on first login (temporary invitation password)
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
+        <button type="button" onclick="closeModal('addWorkerModal')" class="btn btn-secondary btn-sm">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Create Field Worker</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Worker Modal -->
+<div id="editWorkerModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="editWorkerModalTitle">
+  <div class="modal-dialog card" style="max-width: 540px; margin: auto; padding: 1.75rem 2rem; position: relative; max-height: 92vh; overflow-y: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <h3 id="editWorkerModalTitle" style="font-size: 1.25rem; font-weight: 700;">Edit Field Worker</h3>
+      <button type="button" onclick="closeModal('editWorkerModal')" aria-label="Close modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+
+    <div id="editWorkerErrorAlert" class="alert alert-danger" style="display: none; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.86rem;">
+      <i data-lucide="alert-circle" class="icon-sm" style="flex-shrink: 0;"></i>
+      <span id="editWorkerErrorMsg"></span>
+    </div>
+
+    <form id="officerEditWorkerForm" method="POST" action="{{ url_for('officer.workers') }}" data-custom-ajax="1" novalidate>
+      <input type="hidden" name="action" value="edit_worker">
+      <input type="hidden" name="worker_id" id="editWorkerId">
+
+      <div class="form-group">
+        <label class="form-label required">Full Name</label>
+        <input type="text" name="full_name" id="editWorkerFullName" class="form-control" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
+        <div class="form-group">
+          <label class="form-label required">Email Address</label>
+          <input type="email" name="email" id="editWorkerEmail" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Phone Number</label>
+          <input type="tel" name="mobile" id="editWorkerMobile" class="form-control" required inputmode="numeric" maxlength="15">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
+        <div class="form-group">
+          <label class="form-label required">Employee ID</label>
+          <input type="text" name="employee_id" id="editWorkerEmpId" class="form-control" required style="text-transform: uppercase;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Designation</label>
+          <input type="text" name="designation" id="editWorkerDesignation" class="form-control">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
+        <div class="form-group">
+          <label class="form-label">Account Status</label>
+          <select name="account_status" id="editWorkerAccountStatus" class="form-control">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Duty Availability</label>
+          <select name="is_available" id="editWorkerAvailability" class="form-control">
+            <option value="1">Available</option>
+            <option value="0">Busy / Off-Duty</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Reset Password (Optional)</label>
+        <input type="password" name="password" id="editWorkerPassword" class="form-control" minlength="6" placeholder="Leave blank to keep existing password">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
+        <button type="button" onclick="closeModal('editWorkerModal')" class="btn btn-secondary btn-sm">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Assign Complaint Modal -->
+<div id="assignComplaintModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="assignComplaintModalTitle">
+  <div class="modal-dialog card" style="max-width: 500px; margin: auto; padding: 1.75rem 2rem; position: relative;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <h3 id="assignComplaintModalTitle" style="font-size: 1.2rem; font-weight: 700;">Assign Department Complaint</h3>
+      <button type="button" onclick="closeModal('assignComplaintModal')" aria-label="Close modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+
+    <div id="assignComplaintErrorAlert" class="alert alert-danger" style="display: none; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.86rem;">
+      <i data-lucide="alert-circle" class="icon-sm" style="flex-shrink: 0;"></i>
+      <span id="assignComplaintErrorMsg"></span>
+    </div>
+
+    <form id="officerAssignComplaintForm" method="POST" action="{{ url_for('officer.workers') }}" data-custom-ajax="1" novalidate>
+      <input type="hidden" name="action" value="assign_complaint">
+      <input type="hidden" name="worker_id" id="assignTargetWorkerId">
+
+      <div class="form-group">
+        <label class="form-label">Field Worker</label>
+        <input type="text" id="assignTargetWorkerName" class="form-control" readonly style="background: var(--bg-subtle); font-weight: 600;">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label required">Select Department Complaint</label>
+        <select name="complaint_id" id="assignComplaintSelect" class="form-control" required>
+          <option value="">-- Choose complaint to dispatch --</option>
+          {% for c in assignable_complaints %}
+          <option value="{{ c.id }}">{{ c.complaint_ref }} - {{ c.title }} ({{ c.priority.upper() }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Dispatch Instructions</label>
+        <textarea name="instructions" class="form-control" rows="2" placeholder="Optional site guidance or priority instructions..."></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
+        <button type="button" onclick="closeModal('assignComplaintModal')" class="btn btn-secondary btn-sm">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Dispatch Work Order</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function openOfficerAddWorkerModal() {
+    const form = document.getElementById('officerAddWorkerForm');
+    const errAlert = document.getElementById('addWorkerErrorAlert');
+    if (form) form.reset();
+    if (errAlert) errAlert.style.display = 'none';
+    if (window.openModal) window.openModal('addWorkerModal');
+  }
+
+  function openOfficerEditWorkerModal(btn) {
+    const errAlert = document.getElementById('editWorkerErrorAlert');
+    if (errAlert) errAlert.style.display = 'none';
+    document.getElementById('editWorkerId').value = btn.dataset.workerId || '';
+    document.getElementById('editWorkerFullName').value = btn.dataset.fullName || '';
+    document.getElementById('editWorkerEmail').value = btn.dataset.email || '';
+    document.getElementById('editWorkerMobile').value = btn.dataset.mobile || '';
+    document.getElementById('editWorkerEmpId').value = btn.dataset.employeeId || '';
+    document.getElementById('editWorkerDesignation').value = btn.dataset.designation || 'Field Technician';
+    document.getElementById('editWorkerAccountStatus').value = btn.dataset.accountStatus || 'active';
+    document.getElementById('editWorkerAvailability').value = btn.dataset.available || '1';
+    document.getElementById('editWorkerPassword').value = '';
+    if (window.openModal) window.openModal('editWorkerModal');
+  }
+
+  function openAssignComplaintModal(workerId, workerName) {
+    const errAlert = document.getElementById('assignComplaintErrorAlert');
+    if (errAlert) errAlert.style.display = 'none';
+    document.getElementById('assignTargetWorkerId').value = workerId;
+    document.getElementById('assignTargetWorkerName').value = workerName;
+    if (window.openModal) window.openModal('assignComplaintModal');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    function bindOfficerModalForm(formId, modalId, errAlertId, errMsgId) {
+      const form = document.getElementById(formId);
+      if (!form) return;
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errAlert = document.getElementById(errAlertId);
+        const errMsg = document.getElementById(errMsgId);
+        if (errAlert) errAlert.style.display = 'none';
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 55000);
+        try {
+          const actionUrl = window.getApiUrl ? window.getApiUrl(form.getAttribute('action')) : form.getAttribute('action');
+          const res = await fetch(actionUrl, {
+            method: 'POST',
+            body: new FormData(form),
+            credentials: 'include',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json'
+            },
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+          const data = await res.json().catch(() => null);
+          if (res.ok && data && data.success) {
+            if (window.closeModal) window.closeModal(modalId);
+            if (window.showToast && data.message) window.showToast(data.message, 'success');
+            if (window.refreshDashboardContent) {
+              try {
+                await window.refreshDashboardContent();
+              } catch (_) {
+                window.location.reload();
+              }
+            } else {
+              window.location.reload();
+            }
+          } else {
+            const msg = (data && data.message) ? data.message : 'Unable to save worker details.';
+            if (errMsg && errAlert) {
+              errMsg.textContent = msg;
+              errAlert.style.display = 'flex';
+            } else if (window.showToast) {
+              window.showToast(msg, 'error');
+            }
+          }
+        } catch (err) {
+          clearTimeout(timer);
+          const msg = (err && err.name === 'AbortError')
+            ? 'Server took too long to respond. Please try again.'
+            : 'Network error while communicating with server.';
+          if (errMsg && errAlert) {
+            errMsg.textContent = msg;
+            errAlert.style.display = 'flex';
+          } else if (window.showToast) {
+            window.showToast(msg, 'error');
+          }
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+    }
+
+    bindOfficerModalForm('officerAddWorkerForm', 'addWorkerModal', 'addWorkerErrorAlert', 'addWorkerErrorMsg');
+    bindOfficerModalForm('officerEditWorkerForm', 'editWorkerModal', 'editWorkerErrorAlert', 'editWorkerErrorMsg');
+    bindOfficerModalForm('officerAssignComplaintForm', 'assignComplaintModal', 'assignComplaintErrorAlert', 'assignComplaintErrorMsg');
+  });
+</script>
 {% endblock %}

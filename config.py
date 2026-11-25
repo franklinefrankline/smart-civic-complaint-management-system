@@ -65,18 +65,34 @@ def _build_database_config():
 
         clean_query = urlencode(query, doseq=True)
         uri = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, clean_query, parsed.fragment))
+        db_config_error = None
+        if is_cloud and uri.startswith('sqlite') and os.environ.get('ALLOW_EPHEMERAL_SQLITE', '').lower() != 'true':
+            db_config_error = (
+                "Unsafe SQLite path detected in cloud production. Configure a persistent MySQL "
+                "DATABASE_URL in Render Environment Variables so deployment data is preserved."
+            )
     elif db_host:
         encoded_user = quote_plus(db_user)
         encoded_pw = quote_plus(db_password)
         auth = f"{encoded_user}:{encoded_pw}" if db_password else encoded_user
         uri = f"mysql+pymysql://{auth}@{db_host}:{db_port}/{db_name}?charset=utf8mb4"
+        db_config_error = None
+    elif is_cloud and os.environ.get('ALLOW_EPHEMERAL_SQLITE', '').lower() != 'true':
+        # Never silently fall back to ephemeral /tmp SQLite in cloud production
+        uri = 'sqlite:///:memory:'
+        db_config_error = (
+            "Production MySQL database is not configured. Set DATABASE_URL (or DB_HOST, DB_USER, "
+            "DB_PASSWORD, DB_NAME) in Render Environment Variables. Silent SQLite fallback is disabled."
+        )
     elif is_cloud:
         uri = 'sqlite:////tmp/smart_civic.db'
+        db_config_error = None
     else:
         encoded_user = quote_plus(db_user)
         encoded_pw = quote_plus(db_password)
         auth = f"{encoded_user}:{encoded_pw}" if db_password else encoded_user
         uri = f"mysql+pymysql://{auth}@127.0.0.1:{db_port}/{db_name}?charset=utf8mb4"
+        db_config_error = None
 
     if 'sqlite' in uri:
         engine_options = {
@@ -105,10 +121,10 @@ def _build_database_config():
             'pool_pre_ping': True
         }
 
-    return is_cloud, uri, engine_options, db_user, db_password, db_host or '127.0.0.1', db_port, db_name
+    return is_cloud, uri, engine_options, db_user, db_password, db_host or '127.0.0.1', db_port, db_name, db_config_error
 
 
-_IS_CLOUD, _DB_URI, _ENGINE_OPTS, _DB_USER, _DB_PASSWORD, _DB_HOST, _DB_PORT, _DB_NAME = _build_database_config()
+_IS_CLOUD, _DB_URI, _ENGINE_OPTS, _DB_USER, _DB_PASSWORD, _DB_HOST, _DB_PORT, _DB_NAME, _DB_CONFIG_ERROR = _build_database_config()
 
 
 class Config:
@@ -121,6 +137,7 @@ class Config:
     DB_PORT = _DB_PORT
     DB_NAME = _DB_NAME
     IS_CLOUD = _IS_CLOUD
+    DB_CONFIG_ERROR = _DB_CONFIG_ERROR
 
     SQLALCHEMY_DATABASE_URI = _DB_URI
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -191,6 +208,7 @@ class ProductionConfig(Config):
 
 class TestingConfig(Config):
     TESTING = True
+    DB_CONFIG_ERROR = None
     SESSION_COOKIE_SECURE = False
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'test_civic.db')}"
     SQLALCHEMY_ENGINE_OPTIONS = {

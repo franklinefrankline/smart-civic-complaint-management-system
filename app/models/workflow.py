@@ -7,6 +7,7 @@ class Worker(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, unique=True)
     department_id = db.Column(db.Integer, db.ForeignKey('departments.id', ondelete='RESTRICT'), nullable=False)
+    employee_id = db.Column(db.String(50), unique=True, nullable=True, index=True)
     designation = db.Column(db.String(100), default='Field Technician')
     is_available = db.Column(db.Boolean, default=True)
     active_task_count = db.Column(db.Integer, default=0)
@@ -21,9 +22,11 @@ class Worker(db.Model):
             'name': self.user.full_name if self.user else None,
             'email': self.user.email if self.user else None,
             'mobile': self.user.mobile_number if self.user else None,
+            'employee_id': self.employee_id,
             'department_id': self.department_id,
             'department_name': self.department.name if self.department else None,
             'designation': self.designation,
+            'is_active': bool(self.user.is_active) if self.user else False,
             'is_available': self.is_available,
             'active_task_count': self.active_task_count,
             'completed_task_count': self.completed_task_count

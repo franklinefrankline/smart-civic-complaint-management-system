@@ -79,7 +79,7 @@
                   {{ a.assigned_by.full_name if a.assigned_by else 'Supervisor' }}
                 </td>
                 <td style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">
-                  {{ a.assigned_at.strftime('%Y-%m-%d %H:%M') }}
+                  {{ a.assigned_at | local_time('%Y-%m-%d %H:%M') }}
                 </td>
                 <td>
                   <span class="badge" style="background: var(--bg-subtle); color: var(--text-primary); font-weight: 600;">

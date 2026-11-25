@@ -85,7 +85,7 @@
                   {% endif %}
                 </td>
                 <td style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">
-                  {{ o.last_login_at.strftime('%Y-%m-%d %H:%M') if o.last_login_at else 'Never' }}
+                  {{ o.last_login_at | local_time('%Y-%m-%d %H:%M', 'Never') }}
                 </td>
                 <td>
                   <div style="display: flex; gap: 0.4rem; align-items: center;">

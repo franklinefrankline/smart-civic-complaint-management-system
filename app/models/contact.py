@@ -19,11 +19,13 @@ class ContactMessage(db.Model):
     user = db.relationship('User', foreign_keys=[user_id])
 
     def to_dict(self):
+        from app.utils.helpers import utc_to_local
+        local_dt = utc_to_local(self.created_at) if self.created_at else None
         return {
             'id': self.id,
             'name': self.name,
             'contact': self.contact,
             'message': self.message,
             'is_read': self.is_read,
-            'created_at': self.created_at.strftime('%d %b %Y, %I:%M %p') if self.created_at else ''
+            'created_at': local_dt.strftime('%d %b %Y, %I:%M %p') if local_dt else ''
         }

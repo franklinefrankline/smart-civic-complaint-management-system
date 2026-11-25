@@ -81,7 +81,7 @@
         </div>
         <div style="height: 320px; position: relative;">
           <canvas id="deptPerformanceChart"></canvas>
-          <div id="deptChartEmpty" class="analytics-empty-state" {% if summary.total > 0 %}hidden{% endif %} style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 1.5rem; color: var(--text-muted); background: var(--bg-surface);">
+          <div id="deptChartEmpty" class="analytics-empty-state" {% if summary.total > 0 %}hidden{% endif %} style="position: absolute; inset: 0; {% if summary.total > 0 %}display: none;{% endif %} padding: 1.5rem; color: var(--text-muted); background: var(--bg-surface);">
             <i data-lucide="bar-chart-3" style="width: 40px; height: 40px; opacity: 0.45; margin-bottom: 0.65rem;"></i>
             <p style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">No Complaints Registered Yet</p>
             <p style="margin: 0.35rem 0 0; font-size: 0.82rem; max-width: 280px;">Department volume and resolution bars appear automatically as citizens submit grievances.</p>
@@ -96,7 +96,7 @@
         </div>
         <div style="height: 320px; position: relative;">
           <canvas id="categoryBreakdownChart"></canvas>
-          <div id="categoryChartEmpty" class="analytics-empty-state" {% if cat_totals|sum > 0 %}hidden{% endif %} style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 1.5rem; color: var(--text-muted); background: var(--bg-surface);">
+          <div id="categoryChartEmpty" class="analytics-empty-state" {% if cat_totals|sum > 0 %}hidden{% endif %} style="position: absolute; inset: 0; {% if cat_totals|sum > 0 %}display: none;{% endif %} padding: 1.5rem; color: var(--text-muted); background: var(--bg-surface);">
             <i data-lucide="pie-chart" style="width: 40px; height: 40px; opacity: 0.45; margin-bottom: 0.65rem;"></i>
             <p style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">No Category Data Yet</p>
             <p style="margin: 0.35rem 0 0; font-size: 0.82rem; max-width: 280px;">Category distribution will appear once at least one complaint is recorded.</p>
@@ -114,7 +114,7 @@
         </div>
         <div style="height: 280px; position: relative;">
           <canvas id="statusBreakdownChart"></canvas>
-          <div id="statusChartEmpty" class="analytics-empty-state" {% if summary.total > 0 %}hidden{% endif %} style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 1.5rem; color: var(--text-muted); background: var(--bg-surface);">
+          <div id="statusChartEmpty" class="analytics-empty-state" {% if summary.total > 0 %}hidden{% endif %} style="position: absolute; inset: 0; {% if summary.total > 0 %}display: none;{% endif %} padding: 1.5rem; color: var(--text-muted); background: var(--bg-surface);">
             <i data-lucide="layers" style="width: 36px; height: 36px; opacity: 0.45; margin-bottom: 0.6rem;"></i>
             <p style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.92rem;">Awaiting Complaint Activity</p>
           </div>
@@ -190,9 +190,18 @@
       const deptEmpty = document.getElementById('deptChartEmpty');
       const catEmpty = document.getElementById('categoryChartEmpty');
       const statusEmpty = document.getElementById('statusChartEmpty');
-      if (deptEmpty) deptEmpty.hidden = hasTotal;
-      if (catEmpty) catEmpty.hidden = hasCats;
-      if (statusEmpty) statusEmpty.hidden = hasTotal;
+      if (deptEmpty) {
+        deptEmpty.hidden = hasTotal;
+        deptEmpty.style.display = hasTotal ? 'none' : 'flex';
+      }
+      if (catEmpty) {
+        catEmpty.hidden = hasCats;
+        catEmpty.style.display = hasCats ? 'none' : 'flex';
+      }
+      if (statusEmpty) {
+        statusEmpty.hidden = hasTotal;
+        statusEmpty.style.display = hasTotal ? 'none' : 'flex';
+      }
     }
 
     function updateDomMetrics(data) {
@@ -236,6 +245,7 @@
           const box = document.getElementById(id);
           if (box && data.summary && data.summary.total > 0) {
             box.hidden = false;
+            box.style.display = 'flex';
             box.innerHTML = '<p style="margin:0;font-weight:600;color:var(--text-primary);">Chart library unavailable offline</p><p style="margin:0.35rem 0 0;font-size:0.82rem;">Review live KPI metrics and the department table below.</p>';
           }
         });

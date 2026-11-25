@@ -45,7 +45,7 @@
                 </td>
                 <td style="font-size: 0.85rem;">{{ c.department.name if c.department else '-' }}</td>
                 <td style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">
-                  {{ c.resolved_at.strftime('%Y-%m-%d') if c.resolved_at else '-' }}
+                  {{ c.resolved_at | local_time('%Y-%m-%d', '-') }}
                 </td>
                 <td>
                   {% if c.feedback %}

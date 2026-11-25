@@ -114,7 +114,7 @@
                     </span>
                   </td>
                   <td style="font-size: 0.8rem; color: {% if c.is_overdue %}var(--status-rejected){% else %}var(--text-muted){% endif %}; font-weight: {% if c.is_overdue %}bold{% else %}normal{% endif %};">
-                    {{ c.sla_due_date.strftime('%Y-%m-%d %H:%M') if c.sla_due_date else 'N/A' }}
+                    {{ c.sla_due_date | local_time('%Y-%m-%d %H:%M', 'N/A') }}
                   </td>
                   <td>
                     <a href="{{ url_for('admin.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm">

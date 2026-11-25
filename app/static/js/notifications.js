@@ -283,6 +283,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (updatedAny && window.lucide) {
         lucide.createIcons();
       }
+      if (updatedAny && window.formatLocalTimes) {
+        window.formatLocalTimes(document);
+      }
     } catch (e) {
       console.error('Live dashboard update failed:', e);
     }

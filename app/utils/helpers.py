@@ -2,9 +2,10 @@ import os
 import re
 import uuid
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
-from flask import current_app
+from flask import current_app, request, has_request_context
+from markupsafe import Markup, escape
 
 
 def generate_complaint_ref():
@@ -121,3 +122,44 @@ def validate_email(email):
     if not re.match(pattern, email.strip()):
         return False, "Invalid email address format."
     return True, email.strip().lower()
+
+
+def get_request_tz_offset_minutes(default_offset_minutes=330):
+    """
+    Resolve timezone offset east of UTC in minutes from browser cookie `sccmt_tz_offset`
+    (JS Date.getTimezoneOffset() is minutes west of UTC, e.g. -330 for IST +05:30).
+    Defaults to +330 minutes (IST) so first-visit SSR displays accurate local time.
+    """
+    if has_request_context():
+        raw = request.cookies.get('sccmt_tz_offset')
+        if raw is not None:
+            try:
+                js_offset = int(raw)
+                if -840 <= js_offset <= 840:
+                    return -js_offset
+            except (TypeError, ValueError):
+                pass
+    return default_offset_minutes
+
+
+def utc_to_local(dt, default_offset_minutes=330):
+    """Convert naive UTC datetime stored in DB into user's local datetime."""
+    if not dt:
+        return None
+    offset_mins = get_request_tz_offset_minutes(default_offset_minutes=default_offset_minutes)
+    return dt + timedelta(minutes=offset_mins)
+
+
+def format_local_time(dt, fmt='%d %b %Y, %I:%M %p', fallback=''):
+    """
+    Render a UTC datetime in user's local time wrapped in <time data-utc="...">
+    so both SSR (via tz cookie / IST default) and live client JS display exact current local time.
+    """
+    if not dt:
+        return fallback
+    local_dt = utc_to_local(dt)
+    rendered = local_dt.strftime(fmt)
+    iso_utc = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    return Markup(
+        f'<time datetime="{iso_utc}" data-utc="{iso_utc}" data-fmt="{escape(fmt)}">{escape(rendered)}</time>'
+    )

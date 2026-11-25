@@ -79,7 +79,7 @@
                     </span>
                     {% if u.password_changed_at %}
                       <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">
-                        {{ u.password_changed_at.strftime('%Y-%m-%d') }}
+                        {{ u.password_changed_at | local_time('%Y-%m-%d') }}
                       </div>
                     {% endif %}
                   {% endif %}
@@ -92,7 +92,7 @@
                   {% endif %}
                 </td>
                 <td style="font-size: 0.8rem; color: var(--text-muted);">
-                  {{ u.created_at.strftime('%Y-%m-%d') }}
+                  {{ u.created_at | local_time('%Y-%m-%d') }}
                 </td>
                 <td>
                   {% if u.id != current_user.id %}

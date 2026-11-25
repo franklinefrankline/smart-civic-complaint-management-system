@@ -180,7 +180,7 @@
                     <span class="badge badge-priority-{{ c.priority }}">{{ c.priority.upper() }}</span>
                   </td>
                   <td style="font-size: 0.82rem; color: var(--text-secondary);">
-                    {{ c.created_at.strftime('%d %b %Y, %I:%M %p') }}
+                    {{ c.created_at | local_time('%d %b %Y, %I:%M %p') }}
                   </td>
                   <td>
                     <a href="{{ url_for('admin.complaint_detail', complaint_id=c.id) }}" class="btn btn-primary btn-sm" style="white-space: nowrap;">
@@ -304,7 +304,7 @@
             <div style="padding: 0.6rem 0.75rem; background: var(--bg-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.8rem;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
                 <strong style="color: var(--civic-blue); font-size: 0.8rem;">{{ log.action }}</strong>
-                <span style="color: var(--text-muted); font-size: 0.72rem; font-family: monospace;">{{ log.created_at.strftime('%H:%M:%S') }}</span>
+                <span style="color: var(--text-muted); font-size: 0.72rem; font-family: monospace;">{{ log.created_at | local_time('%I:%M:%S %p') }}</span>
               </div>
               <div style="color: var(--text-secondary); font-size: 0.78rem;">
                 {{ log.user.full_name if log.user else 'System Engine' }} &bull; {{ log.entity_type }} ({{ log.entity_id or '#' }})
@@ -353,7 +353,7 @@
                   <td style="font-weight: 600;">{{ m.name }}</td>
                   <td style="font-size: 0.84rem; color: var(--civic-blue);">{{ m.contact }}</td>
                   <td style="font-size: 0.85rem; max-width: 420px; white-space: normal;">{{ m.message }}</td>
-                  <td style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap;">{{ m.created_at.strftime('%d %b %Y, %I:%M %p') }}</td>
+                  <td style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap;">{{ m.created_at | local_time('%d %b %Y, %I:%M %p') }}</td>
                   <td>
                     {% if m.is_read %}
                       <span class="badge badge-resolved">Reviewed</span>

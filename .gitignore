@@ -43,6 +43,7 @@ venv.bak/
 *.sqlite
 *.sqlite3
 test_civic.db
+backups/
 
 # Vercel build output
 .vercel/

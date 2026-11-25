@@ -9,26 +9,10 @@ CREATE DATABASE IF NOT EXISTS `smart_civic_complaints`
 
 USE `smart_civic_complaints`;
 
-SET FOREIGN_KEY_CHECKS = 0;
-
--- Drop tables if needed for clean initialization
-DROP TABLE IF EXISTS `audit_logs`;
-DROP TABLE IF EXISTS `feedback`;
-DROP TABLE IF EXISTS `notifications`;
-DROP TABLE IF EXISTS `complaint_attachments`;
-DROP TABLE IF EXISTS `complaint_status_history`;
-DROP TABLE IF EXISTS `complaint_assignments`;
-DROP TABLE IF EXISTS `workers`;
-DROP TABLE IF EXISTS `complaints`;
-DROP TABLE IF EXISTS `complaint_categories`;
-DROP TABLE IF EXISTS `departments`;
-DROP TABLE IF EXISTS `users`;
-DROP TABLE IF EXISTS `system_settings`;
-
-SET FOREIGN_KEY_CHECKS = 1;
+-- Additive-only schema definitions (existing tables & data are always preserved)
 
 -- 1. SYSTEM SETTINGS
-CREATE TABLE `system_settings` (
+CREATE TABLE IF NOT EXISTS `system_settings` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `setting_key` VARCHAR(100) NOT NULL UNIQUE,
   `setting_value` TEXT NOT NULL,
@@ -37,7 +21,7 @@ CREATE TABLE `system_settings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 2. DEPARTMENTS
-CREATE TABLE `departments` (
+CREATE TABLE IF NOT EXISTS `departments` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(100) NOT NULL UNIQUE,
   `code` VARCHAR(20) NOT NULL UNIQUE,
@@ -50,7 +34,7 @@ CREATE TABLE `departments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. USERS
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `role` ENUM('citizen', 'admin', 'officer', 'worker') NOT NULL DEFAULT 'citizen',
   `full_name` VARCHAR(150) NOT NULL,
@@ -74,7 +58,7 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. COMPLAINT CATEGORIES
-CREATE TABLE `complaint_categories` (
+CREATE TABLE IF NOT EXISTS `complaint_categories` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(100) NOT NULL UNIQUE,
   `department_id` INT NOT NULL,
@@ -89,10 +73,11 @@ CREATE TABLE `complaint_categories` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. WORKERS PROFILE
-CREATE TABLE `workers` (
+CREATE TABLE IF NOT EXISTS `workers` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NOT NULL UNIQUE,
   `department_id` INT NOT NULL,
+  `employee_id` VARCHAR(50) NULL UNIQUE,
   `designation` VARCHAR(100) DEFAULT 'Field Technician',
   `is_available` TINYINT(1) DEFAULT 1,
   `active_task_count` INT DEFAULT 0,
@@ -105,7 +90,7 @@ CREATE TABLE `workers` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 6. COMPLAINTS
-CREATE TABLE `complaints` (
+CREATE TABLE IF NOT EXISTS `complaints` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `complaint_ref` VARCHAR(50) NOT NULL UNIQUE,
   `citizen_id` INT NOT NULL,
@@ -158,7 +143,7 @@ CREATE TABLE `complaints` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 7. COMPLAINT ASSIGNMENTS
-CREATE TABLE `complaint_assignments` (
+CREATE TABLE IF NOT EXISTS `complaint_assignments` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `complaint_id` INT NOT NULL,
   `assigned_by_user_id` INT NOT NULL,
@@ -176,7 +161,7 @@ CREATE TABLE `complaint_assignments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 8. COMPLAINT STATUS HISTORY (Audit Lifecycle)
-CREATE TABLE `complaint_status_history` (
+CREATE TABLE IF NOT EXISTS `complaint_status_history` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `complaint_id` INT NOT NULL,
   `changed_by_user_id` INT NULL,
@@ -190,7 +175,7 @@ CREATE TABLE `complaint_status_history` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 9. COMPLAINT ATTACHMENTS
-CREATE TABLE `complaint_attachments` (
+CREATE TABLE IF NOT EXISTS `complaint_attachments` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `complaint_id` INT NOT NULL,
   `uploaded_by_user_id` INT NOT NULL,
@@ -209,7 +194,7 @@ CREATE TABLE `complaint_attachments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 10. NOTIFICATIONS
-CREATE TABLE `notifications` (
+CREATE TABLE IF NOT EXISTS `notifications` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NOT NULL,
   `complaint_id` INT NULL,
@@ -227,7 +212,7 @@ CREATE TABLE `notifications` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 11. FEEDBACK
-CREATE TABLE `feedback` (
+CREATE TABLE IF NOT EXISTS `feedback` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `complaint_id` INT NOT NULL UNIQUE,
   `citizen_id` INT NOT NULL,
@@ -244,7 +229,7 @@ CREATE TABLE `feedback` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 12. AUDIT LOGS
-CREATE TABLE `audit_logs` (
+CREATE TABLE IF NOT EXISTS `audit_logs` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NULL,
   `action` VARCHAR(100) NOT NULL,
@@ -259,4 +244,17 @@ CREATE TABLE `audit_logs` (
   INDEX `idx_audit_entity` (`entity_type`, `entity_id`),
   INDEX `idx_audit_created` (`created_at`),
   CONSTRAINT `fk_audit_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 13. CONTACT MESSAGES
+CREATE TABLE IF NOT EXISTS `contact_messages` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(120) NOT NULL,
+  `contact` VARCHAR(150) NOT NULL,
+  `message` TEXT NOT NULL,
+  `is_read` TINYINT(1) NOT NULL DEFAULT 0,
+  `user_id` INT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_contact_read_created` (`is_read`, `created_at`),
+  CONSTRAINT `fk_contact_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

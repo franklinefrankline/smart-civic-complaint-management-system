@@ -145,7 +145,7 @@
       </li>
       <li>
         <a href="{{ url_for('officer.complaints') }}"
-          class="sidebar-link {% if request.endpoint in ['officer.complaints', 'officer.complaint_detail'] and request.endpoint not in ['officer.incoming', 'officer.verification', 'officer.escalations'] %}active{% endif %}"
+          class="sidebar-link {% if request.endpoint in ['officer.complaints', 'officer.complaint_detail'] and request.args.get('status') != 'Assigned to Worker' and request.endpoint not in ['officer.incoming', 'officer.verification', 'officer.escalations'] %}active{% endif %}"
           title="Department Complaints">
           <i data-lucide="file-text" class="icon-sm"></i>
           <span class="sidebar-label">Department Complaints</span>
@@ -154,6 +154,14 @@
       <li>
         <a href="{{ url_for('officer.workers') }}"
           class="sidebar-link {% if request.endpoint == 'officer.workers' %}active{% endif %}"
+          title="Manage Workers">
+          <i data-lucide="hard-hat" class="icon-sm"></i>
+          <span class="sidebar-label">Manage Workers</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('officer.complaints', status='Assigned to Worker') }}"
+          class="sidebar-link {% if request.endpoint == 'officer.complaints' and request.args.get('status') == 'Assigned to Worker' %}active{% endif %}"
           title="Worker Assignments">
           <i data-lucide="users" class="icon-sm"></i>
           <span class="sidebar-label">Worker Assignments</span>

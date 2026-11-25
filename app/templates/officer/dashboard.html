@@ -25,6 +25,9 @@
       </div>
 
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="{{ url_for('officer.workers') }}" class="btn btn-secondary btn-sm">
+          <i data-lucide="hard-hat" class="icon-sm"></i> Manage Workers
+        </a>
         <a href="{{ url_for('officer.incoming') }}" class="btn btn-secondary btn-sm">
           <i data-lucide="inbox" class="icon-sm"></i> Incoming Review
         </a>
@@ -155,7 +158,7 @@
       <div class="card" style="box-shadow: none;">
         <div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
           <h3 style="font-size: 0.95rem; font-weight: 700;">Field Technicians Status</h3>
-          <a href="{{ url_for('officer.workers') }}" style="font-size: 0.8rem; font-weight: 600;">View Roster &rarr;</a>
+          <a href="{{ url_for('officer.workers') }}" style="font-size: 0.8rem; font-weight: 600;">Manage Workers &rarr;</a>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 0.6rem;">

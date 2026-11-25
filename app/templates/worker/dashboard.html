@@ -10,8 +10,11 @@
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
       <div>
-        <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-          Field Operations Portal
+        <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-teal); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+          {{ current_user.department.name if current_user.department else 'Field Operations Portal' }}
+          {% if current_user.worker_profile and current_user.worker_profile.employee_id %}
+            &bull; ID: {{ current_user.worker_profile.employee_id }}
+          {% endif %}
         </div>
         <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
           Assigned Work Orders & Task Queue
@@ -109,7 +112,7 @@
                     {{ c.full_address }}
                   </td>
                   <td style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">
-                    {{ c.sla_due_date.strftime('%Y-%m-%d %H:%M') if c.sla_due_date else 'Standard SLA' }}
+                    {{ c.sla_due_date | local_time('%Y-%m-%d %H:%M', 'Standard SLA') }}
                   </td>
                   <td>
                     <a href="{{ url_for('worker.task_detail', complaint_id=c.id) }}" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;">

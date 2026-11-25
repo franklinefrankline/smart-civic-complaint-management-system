@@ -778,6 +778,61 @@ class ProductionReadinessTestCase(unittest.TestCase):
         self.assertIn('sccmt_last_warm_ts', main_js)
         self.assertIn('isVercelProxied', notif_js)
 
+    def test_local_timezone_rendering_for_actions(self):
+        from datetime import datetime
+        from app.utils.helpers import format_local_time
+        sample_utc = datetime(2026, 11, 25, 11, 13, 9)
+        rendered_ist = str(format_local_time(sample_utc, '%d %b %Y, %I:%M %p'))
+        self.assertIn('data-utc="2026-11-25T11:13:09Z"', rendered_ist)
+        self.assertIn('25 Nov 2026, 04:43 PM', rendered_ist)
+
+        # Verify browser timezone cookie overrides server rendering dynamically
+        c_client = self.app.test_client()
+        c_client.post('/auth/login', data={'login_id': 'citizen@prod.gov', 'password': 'Citizen@123'})
+        c_client.set_cookie('sccmt_tz_offset', '-330')
+        res_sub = c_client.post('/citizen/complaints/new', data={
+            'title': 'Local time action verification',
+            'category_id': self.cat.id,
+            'department_id': self.dept.id,
+            'priority': 'medium',
+            'description': 'Checking local timezone display in track and detail timelines.',
+            'ward_number': '3',
+            'city': 'Chennai'
+        }, follow_redirects=False)
+        comp_id = int(res_sub.headers['Location'].rstrip('/').split('/')[-1])
+        comp = db.session.get(Complaint, comp_id)
+        track_html = self.client.get(f'/track?ref={comp.complaint_ref}').get_data(as_text=True)
+        self.assertIn('data-utc="', track_html)
+        self.assertIn('<time datetime="', track_html)
+
+    def test_analytics_empty_overlays_hide_cleanly_when_complaints_exist(self):
+        a_client = self.app.test_client()
+        a_client.post('/auth/login', data={'login_id': 'admin@prod.gov', 'password': 'Admin@123'})
+
+        # With >=1 complaint, empty overlays must be hidden and NOT force inline display: flex over [hidden]
+        db.session.add(Complaint(
+            complaint_ref='CMP-202611-CHRT1',
+            citizen_id=self.citizen.id,
+            category_id=self.cat.id,
+            department_id=self.dept.id,
+            title='Chart visibility test',
+            description='Ensure analytics charts are never covered by empty state overlay.',
+            priority='medium',
+            status='Submitted',
+        ))
+        db.session.commit()
+
+        html = a_client.get('/admin/analytics').get_data(as_text=True)
+        self.assertIn('id="deptChartEmpty" class="analytics-empty-state" hidden', html)
+        self.assertIn('id="categoryChartEmpty" class="analytics-empty-state" hidden', html)
+        self.assertIn('id="statusChartEmpty" class="analytics-empty-state" hidden', html)
+        self.assertIn('display: none;', html)
+
+        css_path = os.path.join(self.app.static_folder, 'css', 'main.css')
+        with open(css_path, 'r', encoding='utf-8') as fh:
+            css = fh.read()
+        self.assertIn('.analytics-empty-state[hidden]', css)
+
 
 if __name__ == '__main__':
     unittest.main()

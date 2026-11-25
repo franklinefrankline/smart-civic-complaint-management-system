@@ -25,6 +25,13 @@ api_bp = Blueprint('api', __name__)
 
 @api_bp.route('/health')
 def api_health():
+    if current_app.config.get('DB_STARTUP_ERROR'):
+        return jsonify({
+            'status': 'error',
+            'service': 'smart-civic-complaint-system',
+            'database': 'misconfigured',
+            'message': current_app.config['DB_STARTUP_ERROR'],
+        }), 503
     try:
         db.session.execute(text('SELECT 1'))
         return jsonify({

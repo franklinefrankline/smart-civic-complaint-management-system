@@ -46,10 +46,10 @@
                   </span>
                 </td>
                 <td style="font-size: 0.82rem; color: var(--text-muted);">
-                  {{ a.assigned_at.strftime('%Y-%m-%d') }}
+                  {{ a.assigned_at | local_time('%Y-%m-%d') }}
                 </td>
                 <td style="font-size: 0.82rem; color: var(--text-muted);">
-                  {{ a.completed_at.strftime('%Y-%m-%d %H:%M') if a.completed_at else '-' }}
+                  {{ a.completed_at | local_time('%Y-%m-%d %H:%M', '-') }}
                 </td>
                 <td>
                   <a href="{{ url_for('worker.task_detail', complaint_id=a.complaint.id) }}" class="btn btn-secondary btn-sm">

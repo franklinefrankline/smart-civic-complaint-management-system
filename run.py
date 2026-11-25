@@ -72,18 +72,34 @@ if __name__ == '__main__':
             seed_db()
         elif cmd == 'create-admin':
             create_admin()
+        elif cmd == 'check-migrations':
+            with app.app_context():
+                from app.services.backup_service import get_migration_status
+                status = get_migration_status()
+                print("Migration Status:", status)
+        elif cmd == 'backup-db':
+            with app.app_context():
+                from app.services.backup_service import create_verified_backup
+                allow_empty = '--allow-empty' in sys.argv[2:]
+                res = create_verified_backup(allow_empty=allow_empty)
+                print(f"Verified backup created: {res['path']}")
+                print(f"Dialect: {res['dialect']} | Total rows: {res['total_rows']}")
+                print(f"Counts: {res['counts']}")
+        elif cmd == 'restore-db':
+            if len(sys.argv) < 3:
+                print("Usage: python run.py restore-db <backup_file.json>")
+                sys.exit(1)
+            with app.app_context():
+                from app.services.backup_service import restore_verified_backup
+                res = restore_verified_backup(sys.argv[2])
+                print("Restore completed:", res)
         else:
             print(f"Unknown command: {cmd}")
-            print("Available commands: init-db, seed-db, create-admin")
+            print("Available commands: init-db, seed-db, create-admin, check-migrations, backup-db, restore-db")
     else:
-        # Auto-initialize DB on startup if needed
-        with app.app_context():
-            try:
-                db.create_all()
-                if not User.query.filter_by(role='admin').first():
-                    seed_db()
-            except Exception as e:
-                print(f"Startup notice: {e}")
+        if app.config.get('DB_STARTUP_ERROR'):
+            print(f"FATAL DATABASE ERROR: {app.config['DB_STARTUP_ERROR']}")
+            sys.exit(1)
 
         # Development / Production server
         port = int(os.environ.get('PORT', 5000))

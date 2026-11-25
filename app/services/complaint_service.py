@@ -112,12 +112,14 @@ def find_potential_duplicates(category_id, ward_number=None, street_name=None, l
             dist_label = f"Locality: {c.locality}"
             
         if is_match:
+            from app.utils.helpers import utc_to_local
+            local_created = utc_to_local(c.created_at)
             matches.append({
                 'id': c.id,
                 'complaint_ref': c.complaint_ref,
                 'title': c.title,
                 'status': c.status,
-                'created_at': c.created_at.strftime('%Y-%m-%d %H:%M'),
+                'created_at': local_created.strftime('%Y-%m-%d %H:%M'),
                 'distance_meters': dist_label
             })
     return matches
@@ -808,6 +810,7 @@ def build_admin_analytics_payload():
         'overdue': 0,
     }
     cat_counts = {c.id: 0 for c in categories}
+    uncategorized_count = 0
 
     total = len(complaint_rows)
     pending_count = 0
@@ -849,6 +852,8 @@ def build_admin_analytics_payload():
 
         if cat_id in cat_counts:
             cat_counts[cat_id] += 1
+        else:
+            uncategorized_count += 1
 
     dept_rows = []
     for d in departments:
@@ -863,6 +868,8 @@ def build_admin_analytics_payload():
         {'id': c.id, 'name': c.name, 'total': cat_counts[c.id]}
         for c in categories
     ]
+    if uncategorized_count > 0:
+        cat_rows.append({'id': 0, 'name': 'Other / General', 'total': uncategorized_count})
     cat_rows.sort(key=lambda item: (-item['total'], item['id']))
     active_cats = [item for item in cat_rows if item['total'] > 0]
 

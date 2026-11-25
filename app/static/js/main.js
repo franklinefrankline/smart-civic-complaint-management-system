@@ -32,9 +32,58 @@
     } catch (_) {}
     window.location.href = fallback;
   };
+
+  // Sync browser timezone offset cookie so server-rendered timestamps match local time immediately
+  try {
+    document.cookie = 'sccmt_tz_offset=' + new Date().getTimezoneOffset() + '; path=/; max-age=2592000; SameSite=Lax';
+  } catch (_) {}
+
+  const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const pad2 = (n) => (n < 10 ? '0' + n : String(n));
+
+  function formatDateWithPattern(date, fmt) {
+    const YYYY = date.getFullYear();
+    const MM = pad2(date.getMonth() + 1);
+    const dd = pad2(date.getDate());
+    const HH24 = date.getHours();
+    const HH = pad2(HH24);
+    const h12 = HH24 % 12 || 12;
+    const II = pad2(h12);
+    const min = pad2(date.getMinutes());
+    const sec = pad2(date.getSeconds());
+    const ampm = HH24 >= 12 ? 'PM' : 'AM';
+    const b = SHORT_MONTHS[date.getMonth()];
+    const B = FULL_MONTHS[date.getMonth()];
+
+    return fmt
+      .replace(/%Y/g, YYYY)
+      .replace(/%m/g, MM)
+      .replace(/%d/g, dd)
+      .replace(/%B/g, B)
+      .replace(/%b/g, b)
+      .replace(/%H/g, HH)
+      .replace(/%I/g, II)
+      .replace(/%M/g, min)
+      .replace(/%S/g, sec)
+      .replace(/%p/g, ampm);
+  }
+
+  window.formatLocalTimes = function(root) {
+    const scope = root || document;
+    scope.querySelectorAll('time[data-utc]').forEach(el => {
+      const utcStr = el.getAttribute('data-utc');
+      if (!utcStr) return;
+      const d = new Date(utcStr);
+      if (isNaN(d.getTime())) return;
+      const fmt = el.getAttribute('data-fmt') || '%d %b %Y, %I:%M %p';
+      el.textContent = formatDateWithPattern(d, fmt);
+    });
+  };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (window.formatLocalTimes) window.formatLocalTimes(document);
   // 1. Accessibility Motion Preference Detection
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -232,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
       form.noValidate = true;
 
       // Skip forms with dedicated custom AJAX validation managers (e.g. addUserForm)
-      if (form.id === 'addUserForm') return;
+      if (form.id === 'addUserForm' || form.hasAttribute('data-custom-ajax')) return;
 
       // 1. Custom in-page validation (no native browser tooltips)
       const controls = Array.from(form.querySelectorAll('input, select, textarea'));
@@ -538,6 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (deptSel) window.filterOfficersByDept(deptSel.value);
       }
       if (window.lucide) lucide.createIcons();
+      if (window.formatLocalTimes) window.formatLocalTimes(dashContent);
       dashContent.scrollTop = prevScrollTop;
       window.scrollTo(0, prevWinY);
     } catch (err) {

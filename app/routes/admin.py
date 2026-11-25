@@ -561,6 +561,7 @@ def workers():
             email = request.form.get('email', '').strip().lower()
             mobile = request.form.get('mobile', '').strip()
             dept_id = request.form.get('department_id', type=int)
+            employee_id = request.form.get('employee_id', '').strip().upper() or None
             designation = request.form.get('designation', '').strip() or 'Field Technician'
             password = request.form.get('password', 'Welcome@123')
 
@@ -571,6 +572,8 @@ def workers():
                 err_msg = "A user with this email address already exists."
             elif User.query.filter_by(mobile_number=mobile).first():
                 err_msg = "A user with this mobile number already exists."
+            elif employee_id and Worker.query.filter_by(employee_id=employee_id).first():
+                err_msg = "A worker with this Employee ID already exists."
 
             if err_msg:
                 if is_ajax:
@@ -594,6 +597,7 @@ def workers():
                 new_worker = Worker(
                     user_id=new_worker_user.id,
                     department_id=dept_id,
+                    employee_id=employee_id,
                     designation=designation,
                     is_available=True,
                     active_task_count=0
@@ -660,7 +664,10 @@ def export_complaints_csv():
         'Registered Date', 'Resolved Date'
     ])
     
+    from app.utils.helpers import utc_to_local
     for c in complaints:
+        created_local = utc_to_local(c.created_at)
+        resolved_local = utc_to_local(c.resolved_at)
         writer.writerow([
             c.complaint_ref,
             c.title,
@@ -673,12 +680,13 @@ def export_complaints_csv():
             c.city or '',
             c.ward_number or '',
             'YES' if c.is_escalated else 'NO',
-            c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '',
-            c.resolved_at.strftime('%Y-%m-%d %H:%M') if c.resolved_at else ''
+            created_local.strftime('%Y-%m-%d %H:%M') if created_local else '',
+            resolved_local.strftime('%Y-%m-%d %H:%M') if resolved_local else ''
         ])
         
     output.seek(0)
-    filename = f"civic_complaints_export_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.csv"
+    now_local = utc_to_local(datetime.utcnow())
+    filename = f"civic_complaints_export_{now_local.strftime('%Y%m%d_%H%M')}.csv"
     return Response(
         output.getvalue(),
         mimetype="text/csv",
