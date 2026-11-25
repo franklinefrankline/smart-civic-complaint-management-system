@@ -3,12 +3,12 @@
 TRANSLATIONS = {
     # Brand and Meta
     'app_name': {
-        'en': 'Smart Civic Complaint System',
-        'ta': 'ஸ்மார்ட் குடிமக்கள் புகார் அமைப்பு',
-        'hi': 'स्मार्ट नागरिक शिकायत प्रणाली'
+        'en': 'SCF (Smart Civic Flow)',
+        'ta': 'SCF (ஸ்மார்ட் சிவிக் ஃப்ளோ)',
+        'hi': 'SCF (स्मार्ट सिविक फ्लो)'
     },
     'app_subtitle': {
-        'en': 'A Multilingual Web Portal for Transparent Complaint Resolution',
+        'en': 'Smart Civic Flow — Transparent Municipal Grievance & Complaint Resolution',
         'ta': 'வெளிப்படையான புகார் தீர்வுக்கான பன்மொழி இணையதளம்',
         'hi': 'पारदर्शी शिकायत निवारण हेतु बहुभाषी वेब पोर्टल'
     },

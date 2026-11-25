@@ -1,20 +1,30 @@
 {% extends "base.html" %}
 
-{% block title %}Smart Civic Complaint Management System - Transparent Municipal Redressal{% endblock %}
+{% block title %}SCF (Smart Civic Flow) - Transparent Municipal Redressal{% endblock %}
 
 {% block content %}
 <!-- Hero Section (Professional Enterprise Portal) -->
 <section style="background: var(--bg-surface); padding: 4rem 0 3.5rem; border-bottom: 1px solid var(--border-color);">
   <div class="container" style="display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 3rem; align-items: center;">
     <div>
-      <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-blue); letter-spacing: 0.06em; margin-bottom: 0.5rem;">
-        Municipal Corporation & Public Works Administration
+      <div class="hero-scf-brand-pill" style="display: inline-flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+        <span class="hero-logo-frame">
+          <img src="{{ url_for('static', filename='img/scf-hero-logo.webp') }}" alt="SCF (Smart Civic Flow) Animated Logo" class="hero-logo-img" width="96" height="54">
+        </span>
+        <div>
+          <div style="font-size: 0.85rem; font-weight: 800; color: var(--civic-blue); letter-spacing: 0.04em; text-transform: uppercase;">
+            SCF &mdash; Smart Civic Flow
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
+            Municipal Corporation &amp; Public Works Administration
+          </div>
+        </div>
       </div>
       <h1 style="font-size: 2.5rem; font-weight: 800; line-height: 1.2; color: var(--text-primary); margin-bottom: 1rem; letter-spacing: -0.02em;">
-        Smart Civic Complaint Management System
+        Smart Civic Flow (SCF)
       </h1>
       <p style="font-size: 1.1rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 2rem; max-width: 620px;">
-        A Multilingual Web Portal for Transparent Complaint Resolution. Register civic grievances, monitor municipal work orders in real-time, and ensure rapid, accountable resolution.
+        Smart Civic Complaint Management System &mdash; A Multilingual Web Portal for Transparent Complaint Resolution. Register civic grievances, monitor municipal work orders in real time, and ensure rapid, accountable resolution.
       </p>
       <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
         <a href="{{ url_for('citizen.new_complaint') if current_user else url_for('auth.register') }}" class="btn btn-primary btn-lg">

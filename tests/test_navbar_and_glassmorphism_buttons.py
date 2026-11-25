@@ -43,11 +43,13 @@ class NavbarAndGlassmorphismButtonsTestCase(unittest.TestCase):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
 
-        # 1. Left Section - Branding
+        # 1. Left Section - Animated SCF Logo & Branding
         self.assertIn(b'class="brand-title"', res.data)
-        self.assertIn(b'Smart Civic Complaint Management System', res.data)
+        self.assertIn(b'SCF', res.data)
+        self.assertIn(b'Smart Civic Flow', res.data)
         self.assertIn(b'class="brand-subtitle"', res.data)
-        self.assertIn(b'MUNICIPAL REDRESSAL PORTAL', res.data)
+        self.assertIn(b'Smart Civic Complaint Management System', res.data)
+        self.assertIn(b'/static/img/scf-logo.webp', res.data)
 
         # 2. Center Section - 6 Navigation Links in order
         self.assertIn(b'class="nav-links"', res.data)

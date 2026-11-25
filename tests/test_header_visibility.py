@@ -41,8 +41,9 @@ class HeaderVisibilityTestCase(unittest.TestCase):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
         self.assertIn(b'<nav class="navbar', res.data)
+        self.assertIn(b'SCF', res.data)
+        self.assertIn(b'Smart Civic Flow', res.data)
         self.assertIn(b'Smart Civic Complaint Management System', res.data)
-        self.assertIn(b'MUNICIPAL REDRESSAL PORTAL', res.data)
         self.assertIn(b'class="nav-links"', res.data)
 
     def test_header_visible_on_signin_page(self):
@@ -50,7 +51,7 @@ class HeaderVisibilityTestCase(unittest.TestCase):
         res = self.client.get('/auth/login')
         self.assertEqual(res.status_code, 200)
         self.assertIn(b'<nav class="navbar', res.data)
-        self.assertIn(b'Smart Civic Complaint Management System', res.data)
+        self.assertIn(b'Smart Civic Flow', res.data)
         self.assertIn(b'class="nav-links"', res.data)
 
     def test_header_visible_on_signup_page(self):
@@ -58,7 +59,7 @@ class HeaderVisibilityTestCase(unittest.TestCase):
         res = self.client.get('/auth/register')
         self.assertEqual(res.status_code, 200)
         self.assertIn(b'<nav class="navbar', res.data)
-        self.assertIn(b'Smart Civic Complaint Management System', res.data)
+        self.assertIn(b'Smart Civic Flow', res.data)
         self.assertIn(b'class="nav-links"', res.data)
 
     def test_header_hidden_on_admin_dashboard(self):

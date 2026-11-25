@@ -604,6 +604,46 @@ class ProductionReadinessTestCase(unittest.TestCase):
         self.assertIn('position: sticky;', css)
         self.assertIn('.nav-links.mobile-open {', css)
 
+    def test_scf_animated_logo_and_branding_present(self):
+        from PIL import Image
+        img_dir = os.path.join(self.app.static_folder, 'img')
+        for fname, min_frames in [('scf-logo.webp', 10), ('scf-hero-logo.webp', 10), ('scf-logo.png', 1), ('favicon.png', 1)]:
+            fpath = os.path.join(img_dir, fname)
+            self.assertTrue(os.path.isfile(fpath), f'Missing logo asset {fname}')
+            with Image.open(fpath) as im:
+                self.assertGreaterEqual(getattr(im, 'n_frames', 1), min_frames)
+                if fname == 'favicon.png':
+                    self.assertEqual(im.size[0], im.size[1], 'Favicon must be 1:1 square so browser does not squish it')
+            res = self.client.get(f'/static/img/{fname}')
+            self.assertEqual(res.status_code, 200)
+            res.close()
+
+        home_html = self.client.get('/').get_data(as_text=True)
+        self.assertIn('SCF', home_html)
+        self.assertIn('Smart Civic Flow', home_html)
+        self.assertIn('/static/img/scf-logo.webp', home_html)
+        self.assertIn('/static/img/scf-hero-logo.webp', home_html)
+        self.assertIn('/static/img/favicon.png', home_html)
+
+        # Contact page omits static helpline phone and support email
+        contact_html = self.client.get('/contact').get_data(as_text=True)
+        self.assertNotIn('1800-425-0000', contact_html)
+        self.assertNotIn('support@smartcivic.gov.portal', contact_html)
+
+    def test_sidebar_brand_and_profile_no_clipping(self):
+        css_path = os.path.join(self.app.static_folder, 'css', 'main.css')
+        with open(css_path, 'r', encoding='utf-8') as fh:
+            css = fh.read()
+        # Expanded sidebar hides floating .sidebar-label inside profile card so name/meta stay visible
+        self.assertIn('.sidebar-user-card .sidebar-label {\n  display: none;\n}', css)
+        self.assertIn('.sidebar-user-details {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-width: 0;', css)
+        self.assertIn('.sidebar-brand-link {\n  display: flex;\n  align-items: center;\n  gap: 0.5rem;\n  color: var(--text-primary);\n  text-decoration: none;\n  flex: 1;\n  min-width: 0;', css)
+
+        sidebar_path = os.path.join(self.app.root_path, self.app.template_folder, 'shared', '_sidebar.html')
+        with open(sidebar_path, 'r', encoding='utf-8') as fh:
+            sidebar_src = fh.read()
+        self.assertIn('<span class="sidebar-brand-sub">Smart Civic Flow</span>', sidebar_src)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}{{ t('app_name') }}{% endblock %} | Civic Administration</title>
+  <title>{% block title %}{{ t('app_name') }}{% endblock %} | SCF (Smart Civic Flow)</title>
   <meta name="description" content="{{ t('app_subtitle') }}">
   <meta name="api-base-url" content="{{ api_base_url or '' }}">
+  <link rel="icon" type="image/png" sizes="128x128" href="{{ url_for('static', filename='img/favicon.png', v='20261125g') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico', v='20261125g') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png', v='20261125g') }}">
   <link rel="preload" as="image" href="{{ url_for('static', filename='img/loader.gif') }}">
 
   <!-- Critical Global Page Loader Styles (Prevent FOUC on #020D1C backdrop) -->
@@ -45,7 +48,7 @@
   </style>
 
   <!-- Master Stylesheet -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261125b') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261125h') }}">
   
   <!-- Lucide Icons (pinned + deferred so HTML rendering is never blocked) -->
   <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" defer></script>
