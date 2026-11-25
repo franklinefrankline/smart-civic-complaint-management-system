@@ -728,6 +728,56 @@ class ProductionReadinessTestCase(unittest.TestCase):
         self.assertEqual(r_mark.status_code, 200)
         self.assertTrue(r_mark.get_json()['success'])
 
+    def test_timeout_resilience_and_fast_priority_ajax(self):
+        # Verify both Vercel origins are allowed in CORS
+        res_indol = self.client.get(
+            '/api/stats/summary',
+            headers={'Origin': 'https://smart-civic-complaint-management-sy-indol.vercel.app'}
+        )
+        self.assertEqual(res_indol.status_code, 200)
+        self.assertEqual(
+            res_indol.headers.get('Access-Control-Allow-Origin'),
+            'https://smart-civic-complaint-management-sy-indol.vercel.app'
+        )
+
+        # Create complaint and test single-roundtrip priority update (no full HTML reload needed)
+        c_client = self.app.test_client()
+        c_client.post('/auth/login', data={'login_id': 'citizen@prod.gov', 'password': 'Citizen@123'})
+        res_sub = c_client.post('/citizen/complaints/new', data={
+            'title': 'Timeout resilience test complaint',
+            'category_id': self.cat.id,
+            'department_id': self.dept.id,
+            'priority': 'low',
+            'description': 'Verifying single-roundtrip AJAX priority updates without redundant reloads.',
+            'ward_number': '2',
+            'city': 'Chennai'
+        }, follow_redirects=False)
+        comp_id = int(res_sub.headers['Location'].rstrip('/').split('/')[-1])
+
+        ajax_headers = {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}
+        a_client = self.app.test_client()
+        a_client.post('/auth/login', data={'login_id': 'admin@prod.gov', 'password': 'Admin@123'})
+        r_prio = a_client.post(f'/admin/complaints/{comp_id}', data={
+            'action': 'change_priority',
+            'new_priority': 'urgent'
+        }, headers=ajax_headers)
+        self.assertEqual(r_prio.status_code, 200)
+        prio_json = r_prio.get_json()
+        self.assertTrue(prio_json['success'])
+        self.assertEqual(prio_json['priority'], 'urgent')
+        self.assertFalse(prio_json['reload_sections'])
+
+        # Verify client JS includes extended 55s timeout, non-fatal refresh handling, and proxy-safe polling
+        main_js_path = os.path.join(self.app.static_folder, 'js', 'main.js')
+        notif_js_path = os.path.join(self.app.static_folder, 'js', 'notifications.js')
+        with open(main_js_path, 'r', encoding='utf-8') as fh:
+            main_js = fh.read()
+        with open(notif_js_path, 'r', encoding='utf-8') as fh:
+            notif_js = fh.read()
+        self.assertIn('55000', main_js)
+        self.assertIn('sccmt_last_warm_ts', main_js)
+        self.assertIn('isVercelProxied', notif_js)
+
 
 if __name__ == '__main__':
     unittest.main()

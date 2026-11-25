@@ -116,13 +116,10 @@ def complaint_detail(complaint_id):
         (Complaint.assigned_officer_id == g.user.id) | (Complaint.assigned_officer_id.is_(None))
     ).first()
     if not complaint:
+        if request.method == 'POST' and _is_api_or_ajax():
+            return jsonify({'success': False, 'message': f"Complaint #{complaint_id} was not found in your authorized department schedule."}), 404
         flash(f"Complaint #{complaint_id} was not found in your authorized department schedule.", "warning")
         return redirect(url_for('officer.complaints'))
-
-    history = complaint.status_history.all()
-    attachments = complaint.attachments.all()
-    workers = Worker.query.filter_by(department_id=dept_id, is_available=True).options(joinedload(Worker.user)).all()
-    stages = get_complaint_9_stage_timeline(complaint)
 
     if request.method == 'POST':
         action = request.form.get('action')
@@ -184,7 +181,7 @@ def complaint_detail(complaint_id):
                     'message': success_msg or "Action completed successfully.",
                     'status': complaint.status,
                     'priority': complaint.priority,
-                    'reload_sections': True
+                    'reload_sections': action != 'set_priority'
                 })
             if success_msg:
                 flash(success_msg, "success" if action != 'return_rework' else "warning")
@@ -196,6 +193,11 @@ def complaint_detail(complaint_id):
             flash(f"Action failed: {str(e)}", "danger")
 
         return redirect(url_for('officer.complaint_detail', complaint_id=complaint.id))
+
+    history = complaint.status_history.all()
+    attachments = complaint.attachments.all()
+    workers = Worker.query.filter_by(department_id=dept_id, is_available=True).options(joinedload(Worker.user)).all()
+    stages = get_complaint_9_stage_timeline(complaint)
         
     return render_template(
         'officer/complaint_detail.html',

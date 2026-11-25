@@ -219,7 +219,7 @@ def create_app(config_name=None):
     # Context processor for templates
     @app.context_processor
     def inject_global_data():
-        if request.path.startswith('/api/') or request.path.startswith('/static/'):
+        if request.path.startswith(('/api/', '/static/', '/health', '/uploads/', '/proofs/')):
             return {}
 
         from app.utils.translations import get_translation

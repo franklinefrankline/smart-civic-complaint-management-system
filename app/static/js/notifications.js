@@ -347,7 +347,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (lastFingerprint !== null && data.fingerprint !== lastFingerprint) {
       lastFingerprint = data.fingerprint;
-      await refreshDashboardSectionsInPlace();
+      if (Date.now() >= (window.__sccmtPauseLiveSyncUntil || 0)) {
+        await refreshDashboardSectionsInPlace();
+      }
     } else {
       lastFingerprint = data.fingerprint;
     }
@@ -360,17 +362,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!force && now - lastPollTs < 4000) return;
     lastPollTs = now;
     pollInFlight = true;
+    const controller = new AbortController();
+    const pollTimer = setTimeout(() => controller.abort(), 15000);
     try {
-      const res = await requestFn(`/api/live-updates?since_id=${lastNotifId || 0}`);
+      const res = await requestFn(`/api/live-updates?since_id=${lastNotifId || 0}`, {
+        signal: controller.signal
+      });
       if (!res.ok) return;
       const data = await res.json();
       await processSyncPayload(data);
     } catch (e) {
-      // Quietly ignore transient offline errors; next poll/reconnect recovers missed IDs
+      // Quietly ignore transient offline/timeout errors; next poll/reconnect recovers missed IDs
     } finally {
+      clearTimeout(pollTimer);
       pollInFlight = false;
     }
   }
+
+  const isVercelProxied = (() => {
+    const meta = document.querySelector('meta[name="api-base-url"]');
+    const apiBase = meta ? (meta.getAttribute('content') || '').trim() : '';
+    return !apiBase && window.location.hostname.endsWith('.vercel.app');
+  })();
 
   function startFallbackPolling() {
     if (fallbackInterval) return;
@@ -378,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!document.hidden) {
         pollLiveUpdatesOnce(false);
       }
-    }, 8000);
+    }, isVercelProxied ? 15000 : 10000);
   }
 
   function stopFallbackPolling() {
@@ -389,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function connectSSE() {
-    if (!hasAuthSession || typeof window.EventSource === 'undefined') {
+    if (!hasAuthSession || isVercelProxied || typeof window.EventSource === 'undefined') {
       startFallbackPolling();
       return;
     }
@@ -432,10 +445,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (hasAuthSession) {
-    // Immediate initial sync + authenticated SSE stream with single non-overlapping fallback
-    pollLiveUpdatesOnce(true).then(() => {
-      connectSSE();
-    });
+    // Defer initial background live-sync slightly so critical page interactions are never queued behind it
+    setTimeout(() => {
+      pollLiveUpdatesOnce(true).then(() => {
+        connectSSE();
+      });
+    }, 900);
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
@@ -445,6 +460,10 @@ document.addEventListener('DOMContentLoaded', () => {
           connectSSE();
         }
       }
+    });
+
+    window.addEventListener('sccmt:action-synced', () => {
+      pollLiveUpdatesOnce(true);
     });
 
     window.addEventListener('focus', () => {

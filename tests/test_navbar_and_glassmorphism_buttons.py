@@ -193,7 +193,7 @@ class NavbarAndGlassmorphismButtonsTestCase(unittest.TestCase):
         self.assertIn('.btn:active {', css)
         self.assertIn('scale(0.985);', css)
         self.assertIn('.btn-loading {', css)
-        self.assertIn('btnSpinner', css)
+        self.assertNotIn('btnSpinner', css)
 
     def test_sidebar_theme_toggle_present_across_all_roles(self):
         """Verify theme toggle button is rendered in the sidebar across all roles and pages"""

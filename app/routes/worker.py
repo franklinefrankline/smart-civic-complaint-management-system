@@ -114,12 +114,12 @@ def task_detail(complaint_id):
         assigned_to_user_id=worker_user_id
     ).first()
     if not assignment:
+        if request.method == 'POST' and _is_api_or_ajax():
+            return jsonify({'success': False, 'message': f"Task #{complaint_id} was not found in your assignments queue."}), 404
         flash(f"Task #{complaint_id} was not found in your assignments queue.", "warning")
         return redirect(url_for('worker.tasks'))
     
     complaint = assignment.complaint
-    history = complaint.status_history.all()
-    attachments = complaint.attachments.all()
     
     if request.method == 'POST':
         action = request.form.get('action')
@@ -353,7 +353,9 @@ def task_detail(complaint_id):
             flash(f"Update failed: {str(e)}", "danger")
 
         return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
-        
+
+    history = complaint.status_history.all()
+    attachments = complaint.attachments.all()
     stages = get_complaint_9_stage_timeline(complaint)
     return render_template(
         'worker/task_detail.html',

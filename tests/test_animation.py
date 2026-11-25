@@ -23,7 +23,7 @@ class AnimationSystemTestCase(unittest.TestCase):
         self.assertIn('@keyframes pulseRing', css)
         self.assertIn('@keyframes inputShake', css)
         self.assertIn('@keyframes badgePulse', css)
-        self.assertIn('@keyframes btnSpinner', css)
+        self.assertNotIn('@keyframes btnSpinner', css)
         self.assertIn('@keyframes toastProgress', css)
         self.assertIn('@keyframes tableRowFadeIn', css)
         self.assertIn('@keyframes skeletonShimmer', css)
@@ -48,9 +48,9 @@ class AnimationSystemTestCase(unittest.TestCase):
         self.assertIn('window.showToast', js)
         self.assertIn('toastContainer', js)
 
-        # Check progress bar
-        self.assertIn('startProgressBar', js)
-        self.assertIn('finishProgressBar', js)
+        # Ensure full-screen / progress loading animations are removed
+        self.assertNotIn('startProgressBar', js)
+        self.assertNotIn('showGlobalLoader', js)
 
     def test_notifications_js_enhancements(self):
         notif_path = os.path.join(self.base_dir, 'app', 'static', 'js', 'notifications.js')
@@ -65,7 +65,8 @@ class AnimationSystemTestCase(unittest.TestCase):
         with open(base_path, 'r', encoding='utf-8') as f:
             html = f.read()
 
-        self.assertIn('id="pageProgressBar"', html)
+        self.assertNotIn('id="pageProgressBar"', html)
+        self.assertNotIn('id="globalPageLoader"', html)
         self.assertIn('id="toastContainer"', html)
 
     def test_dashboards_stagger_in(self):

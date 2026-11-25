@@ -332,7 +332,9 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           await window.refreshDashboardContent(nextUrl);
         } catch (err) {
-          window.location.href = nextUrl;
+          if (!err || err.name !== 'AbortError') {
+            window.location.href = nextUrl;
+          }
         } finally {
           if (submitBtn) {
             submitBtn.classList.remove('btn-loading');
@@ -350,7 +352,9 @@ document.addEventListener('DOMContentLoaded', () => {
           submitBtn.disabled = true;
         }
         const controller = new AbortController();
-        const reqTimeout = setTimeout(() => controller.abort(), 25000);
+        const reqTimeout = setTimeout(() => controller.abort(), 55000);
+        let actionSucceeded = false;
+        let responseData = null;
         try {
           const targetUrl = window.getApiUrl ? window.getApiUrl(actionAttr) : actionAttr;
           const res = await fetch(targetUrl, {
@@ -370,18 +374,25 @@ document.addEventListener('DOMContentLoaded', () => {
               window.location.href = res.url;
               return;
             }
-            throw new Error(`Unexpected response (${res.status})`);
+            if (res.status === 502 || res.status === 503 || res.status === 504) {
+              throw new Error(`Server is waking up or busy (HTTP ${res.status}). Please retry in a few seconds.`);
+            }
+            throw new Error(`Unexpected response (${res.status}). Please try again.`);
           }
           const data = await res.json();
           if (!res.ok || data.success === false) {
             throw new Error(data.message || `Action failed (${res.status})`);
           }
 
+          actionSucceeded = true;
+          responseData = data;
+          window.__sccmtPauseLiveSyncUntil = Date.now() + 3500;
+
           if (window.showToast && data.message) {
             window.showToast(data.message, 'success');
           }
 
-          // Optimistic instant DOM updates for contact message review & public contact inquiry
+          // Optimistic instant DOM updates without extra round-trips where safe
           if (lowerAction.includes('/contact-messages/') && lowerAction.endsWith('/read')) {
             const badge = document.createElement('span');
             badge.className = 'badge badge-resolved';
@@ -393,23 +404,40 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           } else if (lowerAction.endsWith('/contact')) {
             form.reset();
+          } else if (data.priority && !data.reload_sections) {
+            document.querySelectorAll('.badge[class*="badge-priority-"]').forEach(el => {
+              el.className = `badge badge-priority-${data.priority}`;
+              el.textContent = String(data.priority).toUpperCase();
+            });
           } else if (data.reload_sections && window.refreshDashboardContent) {
-            await window.refreshDashboardContent();
+            // Non-fatal UI refresh: never overwrite a succeeded POST with a false timeout error
+            try {
+              await window.refreshDashboardContent();
+            } catch (refreshErr) {
+              if (!refreshErr || refreshErr.name !== 'AbortError') {
+                window.location.reload();
+                return;
+              }
+            }
           }
-          window.dispatchEvent(new Event('focus'));
         } catch (err) {
           clearTimeout(reqTimeout);
-          const errMsg = err && err.name === 'AbortError'
-            ? 'Request timed out. Please check your connection and try again.'
-            : (err && err.message ? err.message : 'Operation failed. Please try again.');
-          if (window.showToast) {
-            window.showToast(errMsg, 'error');
+          if (!actionSucceeded) {
+            const errMsg = err && err.name === 'AbortError'
+              ? 'Server took too long to respond. Please wait a moment and try again.'
+              : (err && err.message ? err.message : 'Operation failed. Please try again.');
+            if (window.showToast) {
+              window.showToast(errMsg, 'error');
+            }
           }
         } finally {
           form.dataset.confirmed = '';
           if (submitBtn && submitBtn.isConnected) {
             submitBtn.classList.remove('btn-loading');
             submitBtn.disabled = false;
+          }
+          if (actionSucceeded && responseData) {
+            window.dispatchEvent(new CustomEvent('sccmt:action-synced', { detail: responseData }));
           }
         }
         return;
@@ -432,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
           submitBtn.classList.remove('btn-loading');
           submitBtn.disabled = false;
-        }, 12000);
+        }, 45000);
       }
     });
 
@@ -469,6 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 8. Background Dashboard Section Refresh (Zero Full-Page Reload)
   let activeRefreshController = null;
+  let activeRefreshSuperseded = false;
   window.refreshDashboardContent = async function(targetUrl) {
     const dashContent = document.querySelector('.dashboard-content');
     if (!dashContent) {
@@ -476,35 +505,52 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     if (activeRefreshController) {
+      activeRefreshSuperseded = true;
       try { activeRefreshController.abort(); } catch (_) {}
     }
-    activeRefreshController = new AbortController();
+    const controller = new AbortController();
+    activeRefreshController = controller;
+    activeRefreshSuperseded = false;
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
     const fetchUrl = targetUrl || window.location.href;
     const prevScrollTop = dashContent.scrollTop;
     const prevWinY = window.scrollY;
-    const res = await fetch(fetchUrl, {
-      credentials: 'include',
-      headers: { 'X-Async-Partial': '1' },
-      signal: activeRefreshController.signal
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const html = await res.text();
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    const nextDash = doc.querySelector('.dashboard-content');
-    if (!nextDash) {
-      window.location.href = fetchUrl;
-      return;
+    try {
+      const res = await fetch(fetchUrl, {
+        credentials: 'include',
+        headers: { 'X-Async-Partial': '1' },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const nextDash = doc.querySelector('.dashboard-content');
+      if (!nextDash) {
+        window.location.href = fetchUrl;
+        return;
+      }
+      dashContent.innerHTML = nextDash.innerHTML;
+      dashContent.querySelectorAll('form').forEach(f => { f.noValidate = true; });
+      if (window.initStarRatings) window.initStarRatings(dashContent);
+      if (typeof window.filterOfficersByDept === 'function') {
+        const deptSel = dashContent.querySelector('#admin_dept_select');
+        if (deptSel) window.filterOfficersByDept(deptSel.value);
+      }
+      if (window.lucide) lucide.createIcons();
+      dashContent.scrollTop = prevScrollTop;
+      window.scrollTo(0, prevWinY);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err && err.name === 'AbortError' && activeRefreshSuperseded) {
+        return;
+      }
+      throw err;
+    } finally {
+      if (activeRefreshController === controller) {
+        activeRefreshController = null;
+      }
     }
-    dashContent.innerHTML = nextDash.innerHTML;
-    dashContent.querySelectorAll('form').forEach(f => { f.noValidate = true; });
-    if (window.initStarRatings) window.initStarRatings(dashContent);
-    if (typeof window.filterOfficersByDept === 'function') {
-      const deptSel = dashContent.querySelector('#admin_dept_select');
-      if (deptSel) window.filterOfficersByDept(deptSel.value);
-    }
-    if (window.lucide) lucide.createIcons();
-    dashContent.scrollTop = prevScrollTop;
-    window.scrollTo(0, prevWinY);
   };
 
   // Delegated Async Pagination & Navigation Offline Guard
@@ -519,8 +565,10 @@ document.addEventListener('DOMContentLoaded', () => {
           window.history.pushState({}, '', nextUrl);
         }
         await window.refreshDashboardContent(nextUrl);
-      } catch (_) {
-        window.location.href = nextUrl;
+      } catch (err) {
+        if (!err || err.name !== 'AbortError') {
+          window.location.href = nextUrl;
+        }
       }
       return;
     }
@@ -1208,4 +1256,65 @@ document.addEventListener('DOMContentLoaded', () => {
     const fallbackUrl = backBtn.getAttribute('data-fallback-url') || '/';
     window.handleSmartBack(fallbackUrl);
   });
+
+  // Restore button interactive states cleanly when returning via browser history (bfcache)
+  window.addEventListener('pageshow', () => {
+    document.querySelectorAll('button.btn-loading, input.btn-loading').forEach(btn => {
+      btn.classList.remove('btn-loading');
+      btn.disabled = false;
+    });
+  });
+
+  // Cloud Cold-Start Keep-Warm Ping & Safe Hover Prefetch
+  const host = window.location.hostname;
+  const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+  if (!isLocalHost) {
+    let warmInFlight = false;
+    const pingWarm = (force) => {
+      if (warmInFlight || navigator.onLine === false) return;
+      try {
+        const now = Date.now();
+        const last = Number(sessionStorage.getItem('sccmt_last_warm_ts') || '0');
+        if (!force && now - last < 180000) return;
+        sessionStorage.setItem('sccmt_last_warm_ts', String(now));
+      } catch (_) {}
+      warmInFlight = true;
+      fetch(window.getApiUrl ? window.getApiUrl('/health') : '/health', {
+        method: 'GET',
+        credentials: 'omit',
+        cache: 'no-store'
+      }).catch(() => {}).finally(() => { warmInFlight = false; });
+    };
+    setTimeout(() => pingWarm(false), 1500);
+    setInterval(() => {
+      if (document.visibilityState === 'visible') pingWarm(true);
+    }, 240000);
+
+    const prefetchedUrls = new Set();
+    let hoverTimer = null;
+    document.addEventListener('pointerenter', (e) => {
+      const link = e.target && e.target.closest ? e.target.closest('a.sidebar-link[href], a.nav-link[href]') : null;
+      if (!link || link.hasAttribute('data-confirm') || link.hasAttribute('download') || link.getAttribute('target') === '_blank') return;
+      const href = link.href || '';
+      if (!href || !href.startsWith(window.location.origin)) return;
+      const lowerHref = href.toLowerCase();
+      if (lowerHref.includes('/logout') || lowerHref.includes('/export') || lowerHref.includes('/download') || lowerHref.includes('#')) return;
+      if (prefetchedUrls.has(href) || prefetchedUrls.size >= 12) return;
+      clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(() => {
+        if (prefetchedUrls.has(href)) return;
+        prefetchedUrls.add(href);
+        const pf = document.createElement('link');
+        pf.rel = 'prefetch';
+        pf.as = 'document';
+        pf.href = href;
+        document.head.appendChild(pf);
+      }, 90);
+    }, true);
+    document.addEventListener('pointerleave', (e) => {
+      if (e.target && e.target.closest && e.target.closest('a.sidebar-link[href], a.nav-link[href]')) {
+        clearTimeout(hoverTimer);
+      }
+    }, true);
+  }
 });

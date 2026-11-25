@@ -191,15 +191,10 @@ def complaints():
 def complaint_detail(complaint_id):
     complaint = Complaint.query.get(complaint_id)
     if not complaint:
+        if request.method == 'POST' and _is_api_or_ajax():
+            return jsonify({'success': False, 'message': f"Complaint #{complaint_id} could not be located or has been archived."}), 404
         flash(f"Complaint #{complaint_id} could not be located or has been archived.", "warning")
         return redirect(url_for('admin.complaints'))
-
-    history = complaint.status_history.all()
-    attachments = complaint.attachments.all()
-    departments = Department.query.filter_by(is_active=True).all()
-    officers = User.query.filter_by(role='officer', is_active=True).options(joinedload(User.department)).all()
-    workers = Worker.query.filter_by(is_available=True).options(joinedload(Worker.user), joinedload(Worker.department)).all()
-    stages = get_complaint_9_stage_timeline(complaint)
 
     if request.method == 'POST':
         action = request.form.get('action')
@@ -259,7 +254,7 @@ def complaint_detail(complaint_id):
                     'message': success_msg or "Action completed successfully.",
                     'status': complaint.status,
                     'priority': complaint.priority,
-                    'reload_sections': True
+                    'reload_sections': action != 'change_priority'
                 })
             if success_msg:
                 flash(success_msg, "warning" if action == 'escalate' else "success")
@@ -271,6 +266,13 @@ def complaint_detail(complaint_id):
             flash(f"Action failed: {str(e)}", "danger")
 
         return redirect(url_for('admin.complaint_detail', complaint_id=complaint.id))
+
+    history = complaint.status_history.all()
+    attachments = complaint.attachments.all()
+    departments = Department.query.filter_by(is_active=True).all()
+    officers = User.query.filter_by(role='officer', is_active=True).options(joinedload(User.department)).all()
+    workers = Worker.query.filter_by(is_available=True).options(joinedload(Worker.user), joinedload(Worker.department)).all()
+    stages = get_complaint_9_stage_timeline(complaint)
         
     return render_template(
         'admin/complaint_detail.html',
@@ -700,19 +702,26 @@ def citizens():
 def officers():
     if request.method == 'POST':
         action = request.form.get('action')
+        is_ajax = _is_api_or_ajax()
         if action == 'add_officer':
             full_name = request.form.get('full_name', '').strip()
             email = request.form.get('email', '').strip().lower()
             mobile = request.form.get('mobile', '').strip()
             dept_id = request.form.get('department_id', type=int)
             password = request.form.get('password', 'Welcome@123')
-            
+
+            err_msg = None
             if not full_name or not email or not mobile or not dept_id:
-                flash("All fields including assigned department are required.", "danger")
+                err_msg = "All fields including assigned department are required."
             elif User.query.filter_by(email=email).first():
-                flash("A user with this email address already exists.", "danger")
+                err_msg = "A user with this email address already exists."
             elif User.query.filter_by(mobile_number=mobile).first():
-                flash("A user with this mobile number already exists.", "danger")
+                err_msg = "A user with this mobile number already exists."
+
+            if err_msg:
+                if is_ajax:
+                    return jsonify({'success': False, 'message': err_msg}), 400
+                flash(err_msg, "danger")
             else:
                 new_officer = User(
                     full_name=full_name,
@@ -728,7 +737,10 @@ def officers():
                 db.session.add(new_officer)
                 db.session.commit()
                 log_action(g.user.id, 'CREATE_OFFICER', 'user', new_officer.id, details={'dept_id': dept_id, 'email': email})
-                flash(f"Department Officer {full_name} created successfully.", "success")
+                msg = f"Department Officer {full_name} created successfully."
+                if is_ajax:
+                    return jsonify({'success': True, 'message': msg, 'reload_sections': True})
+                flash(msg, "success")
         return redirect(url_for('admin.officers'))
 
     search = request.args.get('search', '').strip()

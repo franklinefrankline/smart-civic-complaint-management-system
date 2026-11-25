@@ -289,7 +289,7 @@ def realtime_stream():
         last_fp = None
         last_unread = None
         cursor_notif_id = since_id
-        ticks = 1 if is_testing else 8
+        ticks = 1 if is_testing else 4
 
         for tick in range(ticks):
             try:
@@ -320,7 +320,7 @@ def realtime_stream():
                 yield f"event: heartbeat\ndata: {json.dumps({'status': 'recovering'})}\n\n"
 
             if not is_testing and tick < ticks - 1:
-                time.sleep(2.0)
+                time.sleep(1.5)
 
     headers = {
         'Cache-Control': 'no-cache, no-transform',

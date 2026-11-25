@@ -142,6 +142,7 @@ class Config:
     ]
     CORS_ALLOWED_ORIGINS = list(dict.fromkeys([
         'https://sccmt.vercel.app',
+        'https://smart-civic-complaint-management-sy-indol.vercel.app',
         *_extra_origins,
         *([] if IS_CLOUD else ['http://127.0.0.1:5000', 'http://localhost:5000'])
     ]))
