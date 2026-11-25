@@ -1,7 +1,21 @@
 {
+  "framework": null,
+  "buildCommand": "rm -rf public && mkdir -p public && cp -r app/static public/static && cp app/static/img/favicon.ico public/favicon.ico",
+  "outputDirectory": "public",
+  "headers": [
+    {
+      "source": "/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!static/|favicon\\.ico).*)",
       "destination": "https://smart-civic-complaint-management-system-2-854j.onrender.com/$1"
     }
   ]

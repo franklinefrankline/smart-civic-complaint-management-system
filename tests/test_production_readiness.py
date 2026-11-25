@@ -405,7 +405,9 @@ class ProductionReadinessTestCase(unittest.TestCase):
             html = res.get_data(as_text=True)
             self.assertEqual(res.status_code, 200)
             self.assertIn('id="globalPageLoader"', html)
+            self.assertIn('class="global-page-loader is-hidden"', html)
             self.assertIn('/static/img/loader.gif', html)
+            self.assertIn('onerror="this.hidden=true"', html)
             self.assertIn('#020D1C', html)
             self.assertIn('id="globalPageLoaderError"', html)
             self.assertIn('id="globalPageLoaderRetryBtn"', html)
@@ -424,7 +426,9 @@ class ProductionReadinessTestCase(unittest.TestCase):
             html = dash_res.get_data(as_text=True)
             self.assertEqual(dash_res.status_code, 200)
             self.assertIn('id="globalPageLoader"', html)
+            self.assertIn('class="global-page-loader is-hidden"', html)
             self.assertIn('/static/img/loader.gif', html)
+            self.assertIn('onerror="this.hidden=true"', html)
             self.assertIn('#020D1C', html)
 
     def test_admin_analytics_empty_and_populated_metrics(self):

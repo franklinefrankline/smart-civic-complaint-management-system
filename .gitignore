@@ -46,6 +46,7 @@ test_civic.db
 
 # Vercel build output
 .vercel/
+public/
 
 # Uploaded complaint and proof attachments (keep directory structure via .gitkeep)
 uploads/complaints/*
