@@ -1,7 +1,7 @@
 import json
 import time
 from flask import Blueprint, jsonify, request, session, g, Response, stream_with_context, current_app
-from sqlalchemy import text
+from sqlalchemy import text, func, case
 from app import db
 from app.models.complaint import Complaint
 from app.models.category import ComplaintCategory
@@ -202,8 +202,12 @@ def _build_user_live_snapshot(user_id, role, department_id, since_notif_id=None)
     elif role == 'citizen':
         query = query.filter_by(citizen_id=user_id)
 
-    total_count = query.count()
-    pending_count = query.filter(Complaint.status.in_(PENDING_STATUSES)).count()
+    total_row = query.with_entities(
+        func.count(Complaint.id).label('total'),
+        func.sum(case((Complaint.status.in_(PENDING_STATUSES), 1), else_=0)).label('pending'),
+    ).one()
+    total_count = int(total_row.total or 0)
+    pending_count = int(total_row.pending or 0)
     latest = query.order_by(Complaint.updated_at.desc(), Complaint.id.desc()).first()
     latest_id = latest.id if latest else 0
     latest_updated = latest.updated_at.isoformat() if latest and latest.updated_at else ''

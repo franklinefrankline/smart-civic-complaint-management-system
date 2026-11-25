@@ -160,6 +160,7 @@ class Config:
         'SESSION_COOKIE_SECURE',
         'true' if IS_CLOUD else 'false'
     ).lower() == 'true'
+    SESSION_REFRESH_EACH_REQUEST = False
     PERMANENT_SESSION_LIFETIME = timedelta(
         seconds=int(os.environ.get('PERMANENT_SESSION_LIFETIME', 86400))
     )

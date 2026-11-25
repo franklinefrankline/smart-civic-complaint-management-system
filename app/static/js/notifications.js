@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let lastFingerprint = null;
   let initialized = false;
   let pollInFlight = false;
+  let lastPollTs = 0;
   let eventSource = null;
   let fallbackInterval = null;
   let sseErrorCount = 0;
@@ -352,9 +353,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function pollLiveUpdatesOnce() {
+  async function pollLiveUpdatesOnce(force) {
     if (!hasAuthSession) return;
     if (pollInFlight) return;
+    const now = Date.now();
+    if (!force && now - lastPollTs < 4000) return;
+    lastPollTs = now;
     pollInFlight = true;
     try {
       const res = await requestFn(`/api/live-updates?since_id=${lastNotifId || 0}`);
@@ -372,9 +376,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (fallbackInterval) return;
     fallbackInterval = setInterval(() => {
       if (!document.hidden) {
-        pollLiveUpdatesOnce();
+        pollLiveUpdatesOnce(false);
       }
-    }, 5000);
+    }, 8000);
   }
 
   function stopFallbackPolling() {
@@ -415,9 +419,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       eventSource.onerror = () => {
         sseErrorCount += 1;
-        // Start polling fallback immediately so zero updates are missed while EventSource reconnects
+        // Close flaky/buffered proxy SSE streams promptly after 2 errors so only lightweight polling runs
         startFallbackPolling();
-        if (sseErrorCount >= 5) {
+        if (sseErrorCount >= 2) {
           try { eventSource.close(); } catch (e) {}
           eventSource = null;
         }
@@ -428,15 +432,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (hasAuthSession) {
-    // Immediate initial sync + authenticated SSE stream with reconnect & polling fallback
-    pollLiveUpdatesOnce().then(() => {
+    // Immediate initial sync + authenticated SSE stream with single non-overlapping fallback
+    pollLiveUpdatesOnce(true).then(() => {
       connectSSE();
     });
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        pollLiveUpdatesOnce();
-        if (!eventSource || eventSource.readyState === 2) {
+        pollLiveUpdatesOnce(false);
+        if (!eventSource && !fallbackInterval) {
           sseErrorCount = 0;
           connectSSE();
         }
@@ -444,12 +448,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('focus', () => {
-      pollLiveUpdatesOnce();
+      pollLiveUpdatesOnce(false);
     });
 
     window.addEventListener('online', () => {
       sseErrorCount = 0;
-      pollLiveUpdatesOnce();
+      pollLiveUpdatesOnce(true);
       connectSSE();
     });
 

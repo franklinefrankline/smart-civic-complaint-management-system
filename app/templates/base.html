@@ -31,23 +31,22 @@
       visibility: hidden;
       pointer-events: none;
     }
-    #globalPageLoader .global-page-loader-gif {
-      width: min(280px, 68vw);
-      max-width: 438px;
-      height: auto;
-      aspect-ratio: 438 / 389;
-      object-fit: contain;
-      display: block;
-      user-select: none;
-      pointer-events: none;
+    #globalPageLoader .scf-loader-stage {
+      position: relative;
+      width: clamp(92px, 18vw, 120px);
+      height: clamp(92px, 18vw, 120px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
+    #globalPageLoader .scf-loader-stage[hidden],
     #globalPageLoader .global-page-loader-error[hidden] {
       display: none !important;
     }
   </style>
 
   <!-- Master Stylesheet -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261125k') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261125m') }}">
   
   <!-- Preconnect for Icon CDN -->
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
@@ -58,9 +57,15 @@
   {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <!-- Global Full-Screen Page Loader (Triggered during route navigation & form submits) -->
+  <!-- Global Full-Screen Page Loader (Shown only during active loading transitions) -->
   <div id="globalPageLoader" class="global-page-loader is-hidden" role="status" aria-live="polite" aria-busy="false">
-    <img id="globalPageLoaderImg" class="global-page-loader-gif" src="{{ url_for('static', filename='img/loader.gif') }}" alt="Loading" width="438" height="389" loading="lazy" onerror="this.hidden=true">
+    <div id="globalPageLoaderStage" class="scf-loader-stage">
+      <span class="scf-loader-glow" aria-hidden="true"></span>
+      <span class="scf-loader-ring" aria-hidden="true"></span>
+      <span class="scf-loader-badge">
+        <img id="globalPageLoaderImg" class="scf-loader-logo" src="{{ url_for('static', filename='img/scf-logo.webp') }}" alt="SCF Loading" width="72" height="41" loading="lazy" onerror="this.hidden=true">
+      </span>
+    </div>
     <div id="globalPageLoaderError" class="global-page-loader-error" hidden>
       <p id="globalPageLoaderErrorText" class="global-page-loader-error-msg">Unable to load page content. Please check your connection and try again.</p>
       <button type="button" id="globalPageLoaderRetryBtn" class="btn btn-primary btn-sm">Retry</button>
@@ -340,8 +345,8 @@
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
   <!-- Master Application Scripts -->
-  <script src="{{ url_for('static', filename='js/main.js', v='20261125k') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/notifications.js', v='20261125k') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/main.js', v='20261125m') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/notifications.js', v='20261125m') }}" defer></script>
   
   {% block extra_scripts %}{% endblock %}
 </body>

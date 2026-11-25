@@ -17,6 +17,21 @@ def _run_safe_schema_migrations(app):
     """
     inspector = inspect(db.engine)
     table_names = set(inspector.get_table_names())
+    # Fast sentinel check so additional Gunicorn workers/cold boots skip full schema introspection once migrated
+    if {'complaints', 'contact_messages', 'notifications'}.issubset(table_names):
+        try:
+            comp_idx = {idx['name'] for idx in inspector.get_indexes('complaints')}
+            contact_idx = {idx['name'] for idx in inspector.get_indexes('contact_messages')}
+            notif_idx = {idx['name'] for idx in inspector.get_indexes('notifications')}
+            if (
+                'idx_comp_updated' in comp_idx
+                and 'idx_contact_read_created' in contact_idx
+                and 'idx_notif_complaint' in notif_idx
+            ):
+                return
+        except Exception:
+            pass
+
     dialect = db.engine.dialect.name
     is_mysql = dialect == 'mysql'
 

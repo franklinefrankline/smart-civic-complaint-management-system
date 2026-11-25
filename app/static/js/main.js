@@ -27,6 +27,7 @@
   function getLoaderEls() {
     return {
       overlay: document.getElementById('globalPageLoader'),
+      stage: document.getElementById('globalPageLoaderStage'),
       img: document.getElementById('globalPageLoaderImg'),
       errBox: document.getElementById('globalPageLoaderError'),
       errMsg: document.getElementById('globalPageLoaderErrorText'),
@@ -50,10 +51,11 @@
   }
 
   window.showGlobalLoaderError = function(message, retryCallback) {
-    const { overlay, img, errBox, errMsg, retryBtn } = getLoaderEls();
+    const { overlay, stage, img, errBox, errMsg, retryBtn } = getLoaderEls();
     if (!overlay) return;
     clearLoaderTimers();
     activeRetryHandler = typeof retryCallback === 'function' ? retryCallback : function() { window.location.reload(); };
+    if (stage) stage.hidden = true;
     if (img) img.hidden = true;
     if (errMsg) errMsg.textContent = message || 'Unable to load page content. Please check your connection and try again.';
     if (errBox) errBox.hidden = false;
@@ -72,9 +74,10 @@
 
   window.showGlobalLoader = function(options) {
     const opts = options || {};
-    const { overlay, img, errBox, retryBtn } = getLoaderEls();
+    const { overlay, stage, img, errBox, retryBtn } = getLoaderEls();
     if (!overlay) return;
     clearLoaderTimers();
+    if (stage) stage.hidden = false;
     if (img) img.hidden = false;
     if (errBox) errBox.hidden = true;
     overlay.classList.remove('is-hidden');
@@ -105,7 +108,7 @@
   };
 
   window.hideGlobalLoader = function() {
-    const { overlay, img, errBox } = getLoaderEls();
+    const { overlay, stage, img, errBox } = getLoaderEls();
     if (!overlay) return;
     clearLoaderTimers();
     overlay.classList.add('is-hidden');
@@ -113,6 +116,7 @@
     document.body.classList.remove('loader-locked');
     document.documentElement.classList.remove('loader-locked');
     if (errBox) errBox.hidden = true;
+    if (stage) stage.hidden = false;
     if (img) img.hidden = false;
   };
 
