@@ -17,15 +17,13 @@ def index():
     departments = Department.query.filter_by(is_active=True).all()
     categories = ComplaintCategory.query.filter_by(is_active=True).limit(8).all()
     
-    # Live stats
+    # Live stats (aggregated directly in SQL)
     total_complaints = Complaint.query.count()
     resolved_complaints = Complaint.query.filter_by(status='Resolved').count()
-    active_departments = Department.query.filter_by(is_active=True).count()
-    
-    avg_rating = 4.8
-    feedbacks = Feedback.query.all()
-    if feedbacks:
-        avg_rating = round(sum(f.rating for f in feedbacks) / len(feedbacks), 1)
+    active_departments = len(departments)
+
+    avg_rating_val = db.session.query(db.func.avg(Feedback.rating)).scalar()
+    avg_rating = round(float(avg_rating_val), 1) if avg_rating_val is not None else 4.8
         
     stats = {
         'total': total_complaints,

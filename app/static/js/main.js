@@ -21,6 +21,7 @@
 
   // Global Full-Screen Page Loader Controller (#020D1C + Exact Animated GIF)
   let loaderTimeoutId = null;
+  let loaderDelayId = null;
   let activeRetryHandler = null;
 
   function getLoaderEls() {
@@ -34,6 +35,10 @@
   }
 
   function clearLoaderTimers() {
+    if (loaderDelayId) {
+      clearTimeout(loaderDelayId);
+      loaderDelayId = null;
+    }
     if (loaderTimeoutId) {
       clearTimeout(loaderTimeoutId);
       loaderTimeoutId = null;
@@ -111,6 +116,16 @@
     if (img) img.hidden = false;
   };
 
+  window.scheduleNavigationLoader = function(options, delayMs) {
+    clearLoaderTimers();
+    const wait = typeof delayMs === 'number' ? delayMs : 350;
+    loaderDelayId = setTimeout(function() {
+      loaderDelayId = null;
+      window.showGlobalLoader(options || { timeoutMs: 20000 });
+    }, wait);
+  };
+
+  window.addEventListener('pagehide', clearLoaderTimers);
   window.addEventListener('pageshow', function(e) {
     if (e.persisted || document.readyState === 'complete') {
       window.hideGlobalLoader();
@@ -402,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         startProgressBar();
         if (!form.hasAttribute('data-no-loader') && form.getAttribute('target') !== '_blank') {
-          window.showGlobalLoader({ timeoutMs: 25000 });
+          window.scheduleNavigationLoader({ timeoutMs: 25000 }, 350);
         }
         HTMLFormElement.prototype.submit.call(form);
         return;
@@ -423,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.disabled = true;
         startProgressBar();
         if (!isExportOrBlank) {
-          window.showGlobalLoader({ timeoutMs: 25000 });
+          window.scheduleNavigationLoader({ timeoutMs: 25000 }, 350);
         }
         setTimeout(() => {
           submitBtn.classList.remove('btn-loading');
@@ -431,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
           finishProgressBar();
         }, 8500);
       } else if (!isExportOrBlank) {
-        window.showGlobalLoader({ timeoutMs: 25000 });
+        window.scheduleNavigationLoader({ timeoutMs: 25000 }, 350);
       }
     });
 
@@ -520,13 +535,13 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const dest = new URL(link.href, window.location.origin);
       if (dest.origin === window.location.origin) {
-        window.showGlobalLoader({
+        window.scheduleNavigationLoader({
           timeoutMs: 20000,
           onRetry: () => { window.location.href = dest.href; }
-        });
+        }, 350);
       }
     } catch (_) {
-      window.showGlobalLoader({ timeoutMs: 20000 });
+      window.scheduleNavigationLoader({ timeoutMs: 20000 }, 350);
     }
   });
 

@@ -649,6 +649,15 @@ class ProductionReadinessTestCase(unittest.TestCase):
             sidebar_src = fh.read()
         self.assertIn('<span class="sidebar-brand-sub">Smart Civic Flow</span>', sidebar_src)
 
+    def test_chartjs_loaded_only_on_chart_pages(self):
+        home_html = self.client.get('/').get_data(as_text=True)
+        self.assertNotIn('chart.umd.min.js', home_html)
+
+        a_client = self.app.test_client()
+        a_client.post('/auth/login', data={'login_id': 'admin@prod.gov', 'password': 'Admin@123'})
+        self.assertIn('chart.umd.min.js', a_client.get('/admin/dashboard').get_data(as_text=True))
+        self.assertIn('chart.umd.min.js', a_client.get('/admin/analytics').get_data(as_text=True))
+
 
 if __name__ == '__main__':
     unittest.main()
