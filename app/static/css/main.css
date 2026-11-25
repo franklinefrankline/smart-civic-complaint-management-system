@@ -875,48 +875,11 @@ body.sidebar-collapsed .sidebar-footer-actions .theme-toggle-btn {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* 10. Button Loading Spinner */
+/* 10. Button Busy State (No Spinner Animation) */
 .btn-loading {
-  position: relative !important;
-  color: transparent !important;
+  opacity: 0.72 !important;
   pointer-events: none !important;
   cursor: wait !important;
-}
-
-.btn-loading * {
-  visibility: hidden !important;
-}
-
-.btn-loading::after {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  top: 50%;
-  left: 50%;
-  margin-top: -8px;
-  margin-left: -8px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-radius: 50%;
-  border-top-color: #ffffff;
-  animation: btnSpinner 0.6s linear infinite;
-}
-
-.btn-secondary.btn-loading::after,
-.btn-outline.btn-loading::after {
-  border: 2px solid rgba(15, 23, 42, 0.2);
-  border-top-color: var(--civic-blue);
-}
-
-[data-theme="dark"] .btn-secondary.btn-loading::after,
-[data-theme="dark"] .btn-outline.btn-loading::after,
-.navbar .btn-secondary.btn-loading::after {
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-top-color: #ffffff;
-}
-
-@keyframes btnSpinner {
-  to { transform: rotate(360deg); }
 }
 
 /* Cards & Surface Elements */
@@ -1756,19 +1719,6 @@ body.sidebar-collapsed .dashboard-content {
 .stagger-in > *:nth-child(6) { animation-delay: 170ms; }
 .stagger-in > *:nth-child(7) { animation-delay: 200ms; }
 .stagger-in > *:nth-child(8) { animation-delay: 230ms; }
-
-/* Top Page Navigation Progress Bar */
-#pageProgressBar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 0%;
-  height: 3px;
-  background: linear-gradient(90deg, #1e40af, #3b82f6, #0d9488);
-  z-index: 10000;
-  transition: width 200ms ease-out, opacity 250ms ease;
-  pointer-events: none;
-}
 
 /* Tables */
 .table-responsive {
@@ -4592,180 +4542,6 @@ textarea.form-control {
   }
   .policy-toc {
     display: none;
-  }
-}
-
-/* Global Full-Screen Page Loader (#020D1C Backdrop + Exact Animated GIF) */
-html.loader-locked,
-body.loader-locked {
-  overflow: hidden;
-}
-
-.global-page-loader {
-  position: fixed;
-  inset: 0;
-  z-index: 999999;
-  background-color: rgba(2, 13, 28, 0.92) !important;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  opacity: 1;
-  visibility: visible;
-  transition: opacity 0.22s ease, visibility 0.22s ease;
-  will-change: opacity;
-}
-
-.global-page-loader.is-hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.scf-loader-stage {
-  position: relative;
-  width: clamp(92px, 18vw, 120px);
-  height: clamp(92px, 18vw, 120px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-  pointer-events: none;
-  animation: scfLoaderFade 0.22s ease both;
-}
-
-.scf-loader-stage[hidden] {
-  display: none !important;
-}
-
-.scf-loader-glow {
-  position: absolute;
-  inset: -12%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.45) 0%, rgba(37, 99, 235, 0.22) 48%, rgba(249, 115, 22, 0.08) 72%, transparent 80%);
-  animation: scfLoaderPulse 1.8s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-.scf-loader-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    rgba(56, 189, 248, 0.12) 0deg,
-    rgba(56, 189, 248, 0.95) 95deg,
-    rgba(37, 99, 235, 0.95) 185deg,
-    rgba(249, 115, 22, 0.92) 275deg,
-    rgba(56, 189, 248, 0.12) 360deg
-  );
-  animation: scfLoaderSpin 1.1s linear infinite;
-  will-change: transform;
-}
-
-.scf-loader-badge {
-  position: relative;
-  z-index: 1;
-  width: calc(100% - 8px);
-  height: calc(100% - 8px);
-  border-radius: 50%;
-  background: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 13%;
-  box-shadow: 0 4px 16px rgba(2, 13, 28, 0.45);
-  animation: scfLoaderBadgeFade 1.8s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-.scf-loader-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-  user-select: none;
-  pointer-events: none;
-}
-
-.scf-loader-logo[hidden] {
-  display: none !important;
-}
-
-@keyframes scfLoaderSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes scfLoaderPulse {
-  0%, 100% {
-    opacity: 0.45;
-    transform: scale(0.94);
-  }
-  50% {
-    opacity: 0.85;
-    transform: scale(1.06);
-  }
-}
-
-@keyframes scfLoaderBadgeFade {
-  0%, 100% {
-    opacity: 0.94;
-    transform: scale(0.99);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.015);
-  }
-}
-
-@keyframes scfLoaderFade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@media (max-width: 640px) {
-  .scf-loader-stage {
-    width: clamp(82px, 22vw, 104px);
-    height: clamp(82px, 22vw, 104px);
-  }
-}
-
-.global-page-loader-error {
-  text-align: center;
-  max-width: 360px;
-  color: #e2e8f0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-.global-page-loader-error[hidden] {
-  display: none !important;
-}
-
-.global-page-loader-error-msg {
-  margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.55;
-  color: #cbd5e1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .global-page-loader {
-    transition-duration: 0.01ms;
-  }
-  .scf-loader-stage,
-  .scf-loader-glow,
-  .scf-loader-ring,
-  .scf-loader-badge {
-    animation: none !important;
-  }
-  .scf-loader-ring {
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.85), rgba(37, 99, 235, 0.85), rgba(249, 115, 22, 0.85));
   }
 }
 

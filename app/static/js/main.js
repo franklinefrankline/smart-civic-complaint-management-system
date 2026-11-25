@@ -19,137 +19,17 @@
     return fetch(window.getApiUrl(path), opts);
   };
 
-  // Global Full-Screen Page Loader Controller (#020D1C + Exact Animated GIF)
-  let loaderTimeoutId = null;
-  let loaderDelayId = null;
-  let activeRetryHandler = null;
-
-  function getLoaderEls() {
-    return {
-      overlay: document.getElementById('globalPageLoader'),
-      stage: document.getElementById('globalPageLoaderStage'),
-      img: document.getElementById('globalPageLoaderImg'),
-      errBox: document.getElementById('globalPageLoaderError'),
-      errMsg: document.getElementById('globalPageLoaderErrorText'),
-      retryBtn: document.getElementById('globalPageLoaderRetryBtn')
-    };
-  }
-
-  function clearLoaderTimers() {
-    if (loaderDelayId) {
-      clearTimeout(loaderDelayId);
-      loaderDelayId = null;
-    }
-    if (loaderTimeoutId) {
-      clearTimeout(loaderTimeoutId);
-      loaderTimeoutId = null;
-    }
-    if (window.__loaderFailsafeTimer) {
-      clearTimeout(window.__loaderFailsafeTimer);
-      window.__loaderFailsafeTimer = null;
-    }
-  }
-
-  window.showGlobalLoaderError = function(message, retryCallback) {
-    const { overlay, stage, img, errBox, errMsg, retryBtn } = getLoaderEls();
-    if (!overlay) return;
-    clearLoaderTimers();
-    activeRetryHandler = typeof retryCallback === 'function' ? retryCallback : function() { window.location.reload(); };
-    if (stage) stage.hidden = true;
-    if (img) img.hidden = true;
-    if (errMsg) errMsg.textContent = message || 'Unable to load page content. Please check your connection and try again.';
-    if (errBox) errBox.hidden = false;
-    overlay.classList.remove('is-hidden');
-    overlay.setAttribute('aria-busy', 'false');
-    document.body.classList.add('loader-locked');
-    if (retryBtn && !retryBtn.dataset.boundRetry) {
-      retryBtn.dataset.boundRetry = '1';
-      retryBtn.addEventListener('click', function() {
-        const cb = activeRetryHandler || function() { window.location.reload(); };
-        window.showGlobalLoader({ timeoutMs: 20000, onRetry: cb });
-        cb();
-      });
-    }
-  };
-
-  window.showGlobalLoader = function(options) {
-    const opts = options || {};
-    const { overlay, stage, img, errBox, retryBtn } = getLoaderEls();
-    if (!overlay) return;
-    clearLoaderTimers();
-    if (stage) stage.hidden = false;
-    if (img) img.hidden = false;
-    if (errBox) errBox.hidden = true;
-    overlay.classList.remove('is-hidden');
-    overlay.setAttribute('aria-busy', 'true');
-    document.body.classList.add('loader-locked');
-    activeRetryHandler = typeof opts.onRetry === 'function' ? opts.onRetry : null;
-    if (retryBtn && !retryBtn.dataset.boundRetry) {
-      retryBtn.dataset.boundRetry = '1';
-      retryBtn.addEventListener('click', function() {
-        const cb = activeRetryHandler || function() { window.location.reload(); };
-        window.showGlobalLoader({ timeoutMs: 20000, onRetry: cb });
-        cb();
-      });
-    }
-    const timeoutMs = typeof opts.timeoutMs === 'number' ? opts.timeoutMs : 20000;
-    if (timeoutMs > 0) {
-      loaderTimeoutId = setTimeout(function() {
-        if (!overlay.classList.contains('is-hidden')) {
-          window.showGlobalLoaderError(
-            navigator.onLine === false
-              ? 'You appear to be offline. Please check your connection and retry.'
-              : 'Loading took longer than expected. Please try again.',
-            activeRetryHandler || function() { window.location.reload(); }
-          );
-        }
-      }, timeoutMs);
-    }
-  };
-
-  window.hideGlobalLoader = function() {
-    const { overlay, stage, img, errBox } = getLoaderEls();
-    if (!overlay) return;
-    clearLoaderTimers();
-    overlay.classList.add('is-hidden');
-    overlay.setAttribute('aria-busy', 'false');
-    document.body.classList.remove('loader-locked');
-    document.documentElement.classList.remove('loader-locked');
-    if (errBox) errBox.hidden = true;
-    if (stage) stage.hidden = false;
-    if (img) img.hidden = false;
-  };
-
-  window.scheduleNavigationLoader = function(options, delayMs) {
-    clearLoaderTimers();
-    const wait = typeof delayMs === 'number' ? delayMs : 350;
-    loaderDelayId = setTimeout(function() {
-      loaderDelayId = null;
-      window.showGlobalLoader(options || { timeoutMs: 20000 });
-    }, wait);
-  };
-
-  window.addEventListener('pagehide', clearLoaderTimers);
-  window.addEventListener('pageshow', function(e) {
-    if (e.persisted || document.readyState === 'complete') {
-      window.hideGlobalLoader();
-      if (window.finishProgressBar) window.finishProgressBar();
-    }
-  });
-
   window.handleSmartBack = function(fallbackUrl) {
     const fallback = fallbackUrl || '/';
     try {
       if (window.history.length > 1 && document.referrer) {
         const refUrl = new URL(document.referrer, window.location.origin);
         if (refUrl.origin === window.location.origin && refUrl.href !== window.location.href) {
-          window.showGlobalLoader({ timeoutMs: 20000 });
           window.history.back();
           return;
         }
       }
     } catch (_) {}
-    window.showGlobalLoader({ timeoutMs: 20000 });
     window.location.href = fallback;
   };
 })();
@@ -446,7 +326,6 @@ document.addEventListener('DOMContentLoaded', () => {
           submitBtn.classList.add('btn-loading');
           submitBtn.disabled = true;
         }
-        startProgressBar();
         try {
           if (window.history && window.history.pushState) {
             window.history.pushState({}, '', nextUrl);
@@ -455,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
           window.location.href = nextUrl;
         } finally {
-          finishProgressBar();
           if (submitBtn) {
             submitBtn.classList.remove('btn-loading');
             submitBtn.disabled = false;
@@ -471,7 +349,6 @@ document.addEventListener('DOMContentLoaded', () => {
           submitBtn.classList.add('btn-loading');
           submitBtn.disabled = true;
         }
-        startProgressBar();
         const controller = new AbortController();
         const reqTimeout = setTimeout(() => controller.abort(), 25000);
         try {
@@ -506,7 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
           // Optimistic instant DOM updates for contact message review & public contact inquiry
           if (lowerAction.includes('/contact-messages/') && lowerAction.endsWith('/read')) {
-            const row = form.closest('tr, .contact-inquiry-row, div');
             const badge = document.createElement('span');
             badge.className = 'badge badge-resolved';
             badge.textContent = 'Reviewed';
@@ -531,7 +407,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } finally {
           form.dataset.confirmed = '';
-          finishProgressBar();
           if (submitBtn && submitBtn.isConnected) {
             submitBtn.classList.remove('btn-loading');
             submitBtn.disabled = false;
@@ -547,10 +422,6 @@ document.addEventListener('DOMContentLoaded', () => {
           submitBtn.classList.add('btn-loading');
           submitBtn.disabled = true;
         }
-        startProgressBar();
-        if (!isExportOrBlank) {
-          window.scheduleNavigationLoader({ timeoutMs: 25000 }, 350);
-        }
         HTMLFormElement.prototype.submit.call(form);
         return;
       }
@@ -558,17 +429,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (submitBtn && !submitBtn.disabled) {
         submitBtn.classList.add('btn-loading');
         submitBtn.disabled = true;
-        startProgressBar();
-        if (!isExportOrBlank) {
-          window.scheduleNavigationLoader({ timeoutMs: 25000 }, 350);
-        }
         setTimeout(() => {
           submitBtn.classList.remove('btn-loading');
           submitBtn.disabled = false;
-          finishProgressBar();
         }, 12000);
-      } else if (!isExportOrBlank) {
-        window.scheduleNavigationLoader({ timeoutMs: 25000 }, 350);
       }
     });
 
@@ -591,24 +455,19 @@ document.addEventListener('DOMContentLoaded', () => {
       if (confirmed) {
         const href = target.getAttribute('href');
         if (href) {
-          startProgressBar();
           if (navigator.onLine === false) {
-            window.showGlobalLoaderError('You appear to be offline. Please check your connection and retry.', () => {
-              window.location.href = href;
-            });
+            if (window.showToast) {
+              window.showToast('You appear to be offline. Please check your connection and retry.', 'error');
+            }
             return;
           }
-          window.showGlobalLoader({
-            timeoutMs: 20000,
-            onRetry: () => { window.location.href = href; }
-          });
           window.location.href = href;
         }
       }
     });
   }
 
-  // 8. Top Page Progress Bar & Background Dashboard Section Refresh (Zero Full-Page Reload)
+  // 8. Background Dashboard Section Refresh (Zero Full-Page Reload)
   let activeRefreshController = null;
   window.refreshDashboardContent = async function(targetUrl) {
     const dashContent = document.querySelector('.dashboard-content');
@@ -648,37 +507,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo(0, prevWinY);
   };
 
-  window.startProgressBar = function() {
-    let bar = document.getElementById('pageProgressBar');
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.id = 'pageProgressBar';
-      document.body.appendChild(bar);
-    }
-    bar.style.opacity = '1';
-    bar.style.width = '0%';
-    setTimeout(() => { bar.style.width = '40%'; }, 50);
-    setTimeout(() => { bar.style.width = '75%'; }, 200);
-  };
-
-  window.finishProgressBar = function() {
-    const bar = document.getElementById('pageProgressBar');
-    if (!bar) return;
-    bar.style.width = '100%';
-    setTimeout(() => {
-      bar.style.opacity = '0';
-      setTimeout(() => { bar.style.width = '0%'; }, 250);
-    }, 200);
-  };
-
-  // Delegated Async Pagination & Full-Page Navigation Link Click Triggers
+  // Delegated Async Pagination & Navigation Offline Guard
   document.addEventListener('click', async (e) => {
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     const pageLink = e.target.closest('a.pagination-link[href]');
     if (pageLink && pageLink.closest('.dashboard-content')) {
       e.preventDefault();
       const nextUrl = pageLink.href;
-      startProgressBar();
       try {
         if (window.history && window.history.pushState) {
           window.history.pushState({}, '', nextUrl);
@@ -686,40 +521,22 @@ document.addEventListener('DOMContentLoaded', () => {
         await window.refreshDashboardContent(nextUrl);
       } catch (_) {
         window.location.href = nextUrl;
-      } finally {
-        finishProgressBar();
       }
       return;
     }
     const link = e.target.closest('a[href]');
     if (!link) return;
-    if (link.hasAttribute('data-confirm') || link.hasAttribute('download') || link.hasAttribute('data-no-loader')) return;
+    if (link.hasAttribute('data-confirm') || link.hasAttribute('download')) return;
     if (link.getAttribute('target') === '_blank') return;
 
     const href = (link.getAttribute('href') || '').trim();
     if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
-    const lowerHref = href.toLowerCase();
-    if (lowerHref.includes('/export') || lowerHref.includes('/download') || lowerHref.includes('/attachments/') || lowerHref.includes('/proofs/')) return;
 
-    startProgressBar();
     if (navigator.onLine === false) {
       e.preventDefault();
-      window.showGlobalLoaderError('You appear to be offline. Please check your connection and retry.', () => {
-        window.location.href = href;
-      });
-      return;
-    }
-
-    try {
-      const dest = new URL(link.href, window.location.origin);
-      if (dest.origin === window.location.origin) {
-        window.scheduleNavigationLoader({
-          timeoutMs: 20000,
-          onRetry: () => { window.location.href = dest.href; }
-        }, 350);
+      if (window.showToast) {
+        window.showToast('You appear to be offline. Please check your connection and retry.', 'error');
       }
-    } catch (_) {
-      window.scheduleNavigationLoader({ timeoutMs: 20000 }, 350);
     }
   });
 
@@ -1360,9 +1177,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Finish top progress bar & smoothly hide initial global page loader once page content finishes loading
-  finishProgressBar();
-
   // Global Back Navigation Button Handler + Auto Injection for Dashboard Pages Without One
   const dashContent = document.querySelector('.dashboard-content');
   if (dashContent && !dashContent.querySelector('[data-back-nav]')) {
@@ -1394,25 +1208,4 @@ document.addEventListener('DOMContentLoaded', () => {
     const fallbackUrl = backBtn.getAttribute('data-fallback-url') || '/';
     window.handleSmartBack(fallbackUrl);
   });
-
-  const initialLoaderImg = document.getElementById('globalPageLoaderImg');
-  if (initialLoaderImg) {
-    initialLoaderImg.addEventListener('error', () => {
-      // Fall back safely without breaking the page if an intermediary drops the GIF asset
-      if (navigator.onLine === false) {
-        window.showGlobalLoaderError('Unable to load application resources while offline. Please retry.', () => {
-          window.location.reload();
-        });
-      }
-    });
-  }
-
-  // Dismiss initial #globalPageLoader cleanly once DOM & deferred scripts finish (no multi-second CDN blocking)
-  if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => window.hideGlobalLoader());
-    });
-  } else {
-    window.hideGlobalLoader();
-  }
 });

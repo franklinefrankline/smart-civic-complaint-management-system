@@ -398,22 +398,15 @@ class ProductionReadinessTestCase(unittest.TestCase):
         self.assertEqual(len(gif_res.data), os.path.getsize(gif_path))
         gif_res.close()
 
-        # 2. Rendered with non-blocking SCF logo rotating gradient ring loader across public and all four role dashboards
+        # 2. Global loading overlays & spinner animations removed from all public and role dashboard pages
         public_pages = ['/', '/auth/login']
         for route in public_pages:
             res = self.client.get(route)
             html = res.get_data(as_text=True)
             self.assertEqual(res.status_code, 200)
-            self.assertIn('id="globalPageLoader"', html)
-            self.assertIn('class="global-page-loader is-hidden"', html)
-            self.assertIn('id="globalPageLoaderStage"', html)
-            self.assertIn('class="scf-loader-ring"', html)
-            self.assertIn('class="scf-loader-glow"', html)
-            self.assertIn('/static/img/scf-logo.webp', html)
-            self.assertIn('onerror="this.hidden=true"', html)
-            self.assertIn('#020D1C', html)
-            self.assertIn('id="globalPageLoaderError"', html)
-            self.assertIn('id="globalPageLoaderRetryBtn"', html)
+            self.assertNotIn('id="globalPageLoader"', html)
+            self.assertNotIn('id="pageProgressBar"', html)
+            self.assertNotIn('class="scf-loader-ring"', html)
 
         role_dashboards = [
             ('citizen@prod.gov', 'Citizen@123', '/citizen/dashboard'),
@@ -428,18 +421,16 @@ class ProductionReadinessTestCase(unittest.TestCase):
             dash_res = client.get(dash)
             html = dash_res.get_data(as_text=True)
             self.assertEqual(dash_res.status_code, 200)
-            self.assertIn('id="globalPageLoader"', html)
-            self.assertIn('class="global-page-loader is-hidden"', html)
-            self.assertIn('class="scf-loader-ring"', html)
-            self.assertIn('/static/img/scf-logo.webp', html)
-            self.assertIn('onerror="this.hidden=true"', html)
-            self.assertIn('#020D1C', html)
+            self.assertNotIn('id="globalPageLoader"', html)
+            self.assertNotIn('id="pageProgressBar"', html)
+            self.assertNotIn('class="scf-loader-ring"', html)
 
         css_path = os.path.join(self.app.static_folder, 'css', 'main.css')
         with open(css_path, 'r', encoding='utf-8') as fh:
             css = fh.read()
-        self.assertIn('@keyframes scfLoaderSpin', css)
-        self.assertIn('@media (prefers-reduced-motion: reduce)', css)
+        self.assertNotIn('@keyframes scfLoaderSpin', css)
+        self.assertNotIn('@keyframes btnSpinner', css)
+        self.assertNotIn('.global-page-loader', css)
 
     def test_admin_analytics_empty_and_populated_metrics(self):
         a_client = self.app.test_client()
