@@ -511,16 +511,28 @@ class ProductionReadinessTestCase(unittest.TestCase):
         self.assertIn('max-width: calc(100vw - var(--sidebar-expanded-width)) !important;', css)
         self.assertIn('width: 100% !important;', css)
 
-    def test_back_button_present_on_contact_and_public_pages(self):
-        for route in ['/contact', '/about', '/departments', '/how-it-works', '/cookies', '/privacy', '/terms', '/track']:
+    def test_public_pages_have_global_navbar_and_no_back_buttons(self):
+        for route in ['/', '/contact', '/about', '/departments', '/how-it-works', '/cookies', '/privacy', '/terms', '/track']:
             res = self.client.get(route)
             self.assertEqual(res.status_code, 200, f"{route} failed")
             html = res.get_data(as_text=True)
-            self.assertIn('data-back-nav', html, f"Back button missing on {route}")
+            self.assertEqual(html.count('<nav class="navbar"'), 1, f"Expected single navbar on {route}")
+            self.assertNotIn('data-back-nav', html, f"Back button must be removed from public route {route}")
+            self.assertNotIn('page-back-bar', html, f"Back button bar must be removed from public route {route}")
+            self.assertNotIn('history.back', html, f"history.back must not be on public route {route}")
 
         # Track page should NOT render the left sidebar menu bar
         track_html = self.client.get('/track').get_data(as_text=True)
         self.assertNotIn('id="dashboardSidebar"', track_html)
+
+        # Logged-in users visiting public pages get single navbar and single notifMenu (no duplicate)
+        a_client = self.app.test_client()
+        a_client.post('/auth/login', data={'login_id': 'admin@prod.gov', 'password': 'Admin@123'})
+        for route in ['/', '/contact', '/about', '/departments', '/how-it-works', '/track']:
+            html = a_client.get(route).get_data(as_text=True)
+            self.assertEqual(html.count('<nav class="navbar"'), 1)
+            self.assertEqual(html.count('id="notifMenu"'), 1, f"Duplicate notifMenu on {route}")
+            self.assertNotIn('data-back-nav', html)
 
     def test_contact_form_sends_message_to_admin_dashboard_and_notifies(self):
         res = self.client.post('/contact', data={

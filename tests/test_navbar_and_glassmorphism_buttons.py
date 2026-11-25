@@ -223,9 +223,11 @@ class NavbarAndGlassmorphismButtonsTestCase(unittest.TestCase):
         self.assertEqual(res_citizen.status_code, 200)
         self.assertIn(b'class="theme-toggle-btn sidebar-header-theme-btn"', res_citizen.data)
 
-        # 5. Public track page renders clean without sidebar menu bar
+        # 5. Public track page renders clean global navbar with theme toggle, no sidebar and no back button
         self.client.get('/auth/logout')
         res_track = self.client.get('/track')
         self.assertEqual(res_track.status_code, 200)
         self.assertNotIn(b'id="dashboardSidebar"', res_track.data)
-        self.assertIn(b'data-back-nav', res_track.data)
+        self.assertIn(b'<nav class="navbar"', res_track.data)
+        self.assertIn(b'id="themeToggle"', res_track.data)
+        self.assertNotIn(b'data-back-nav', res_track.data)

@@ -320,8 +320,8 @@
     </div>
   </div>
 
-  <!-- Dashboard Notification Dropdown Panel (Shared across all authenticated role consoles) -->
-  {% if current_user and request.endpoint not in ['public.index', 'auth.login', 'auth.register'] %}
+  <!-- Dashboard Notification Dropdown Panel (Shared across all authenticated role consoles without top navbar) -->
+  {% if current_user and not (request.endpoint in public_nav_endpoints or (request.endpoint is none and code is defined)) %}
   <div class="notif-menu dashboard-notif-menu" id="notifMenu" role="region" aria-label="Notifications Panel">
     <div style="padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
       <strong style="font-size: 0.88rem; color: var(--text-primary); display: inline-flex; align-items: center; gap: 0.4rem;">
