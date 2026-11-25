@@ -69,7 +69,15 @@ class DeploymentSafetyTestCase(unittest.TestCase):
     def test_cloud_without_mysql_refuses_ephemeral_sqlite_fallback(self):
         orig_env = os.environ.copy()
         try:
-            for k in ('DATABASE_URL', 'MYSQL_URL', 'SQLALCHEMY_DATABASE_URI', 'DB_HOST', 'MYSQLHOST', 'ALLOW_EPHEMERAL_SQLITE'):
+            for k in (
+                'DATABASE_URL', 'MYSQL_URL', 'MYSQL_PUBLIC_URL', 'MYSQL_DATABASE_URL', 'DB_URL',
+                'SQLALCHEMY_DATABASE_URI', 'DB_HOST', 'MYSQLHOST', 'MYSQL_HOST',
+                'DB_USER', 'MYSQLUSER', 'MYSQL_USER',
+                'DB_PASSWORD', 'MYSQLPASSWORD', 'MYSQL_PASSWORD',
+                'DB_PORT', 'MYSQLPORT', 'MYSQL_PORT',
+                'DB_NAME', 'DB_DATABASE', 'MYSQLDATABASE', 'MYSQL_DATABASE', 'MYSQL_DB',
+                'ALLOW_EPHEMERAL_SQLITE',
+            ):
                 os.environ.pop(k, None)
             os.environ['RENDER'] = 'true'
 
@@ -78,6 +86,16 @@ class DeploymentSafetyTestCase(unittest.TestCase):
             self.assertIsNotNone(err)
             self.assertNotEqual(uri, 'sqlite:////tmp/smart_civic.db')
             self.assertIn('Render Environment Variables', err)
+
+            # Underscore MySQL env var aliases (e.g. MYSQL_HOST, MYSQL_DATABASE) also resolve cleanly
+            os.environ['MYSQL_HOST'] = 'mysql.prod.example.com'
+            os.environ['MYSQL_USER'] = 'produser'
+            os.environ['MYSQL_PASSWORD'] = 'ProdPass@123'
+            os.environ['MYSQL_DATABASE'] = 'civic_prod'
+            _, alias_uri, _, _, _, _, _, _, alias_err = _build_database_config()
+            self.assertIsNone(alias_err)
+            self.assertTrue(alias_uri.startswith('mysql+pymysql://produser:'))
+            self.assertIn('mysql.prod.example.com:3306/civic_prod', alias_uri)
         finally:
             os.environ.clear()
             os.environ.update(orig_env)

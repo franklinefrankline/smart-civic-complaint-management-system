@@ -31,15 +31,25 @@ def _build_database_config():
     explicit_url = (
         os.environ.get('DATABASE_URL')
         or os.environ.get('MYSQL_URL')
+        or os.environ.get('MYSQL_PUBLIC_URL')
+        or os.environ.get('MYSQL_DATABASE_URL')
+        or os.environ.get('DB_URL')
         or os.environ.get('SQLALCHEMY_DATABASE_URI')
         or ''
     ).strip()
 
-    db_user = os.environ.get('DB_USER') or os.environ.get('MYSQLUSER') or 'root'
-    db_password = os.environ.get('DB_PASSWORD') or os.environ.get('MYSQLPASSWORD') or ''
-    db_host = os.environ.get('DB_HOST') or os.environ.get('MYSQLHOST') or ''
-    db_port = os.environ.get('DB_PORT') or os.environ.get('MYSQLPORT') or '3306'
-    db_name = os.environ.get('DB_NAME') or os.environ.get('MYSQLDATABASE') or 'smart_civic_complaints'
+    db_user = (os.environ.get('DB_USER') or os.environ.get('MYSQLUSER') or os.environ.get('MYSQL_USER') or 'root').strip()
+    db_password = os.environ.get('DB_PASSWORD') or os.environ.get('MYSQLPASSWORD') or os.environ.get('MYSQL_PASSWORD') or ''
+    db_host = (os.environ.get('DB_HOST') or os.environ.get('MYSQLHOST') or os.environ.get('MYSQL_HOST') or '').strip()
+    db_port = (os.environ.get('DB_PORT') or os.environ.get('MYSQLPORT') or os.environ.get('MYSQL_PORT') or '3306').strip()
+    db_name = (
+        os.environ.get('DB_NAME')
+        or os.environ.get('DB_DATABASE')
+        or os.environ.get('MYSQLDATABASE')
+        or os.environ.get('MYSQL_DATABASE')
+        or os.environ.get('MYSQL_DB')
+        or 'smart_civic_complaints'
+    ).strip()
 
     ssl_required = os.environ.get('DB_SSL', '').lower() in ('1', 'true', 'yes', 'required')
     ssl_ca = os.environ.get('DB_SSL_CA', '').strip()
