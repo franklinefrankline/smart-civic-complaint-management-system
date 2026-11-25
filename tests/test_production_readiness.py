@@ -621,8 +621,9 @@ class ProductionReadinessTestCase(unittest.TestCase):
         home_html = self.client.get('/').get_data(as_text=True)
         self.assertIn('SCF', home_html)
         self.assertIn('Smart Civic Flow', home_html)
+        self.assertNotIn('class="brand-title-paren"', home_html)
         self.assertIn('/static/img/scf-logo.webp', home_html)
-        self.assertIn('/static/img/scf-hero-logo.webp', home_html)
+        self.assertNotIn('/static/img/scf-hero-logo.webp', home_html)
         self.assertIn('/static/img/favicon.png', home_html)
 
         # Contact page omits static helpline phone and support email
