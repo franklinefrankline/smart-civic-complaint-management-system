@@ -4579,3 +4579,55 @@ textarea.form-control {
 .analytics-empty-state[hidden] {
   display: none !important;
 }
+
+/* Global Page & Action Loader Overlay (uses /static/img/loader.gif) */
+.global-loader-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, visibility 0.18s ease;
+}
+
+.global-loader-overlay.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.global-loader-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 1.25rem 1.75rem;
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.25));
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.28);
+}
+
+.global-loader-gif {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  display: block;
+}
+
+.global-loader-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
+  letter-spacing: 0.01em;
+}

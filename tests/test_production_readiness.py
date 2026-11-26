@@ -398,13 +398,14 @@ class ProductionReadinessTestCase(unittest.TestCase):
         self.assertEqual(len(gif_res.data), os.path.getsize(gif_path))
         gif_res.close()
 
-        # 2. Global loading overlays & spinner animations removed from all public and role dashboard pages
+        # 2. Global GIF loading overlay configured on all public and role dashboard pages
         public_pages = ['/', '/auth/login']
         for route in public_pages:
             res = self.client.get(route)
             html = res.get_data(as_text=True)
             self.assertEqual(res.status_code, 200)
-            self.assertNotIn('id="globalPageLoader"', html)
+            self.assertIn('id="globalPageLoader"', html)
+            self.assertIn('img/loader.gif', html)
             self.assertNotIn('id="pageProgressBar"', html)
             self.assertNotIn('class="scf-loader-ring"', html)
 
@@ -421,7 +422,8 @@ class ProductionReadinessTestCase(unittest.TestCase):
             dash_res = client.get(dash)
             html = dash_res.get_data(as_text=True)
             self.assertEqual(dash_res.status_code, 200)
-            self.assertNotIn('id="globalPageLoader"', html)
+            self.assertIn('id="globalPageLoader"', html)
+            self.assertIn('img/loader.gif', html)
             self.assertNotIn('id="pageProgressBar"', html)
             self.assertNotIn('class="scf-loader-ring"', html)
 

@@ -66,7 +66,8 @@ class AnimationSystemTestCase(unittest.TestCase):
             html = f.read()
 
         self.assertNotIn('id="pageProgressBar"', html)
-        self.assertNotIn('id="globalPageLoader"', html)
+        self.assertIn('id="globalPageLoader"', html)
+        self.assertIn('loader.gif', html)
         self.assertIn('id="toastContainer"', html)
 
     def test_dashboards_stagger_in(self):

@@ -375,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
           submitBtn.classList.add('btn-loading');
           submitBtn.disabled = true;
         }
+        if (window.showPageLoader) window.showPageLoader('Filtering records...');
         try {
           if (window.history && window.history.pushState) {
             window.history.pushState({}, '', nextUrl);
@@ -385,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = nextUrl;
           }
         } finally {
+          if (window.hidePageLoader) window.hidePageLoader();
           if (submitBtn) {
             submitBtn.classList.remove('btn-loading');
             submitBtn.disabled = false;
@@ -400,6 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
           submitBtn.classList.add('btn-loading');
           submitBtn.disabled = true;
         }
+        if (window.showPageLoader) window.showPageLoader('Processing request...');
         const controller = new AbortController();
         const reqTimeout = setTimeout(() => controller.abort(), 55000);
         let actionSucceeded = false;
@@ -480,6 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
         } finally {
+          if (window.hidePageLoader) window.hidePageLoader();
           form.dataset.confirmed = '';
           if (submitBtn && submitBtn.isConnected) {
             submitBtn.classList.remove('btn-loading');
@@ -499,10 +503,16 @@ document.addEventListener('DOMContentLoaded', () => {
           submitBtn.classList.add('btn-loading');
           submitBtn.disabled = true;
         }
+        if (window.showPageLoader && !isExportOrBlank && !form.hasAttribute('data-no-loader')) {
+          window.showPageLoader('Submitting...');
+        }
         HTMLFormElement.prototype.submit.call(form);
         return;
       }
 
+      if (window.showPageLoader && !isExportOrBlank && !form.hasAttribute('data-no-loader')) {
+        window.showPageLoader('Submitting...');
+      }
       if (submitBtn && !submitBtn.disabled) {
         submitBtn.classList.add('btn-loading');
         submitBtn.disabled = true;
@@ -538,13 +548,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return;
           }
+          if (window.showPageLoader && !target.hasAttribute('data-no-loader')) {
+            window.showPageLoader('Loading...');
+          }
           window.location.href = href;
         }
       }
     });
   }
 
-  // 8. Background Dashboard Section Refresh (Zero Full-Page Reload)
+  // 8. Global Loader & Background Dashboard Section Refresh
+  let loaderAutoHideTimer = null;
+  window.showPageLoader = function(message) {
+    const loader = document.getElementById('globalPageLoader');
+    if (!loader) return;
+    const textEl = document.getElementById('globalLoaderText');
+    if (textEl) textEl.textContent = message || 'Loading...';
+    loader.classList.add('is-active');
+    loader.setAttribute('aria-hidden', 'false');
+    clearTimeout(loaderAutoHideTimer);
+    loaderAutoHideTimer = setTimeout(() => {
+      if (window.hidePageLoader) window.hidePageLoader();
+    }, 25000);
+  };
+
+  window.hidePageLoader = function() {
+    clearTimeout(loaderAutoHideTimer);
+    const loader = document.getElementById('globalPageLoader');
+    if (!loader) return;
+    loader.classList.remove('is-active');
+    loader.setAttribute('aria-hidden', 'true');
+  };
   let activeRefreshController = null;
   let activeRefreshSuperseded = false;
   window.refreshDashboardContent = async function(targetUrl) {
@@ -603,13 +637,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Delegated Async Pagination & Navigation Offline Guard
+  // Delegated Async Pagination & Navigation Loader + Offline Guard
   document.addEventListener('click', async (e) => {
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     const pageLink = e.target.closest('a.pagination-link[href]');
     if (pageLink && pageLink.closest('.dashboard-content')) {
       e.preventDefault();
       const nextUrl = pageLink.href;
+      if (window.showPageLoader) window.showPageLoader('Loading page...');
       try {
         if (window.history && window.history.pushState) {
           window.history.pushState({}, '', nextUrl);
@@ -619,6 +654,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!err || err.name !== 'AbortError') {
           window.location.href = nextUrl;
         }
+      } finally {
+        if (window.hidePageLoader) window.hidePageLoader();
       }
       return;
     }
@@ -635,6 +672,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.showToast) {
         window.showToast('You appear to be offline. Please check your connection and retry.', 'error');
       }
+      return;
+    }
+
+    const lowerHref = href.toLowerCase();
+    const isDownloadRoute = lowerHref.includes('/export') || lowerHref.includes('/download') || lowerHref.includes('/backup');
+    if (!link.hasAttribute('data-no-loader') && !isDownloadRoute && link.href && link.href.startsWith(window.location.origin)) {
+      if (window.showPageLoader) window.showPageLoader('Loading...');
     }
   });
 
@@ -1307,8 +1351,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.handleSmartBack(fallbackUrl);
   });
 
-  // Restore button interactive states cleanly when returning via browser history (bfcache)
+  // Restore button & loader states cleanly when returning via browser history (bfcache)
   window.addEventListener('pageshow', () => {
+    if (window.hidePageLoader) window.hidePageLoader();
     document.querySelectorAll('button.btn-loading, input.btn-loading').forEach(btn => {
       btn.classList.remove('btn-loading');
       btn.disabled = false;
