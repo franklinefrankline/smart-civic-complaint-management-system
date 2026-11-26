@@ -8,10 +8,13 @@ from dotenv import load_dotenv
 # Base directory of the application
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-# Load environment variables from local .env or Render Secret Files (/etc/secrets/.env)
+# Load environment variables from local .env or Render Secret Files (/etc/secrets/*)
 load_dotenv(os.path.join(BASE_DIR, '.env'))
-if os.path.isfile('/etc/secrets/.env'):
-    load_dotenv('/etc/secrets/.env', override=False)
+if os.path.isdir('/etc/secrets'):
+    for _sec_name in sorted(os.listdir('/etc/secrets')):
+        _sec_path = os.path.join('/etc/secrets', _sec_name)
+        if os.path.isfile(_sec_path) and ('env' in _sec_name.lower() or _sec_name.startswith('.')):
+            load_dotenv(_sec_path, override=False)
 
 
 def _env_first(env_map, *keys):
@@ -47,18 +50,19 @@ def _build_database_config():
         'DATABASE_URL', 'DATABASE_URI', 'DB_URL', 'DB_URI',
         'MYSQL_URL', 'MYSQL_URI', 'MYSQL_PUBLIC_URL', 'MYSQL_DATABASE_URL',
         'TIDB_URL', 'TIDB_DATABASE_URL', 'SQLALCHEMY_DATABASE_URI',
+        'DB_CONNECTION_STRING', 'CONNECTION_STRING',
     ).strip().strip('"').strip("'")
 
-    db_user = (_env_first(norm_env, 'DB_USER', 'DB_USERNAME', 'MYSQLUSER', 'MYSQL_USER', 'TIDB_USER', 'TIDB_USERNAME') or 'root').strip().strip('"').strip("'")
-    db_password = _env_first(norm_env, 'DB_PASSWORD', 'DB_PASS', 'MYSQLPASSWORD', 'MYSQL_PASSWORD', 'TIDB_PASSWORD', 'TIDB_PASS')
-    db_host = _env_first(norm_env, 'DB_HOST', 'MYSQLHOST', 'MYSQL_HOST', 'TIDB_HOST', 'HOST_DB').strip().strip('"').strip("'")
-    db_port = (_env_first(norm_env, 'DB_PORT', 'MYSQLPORT', 'MYSQL_PORT', 'TIDB_PORT') or '3306').strip().strip('"').strip("'")
+    db_user = (_env_first(norm_env, 'DB_USER', 'DB_USERNAME', 'DATABASE_USER', 'DATABASE_USERNAME', 'MYSQLUSER', 'MYSQL_USER', 'MYSQL_USERNAME', 'TIDB_USER', 'TIDB_USERNAME') or 'root').strip().strip('"').strip("'")
+    db_password = _env_first(norm_env, 'DB_PASSWORD', 'DB_PASS', 'DATABASE_PASSWORD', 'DATABASE_PASS', 'MYSQLPASSWORD', 'MYSQL_PASSWORD', 'TIDB_PASSWORD', 'TIDB_PASS')
+    db_host = _env_first(norm_env, 'DB_HOST', 'DATABASE_HOST', 'MYSQLHOST', 'MYSQL_HOST', 'TIDB_HOST', 'HOST_DB').strip().strip('"').strip("'")
+    db_port = (_env_first(norm_env, 'DB_PORT', 'DATABASE_PORT', 'MYSQLPORT', 'MYSQL_PORT', 'TIDB_PORT') or '3306').strip().strip('"').strip("'")
     db_name = (
-        _env_first(norm_env, 'DB_NAME', 'DB_DATABASE', 'MYSQLDATABASE', 'MYSQL_DATABASE', 'MYSQL_DB', 'TIDB_DATABASE', 'TIDB_DB_NAME', 'TIDB_DB')
+        _env_first(norm_env, 'DB_NAME', 'DB_DATABASE', 'DATABASE_NAME', 'DATABASE_DB', 'MYSQLDATABASE', 'MYSQL_DATABASE', 'MYSQL_DB', 'TIDB_DATABASE', 'TIDB_DB_NAME', 'TIDB_DB')
         or 'smart_civic_complaints'
     ).strip().strip('"').strip("'")
 
-    ssl_required = _env_first(norm_env, 'DB_SSL', 'TIDB_SSL', 'MYSQL_SSL').strip().lower() in ('1', 'true', 'yes', 'required')
+    ssl_required = _env_first(norm_env, 'DB_SSL', 'DATABASE_SSL', 'TIDB_SSL', 'MYSQL_SSL').strip().lower() in ('1', 'true', 'yes', 'required')
     ssl_ca_raw = _env_first(norm_env, 'DB_SSL_CA', 'MYSQL_SSL_CA', 'TIDB_SSL_CA', 'SSL_CA').strip().strip('"').strip("'")
     ssl_ca = ssl_ca_raw if (ssl_ca_raw and os.path.isfile(ssl_ca_raw)) else ''
 
