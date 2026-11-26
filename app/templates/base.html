@@ -6,12 +6,27 @@
   <title>{% block title %}{{ t('app_name') }}{% endblock %} | SCF (Smart Civic Flow)</title>
   <meta name="description" content="{{ t('app_subtitle') }}">
   <meta name="api-base-url" content="{{ api_base_url or '' }}">
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('civic_theme');
+        var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+        if (sessionStorage.getItem('scf_nav_transition') === '1') {
+          document.documentElement.classList.add('scf-page-entering');
+          setTimeout(function () {
+            document.documentElement.classList.remove('scf-page-entering');
+          }, 1500);
+        }
+      } catch (_) {}
+    })();
+  </script>
   <link rel="icon" type="image/png" sizes="128x128" href="{{ url_for('static', filename='img/favicon.png', v='20261125g') }}">
   <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico', v='20261125g') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png', v='20261125g') }}">
 
   <!-- Master Stylesheet -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261126d') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261126f') }}">
   
   <!-- Preconnect for Icon CDN -->
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
@@ -301,7 +316,7 @@
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
   <!-- Master Application Scripts -->
-  <script src="{{ url_for('static', filename='js/main.js', v='20261126e') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/main.js', v='20261126f') }}" defer></script>
   <script src="{{ url_for('static', filename='js/notifications.js', v='20261126c') }}" defer></script>
   
   {% block extra_scripts %}{% endblock %}

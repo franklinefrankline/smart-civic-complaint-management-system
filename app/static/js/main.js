@@ -149,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   syncThemeUI(savedTheme);
+  requestAnimationFrame(() => htmlEl.classList.add('theme-ready'));
 
   // 4. Initialize Lucide Icons
   if (window.lucide) {
@@ -509,14 +510,14 @@ document.addEventListener('DOMContentLoaded', () => {
           submitBtn.disabled = true;
         }
         if (window.showPageLoader && !isExportOrBlank && !form.hasAttribute('data-no-loader')) {
-          window.showPageLoader('Submitting...');
+          window.showPageLoader('Submitting...', 0, true);
         }
         HTMLFormElement.prototype.submit.call(form);
         return;
       }
 
       if (window.showPageLoader && !isExportOrBlank && !form.hasAttribute('data-no-loader')) {
-        window.showPageLoader('Submitting...');
+        window.showPageLoader('Submitting...', 0, true);
       }
       if (submitBtn && !submitBtn.disabled) {
         submitBtn.classList.add('btn-loading');
@@ -554,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
           }
           if (window.showPageLoader && !target.hasAttribute('data-no-loader')) {
-            window.showPageLoader('Loading...');
+            window.showPageLoader('Loading...', undefined, true);
           }
           window.location.href = href;
         }
@@ -562,10 +563,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 8. Global Loader & Background Dashboard Section Refresh
+  // 8. Global Loader & Smooth Page Transition + Background Dashboard Refresh
   let loaderDelayTimer = null;
   let loaderAutoHideTimer = null;
-  window.showPageLoader = function(message, delayMs) {
+  window.showPageLoader = function(message, delayMs, isNavTransition) {
+    if (isNavTransition) {
+      try { sessionStorage.setItem('scf_nav_transition', '1'); } catch (_) {}
+    }
     const loader = document.getElementById('globalPageLoader');
     if (!loader) return;
     const textEl = document.getElementById('globalLoaderText');
@@ -592,6 +596,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.hidePageLoader = function() {
     clearTimeout(loaderDelayTimer);
     clearTimeout(loaderAutoHideTimer);
+    try { sessionStorage.removeItem('scf_nav_transition'); } catch (_) {}
+    document.documentElement.classList.remove('scf-page-entering');
     const loader = document.getElementById('globalPageLoader');
     if (!loader) return;
     loader.classList.remove('is-active');
@@ -642,8 +648,10 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = fetchUrl;
         return;
       }
+      dashContent.classList.add('is-swapping');
       dashContent.innerHTML = nextDash.innerHTML;
       dashContent.querySelectorAll('form').forEach(f => { f.noValidate = true; });
+      if (window.ensureDashboardBackBar) window.ensureDashboardBackBar();
       if (window.initStarRatings) window.initStarRatings(dashContent);
       if (typeof window.filterOfficersByDept === 'function') {
         const deptSel = dashContent.querySelector('#admin_dept_select');
@@ -653,7 +661,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.formatLocalTimes) window.formatLocalTimes(dashContent);
       dashContent.scrollTop = prevScrollTop;
       window.scrollTo(0, prevWinY);
+      requestAnimationFrame(() => dashContent.classList.remove('is-swapping'));
     } catch (err) {
+      dashContent.classList.remove('is-swapping');
       clearTimeout(timeoutId);
       if (err && err.name === 'AbortError' && activeRefreshSuperseded) {
         return;
@@ -707,7 +717,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lowerHref = href.toLowerCase();
     const isDownloadRoute = lowerHref.includes('/export') || lowerHref.includes('/download') || lowerHref.includes('/backup');
     if (!link.hasAttribute('data-no-loader') && !isDownloadRoute && link.href && link.href.startsWith(window.location.origin)) {
-      if (window.showPageLoader) window.showPageLoader('Loading...');
+      if (window.showPageLoader) window.showPageLoader('Loading...', undefined, true);
     }
   });
 
@@ -1349,27 +1359,49 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Global Back Navigation Button Handler + Auto Injection for Dashboard Pages Without One
-  const dashContent = document.querySelector('.dashboard-content');
-  if (dashContent && !dashContent.querySelector('[data-back-nav]')) {
-    const hasExistingBackLink = Array.from(dashContent.querySelectorAll('a, button')).some(el => {
-      const txt = (el.textContent || '').trim().toLowerCase();
-      return txt.startsWith('← back') || txt.includes('back to ');
-    });
-    if (!hasExistingBackLink) {
-      const roleMatch = window.location.pathname.match(/^\/(admin|citizen|officer|worker)\//);
-      const fallbackUrl = roleMatch ? `/${roleMatch[1]}/dashboard` : '/';
-      const bar = document.createElement('div');
-      bar.className = 'page-back-bar';
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn btn-secondary btn-sm page-back-btn';
-      btn.setAttribute('data-back-nav', '');
-      btn.setAttribute('data-fallback-url', fallbackUrl);
-      btn.innerHTML = '<i data-lucide="arrow-left" class="icon-xs"></i><span>Back</span>';
-      bar.appendChild(btn);
-      dashContent.insertBefore(bar, dashContent.firstChild);
-      if (window.lucide) lucide.createIcons();
+  window.ensureDashboardBackBar = function() {
+    const dashContent = document.querySelector('.dashboard-content');
+    if (dashContent && !dashContent.querySelector('[data-back-nav]')) {
+      const hasExistingBackLink = Array.from(dashContent.querySelectorAll('a, button')).some(el => {
+        const txt = (el.textContent || '').trim().toLowerCase();
+        return txt.startsWith('← back') || txt.includes('back to ');
+      });
+      if (!hasExistingBackLink) {
+        const roleMatch = window.location.pathname.match(/^\/(admin|citizen|officer|worker)\//);
+        const fallbackUrl = roleMatch ? `/${roleMatch[1]}/dashboard` : '/';
+        const bar = document.createElement('div');
+        bar.className = 'page-back-bar';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-secondary btn-sm page-back-btn';
+        btn.setAttribute('data-back-nav', '');
+        btn.setAttribute('data-fallback-url', fallbackUrl);
+        btn.innerHTML = '<i data-lucide="arrow-left" class="icon-xs"></i><span>Back</span>';
+        bar.appendChild(btn);
+        dashContent.insertBefore(bar, dashContent.firstChild);
+        if (window.lucide) lucide.createIcons();
+      }
     }
+  };
+  window.ensureDashboardBackBar();
+
+  // Smooth destination page reveal AFTER layout, Back bar, theme, and icons are completely ready
+  if (document.documentElement.classList.contains('scf-page-entering')) {
+    const loaderEl = document.getElementById('globalPageLoader');
+    if (loaderEl) {
+      loaderEl.classList.add('is-active');
+      loaderEl.setAttribute('aria-hidden', 'false');
+    }
+    try { sessionStorage.removeItem('scf_nav_transition'); } catch (_) {}
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.documentElement.classList.remove('scf-page-entering');
+        if (loaderEl) {
+          loaderEl.classList.remove('is-active');
+          loaderEl.setAttribute('aria-hidden', 'true');
+        }
+      });
+    });
   }
 
   document.addEventListener('click', (e) => {
@@ -1383,6 +1415,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restore button & loader states cleanly when returning via browser history (bfcache)
   window.addEventListener('pageshow', () => {
     if (window.hidePageLoader) window.hidePageLoader();
+    document.documentElement.classList.remove('scf-page-entering');
     document.querySelectorAll('button.btn-loading, input.btn-loading').forEach(btn => {
       btn.classList.remove('btn-loading');
       btn.disabled = false;

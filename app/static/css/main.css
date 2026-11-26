@@ -131,6 +131,9 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+html.theme-ready body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -1646,6 +1649,23 @@ body.sidebar-collapsed .dashboard-sidebar .sidebar-footer-link {
 .main-content {
   width: 100%;
   flex: 1;
+  opacity: 1;
+  transition: opacity 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html.scf-page-entering .main-content {
+  opacity: 0;
+  transition: none;
+}
+
+html.scf-page-entering .dashboard-content,
+html.scf-page-entering .stagger-in > * {
+  animation-play-state: paused !important;
+}
+
+.dashboard-content.is-swapping {
+  opacity: 0;
+  transition: opacity 150ms ease;
 }
 
 /* 4. Main Content Area (Independent Scrolling - Always Full Viewport Width Minus Sidebar) */
@@ -4596,7 +4616,14 @@ textarea.form-control {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.18s ease, visibility 0.18s ease;
+  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), visibility 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html.scf-page-entering .global-loader-overlay {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: none;
 }
 
 .global-loader-overlay.is-active {

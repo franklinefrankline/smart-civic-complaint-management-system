@@ -90,5 +90,42 @@ class AnimationSystemTestCase(unittest.TestCase):
                 content = f.read()
             self.assertIn('timeline stagger-in', content, f"{tmpl} should have timeline stagger-in")
 
+    def test_smooth_page_transition_after_loading(self):
+        base_path = os.path.join(self.base_dir, 'app', 'templates', 'base.html')
+        css_path = os.path.join(self.base_dir, 'app', 'static', 'css', 'main.css')
+        js_path = os.path.join(self.base_dir, 'app', 'static', 'js', 'main.js')
+
+        with open(base_path, 'r', encoding='utf-8') as f:
+            base_html = f.read()
+        with open(css_path, 'r', encoding='utf-8') as f:
+            css = f.read()
+        with open(js_path, 'r', encoding='utf-8') as f:
+            js = f.read()
+
+        # Pre-paint theme + navigation entering bootstrap in <head> before stylesheets
+        self.assertIn("localStorage.getItem('civic_theme')", base_html)
+        self.assertIn("sessionStorage.getItem('scf_nav_transition')", base_html)
+        self.assertIn("classList.add('scf-page-entering')", base_html)
+        self.assertLess(
+            base_html.find("localStorage.getItem('civic_theme')"),
+            base_html.find('css/main.css'),
+            'Theme pre-paint script must run before main.css to prevent light-to-dark flash',
+        )
+
+        # Smooth fade-in/fade-out and paused entrance animations until page is ready
+        self.assertIn('html.theme-ready body', css)
+        self.assertIn('html.scf-page-entering .main-content', css)
+        self.assertIn('html.scf-page-entering .global-loader-overlay', css)
+        self.assertIn('html.scf-page-entering .dashboard-content', css)
+        self.assertIn('.dashboard-content.is-swapping', css)
+        self.assertIn('transition: opacity 300ms', css)
+        self.assertIn('transition: opacity 280ms', css)
+
+        # JS lifecycle: persist transition flag across navigations & clean double-rAF reveal
+        self.assertIn("sessionStorage.setItem('scf_nav_transition', '1')", js)
+        self.assertIn('window.ensureDashboardBackBar', js)
+        self.assertIn("classList.add('theme-ready')", js)
+        self.assertIn("classList.remove('scf-page-entering')", js)
+
 if __name__ == '__main__':
     unittest.main()
