@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png', v='20261125g') }}">
 
   <!-- Master Stylesheet -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261126a') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261126d') }}">
   
   <!-- Preconnect for Icon CDN -->
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
@@ -292,7 +292,7 @@
   <!-- Global Page Loading Overlay (uses /static/img/loader.gif) -->
   <div id="globalPageLoader" class="global-loader-overlay" role="status" aria-live="polite" aria-hidden="true">
     <div class="global-loader-card">
-      <img src="{{ url_for('static', filename='img/loader.gif', v='20261126a') }}" alt="Loading..." class="global-loader-gif" width="64" height="64">
+      <img src="{{ url_for('static', filename='img/loader.gif', v='20261126d') }}" alt="Loading..." class="global-loader-gif" width="68" height="68">
       <span id="globalLoaderText" class="global-loader-text">Loading...</span>
     </div>
   </div>
@@ -301,7 +301,7 @@
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
   <!-- Master Application Scripts -->
-  <script src="{{ url_for('static', filename='js/main.js', v='20261126c') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/main.js', v='20261126e') }}" defer></script>
   <script src="{{ url_for('static', filename='js/notifications.js', v='20261126c') }}" defer></script>
   
   {% block extra_scripts %}{% endblock %}

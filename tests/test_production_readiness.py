@@ -442,7 +442,13 @@ class ProductionReadinessTestCase(unittest.TestCase):
         cache.invalidate_prefix('public:')
         self.assertIsNone(cache.get('public:index'))
 
-        from app.services.complaint_service import build_admin_analytics_payload
+        from app.services.complaint_service import (
+            build_admin_analytics_payload,
+            get_cached_active_departments,
+            get_cached_active_categories,
+        )
+        self.assertGreaterEqual(len(get_cached_active_departments()), 1)
+        self.assertGreaterEqual(len(get_cached_active_categories()), 1)
         payload = build_admin_analytics_payload()
         self.assertIn('submitted', payload['summary'])
 

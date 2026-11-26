@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta
+from types import SimpleNamespace
+from flask import current_app
 from sqlalchemy import func, case
 from app import db
+from app.utils.ttl_cache import app_cache
 from app.models.complaint import Complaint
 from app.models.workflow import ComplaintStatusHistory, ComplaintAssignment, Worker
 from app.models.attachment import ComplaintAttachment
@@ -775,11 +778,58 @@ def get_complaint_aggregate_counts(*filters):
     }
 
 
+def get_cached_active_departments():
+    """Return active departments cached in memory (auto-invalidated on DB commit)."""
+    use_cache = bool(current_app and not current_app.config.get('TESTING'))
+    if use_cache:
+        cached = app_cache.get('ref:active_departments')
+        if cached is not None:
+            return cached
+    rows = Department.query.filter_by(is_active=True).order_by(Department.id.asc()).all()
+    if not use_cache:
+        return rows
+    snap = [
+        SimpleNamespace(
+            id=d.id, name=d.name, code=d.code, description=d.description,
+            contact_email=d.contact_email, contact_phone=d.contact_phone, is_active=True
+        )
+        for d in rows
+    ]
+    return app_cache.set('ref:active_departments', snap, ttl_seconds=60)
+
+
+def get_cached_active_categories():
+    """Return active complaint categories cached in memory (auto-invalidated on DB commit)."""
+    use_cache = bool(current_app and not current_app.config.get('TESTING'))
+    if use_cache:
+        cached = app_cache.get('ref:active_categories')
+        if cached is not None:
+            return cached
+    rows = ComplaintCategory.query.filter_by(is_active=True).order_by(ComplaintCategory.id.asc()).all()
+    if not use_cache:
+        return rows
+    snap = [
+        SimpleNamespace(
+            id=c.id, name=c.name, department_id=c.department_id,
+            default_priority=c.default_priority, sla_hours=c.sla_hours,
+            description=c.description, is_active=True
+        )
+        for c in rows
+    ]
+    return app_cache.set('ref:active_categories', snap, ttl_seconds=60)
+
+
 def build_admin_analytics_payload():
     """
     Build real-time municipal analytics across departments, categories, and workflow statuses
     using lightweight column projections and a single outer-join query (zero N+1 category loads).
     """
+    use_cache = bool(current_app and not current_app.config.get('TESTING'))
+    if use_cache:
+        cached = app_cache.get('analytics:admin_payload')
+        if cached is not None:
+            return cached
+
     departments = Department.query.order_by(Department.id.asc()).all()
     categories = ComplaintCategory.query.order_by(ComplaintCategory.id.asc()).all()
     now = datetime.utcnow()
@@ -891,7 +941,7 @@ def build_admin_analytics_payload():
 
     resolution_rate = round((resolved_count / total) * 100, 1) if total else 0.0
 
-    return {
+    payload = {
         'summary': {
             'total': total,
             'submitted': submitted_count,
@@ -914,3 +964,6 @@ def build_admin_analytics_payload():
         'status_labels': ['Pending / Submitted', 'In Progress', 'Resolved', 'Escalated', 'Rejected'],
         'status_totals': [pending_count, in_progress_count, resolved_count, escalated_count, rejected_count],
     }
+    if use_cache:
+        app_cache.set('analytics:admin_payload', payload, ttl_seconds=30)
+    return payload

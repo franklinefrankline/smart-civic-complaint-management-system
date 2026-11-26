@@ -480,6 +480,7 @@
           const data = await res.json().catch(() => null);
           if (res.ok && data && data.success) {
             window.__sccmtPauseLiveSyncUntil = Date.now() + 8000;
+            if (window.hidePageLoader) window.hidePageLoader();
             if (window.closeModal) window.closeModal(modalId);
             if (window.showToast && data.message) window.showToast(data.message, 'success');
             if (window.refreshDashboardContent) {

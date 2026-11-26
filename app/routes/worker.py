@@ -29,26 +29,20 @@ def before_request():
 @worker_bp.route('/dashboard')
 def dashboard():
     worker_user_id = g.user.id
-    assigned_complaint_ids = [
-        r[0]
-        for r in db.session.query(ComplaintAssignment.complaint_id)
+    assigned_subq = (
+        db.session.query(ComplaintAssignment.complaint_id)
         .filter_by(assigned_to_user_id=worker_user_id)
-        .distinct()
-        .all()
-    ]
+    )
+    assigned_filter = Complaint.id.in_(assigned_subq)
 
-    if assigned_complaint_ids:
-        counts = get_complaint_aggregate_counts(Complaint.id.in_(assigned_complaint_ids))
-        active_tasks = (
-            Complaint.query.filter(Complaint.id.in_(assigned_complaint_ids))
-            .filter(Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES + ACTIVE_WORK_STATUSES))
-            .options(joinedload(Complaint.category), joinedload(Complaint.department))
-            .order_by(Complaint.priority.desc())
-            .all()
-        )
-    else:
-        counts = get_complaint_aggregate_counts(Complaint.id == -1)
-        active_tasks = []
+    counts = get_complaint_aggregate_counts(assigned_filter)
+    active_tasks = (
+        Complaint.query.filter(assigned_filter)
+        .filter(Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES + ACTIVE_WORK_STATUSES))
+        .options(joinedload(Complaint.category), joinedload(Complaint.department))
+        .order_by(Complaint.priority.desc())
+        .all()
+    )
 
     stats = {
         'total': counts['total'],
@@ -67,18 +61,14 @@ def dashboard():
 @worker_bp.route('/task', strict_slashes=False)
 def tasks():
     worker_user_id = g.user.id
-    assigned_complaint_ids = [
-        r[0]
-        for r in db.session.query(ComplaintAssignment.complaint_id)
+    assigned_subq = (
+        db.session.query(ComplaintAssignment.complaint_id)
         .filter_by(assigned_to_user_id=worker_user_id)
-        .distinct()
-        .all()
-    ]
+    )
 
     query = (
-        Complaint.query.filter(Complaint.id.in_(assigned_complaint_ids))
+        Complaint.query.filter(Complaint.id.in_(assigned_subq))
         .options(joinedload(Complaint.category), joinedload(Complaint.department))
-        if assigned_complaint_ids else Complaint.query.filter_by(id=-1)
     )
 
     status = request.args.get('status')

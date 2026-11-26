@@ -22,6 +22,8 @@ from app.services.complaint_service import (
     get_complaint_9_stage_timeline,
     get_complaint_aggregate_counts,
     build_admin_analytics_payload,
+    get_cached_active_departments,
+    get_cached_active_categories,
     PENDING_STATUSES,
     IN_PROGRESS_STATUSES,
 )
@@ -191,8 +193,8 @@ def complaints():
 
     page = max(1, request.args.get('page', 1, type=int))
     pagination = query.order_by(Complaint.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
-    departments = Department.query.filter_by(is_active=True).all()
-    categories = ComplaintCategory.query.filter_by(is_active=True).all()
+    departments = get_cached_active_departments()
+    categories = get_cached_active_categories()
 
     return render_template(
         'admin/complaints.html',
@@ -290,7 +292,7 @@ def complaint_detail(complaint_id):
 
     history = complaint.status_history.all()
     attachments = complaint.attachments.all()
-    departments = Department.query.filter_by(is_active=True).all()
+    departments = get_cached_active_departments()
     officers = User.query.filter_by(role='officer', is_active=True).options(joinedload(User.department)).all()
     workers = Worker.query.filter_by(is_available=True).options(joinedload(Worker.user), joinedload(Worker.department)).all()
     stages = get_complaint_9_stage_timeline(complaint, history=history)
@@ -497,7 +499,7 @@ def users():
 
     page = max(1, request.args.get('page', 1, type=int))
     pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
-    departments = Department.query.filter_by(is_active=True).all()
+    departments = get_cached_active_departments()
 
     return render_template('admin/users.html', users=pagination.items, pagination=pagination, departments=departments, current_role=role_filter, search_query=search)
 
@@ -635,7 +637,7 @@ def workers():
         return redirect(url_for('admin.workers'))
 
     worker_list = Worker.query.options(joinedload(Worker.user), joinedload(Worker.department)).all()
-    departments = Department.query.filter_by(is_active=True).all()
+    departments = get_cached_active_departments()
     return render_template('admin/workers.html', workers=worker_list, departments=departments)
 
 @admin_bp.route('/analytics')
@@ -781,7 +783,7 @@ def officers():
             (User.mobile_number.ilike(f'%{search}%'))
         )
     officers_list = query.order_by(User.created_at.desc()).all()
-    departments = Department.query.filter_by(is_active=True).all()
+    departments = get_cached_active_departments()
     return render_template('admin/officers.html', officers=officers_list, departments=departments, search_query=search)
 
 @admin_bp.route('/assignments', methods=['GET', 'POST'])

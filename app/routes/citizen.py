@@ -11,6 +11,8 @@ from app.services.complaint_service import (
     transition_complaint_status,
     get_complaint_9_stage_timeline,
     get_complaint_aggregate_counts,
+    get_cached_active_departments,
+    get_cached_active_categories,
     PENDING_STATUSES,
     IN_PROGRESS_STATUSES,
 )
@@ -82,7 +84,7 @@ def complaints():
 
     page = max(1, request.args.get('page', 1, type=int))
     pagination = query.order_by(Complaint.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
-    categories = ComplaintCategory.query.filter_by(is_active=True).all()
+    categories = get_cached_active_categories()
 
     return render_template(
         'citizen/complaints_list.html',
@@ -98,8 +100,8 @@ def complaints():
 @citizen_bp.route('/complaints/new', methods=['GET', 'POST'])
 def new_complaint():
     user = g.user
-    categories = ComplaintCategory.query.filter_by(is_active=True).all()
-    departments = Department.query.filter_by(is_active=True).all()
+    categories = get_cached_active_categories()
+    departments = get_cached_active_departments()
     
     if request.method == 'POST':
         title = request.form.get('title', '').strip()

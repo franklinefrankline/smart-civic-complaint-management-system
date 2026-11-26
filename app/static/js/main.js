@@ -462,7 +462,8 @@ document.addEventListener('DOMContentLoaded', () => {
               el.textContent = String(data.priority).toUpperCase();
             });
           } else if (data.reload_sections && window.refreshDashboardContent) {
-            // Unlock button & hide loader right after POST succeeds; refresh DOM cleanly with short timeout
+            // Unlock UI & hide loader right after POST succeeds so actions feel instant
+            if (window.hidePageLoader) window.hidePageLoader();
             if (submitBtn && submitBtn.isConnected) {
               submitBtn.classList.remove('btn-loading');
               submitBtn.disabled = false;
@@ -580,7 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     clearTimeout(loaderDelayTimer);
-    const delay = typeof delayMs === 'number' ? delayMs : 80;
+    const delay = typeof delayMs === 'number' ? delayMs : 150;
     if (delay > 0) {
       loaderDelayTimer = setTimeout(activate, delay);
     } else {
