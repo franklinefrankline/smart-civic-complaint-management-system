@@ -8,52 +8,58 @@ from dotenv import load_dotenv
 # Base directory of the application
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-# Load environment variables from .env file (local development)
+# Load environment variables from local .env or Render Secret Files (/etc/secrets/.env)
 load_dotenv(os.path.join(BASE_DIR, '.env'))
+if os.path.isfile('/etc/secrets/.env'):
+    load_dotenv('/etc/secrets/.env', override=False)
+
+
+def _env_first(env_map, *keys):
+    """Case-insensitive and key-whitespace-tolerant lookup across environment variables."""
+    for key in keys:
+        val = env_map.get(key.upper())
+        if val is not None and str(val).strip() != '':
+            return str(val)
+    return ''
 
 
 def _build_database_config():
     """
     Resolve SQLAlchemy URI and engine options cleanly for local and cloud MySQL.
     Priority:
-      1. Explicit DATABASE_URL / MYSQL_URL / SQLALCHEMY_DATABASE_URI
-      2. Explicit DB_HOST / MYSQLHOST environment variables (builds MySQL+PyMySQL URI)
+      1. Explicit DATABASE_URL / MYSQL_URL / SQLALCHEMY_DATABASE_URI (and aliases)
+      2. Explicit DB_HOST / MYSQLHOST / MYSQL_HOST / TIDB_HOST environment variables
       3. Local development default MySQL (127.0.0.1:3306)
-      4. Cloud ephemeral SQLite fallback ONLY if no MySQL variables are configured
+      4. Refuse silent /tmp SQLite fallback in cloud production unless explicitly opted in
     """
+    norm_env = {k.strip().upper(): v for k, v in os.environ.items()}
+
     is_cloud = bool(
-        os.environ.get('RENDER')
-        or os.environ.get('VERCEL')
-        or os.environ.get('VERCEL_ENV')
-        or os.environ.get('AWS_LAMBDA_FUNCTION_NAME')
+        norm_env.get('RENDER')
+        or norm_env.get('VERCEL')
+        or norm_env.get('VERCEL_ENV')
+        or norm_env.get('AWS_LAMBDA_FUNCTION_NAME')
         or sys.platform.startswith('linux')
     )
 
-    explicit_url = (
-        os.environ.get('DATABASE_URL')
-        or os.environ.get('MYSQL_URL')
-        or os.environ.get('MYSQL_PUBLIC_URL')
-        or os.environ.get('MYSQL_DATABASE_URL')
-        or os.environ.get('DB_URL')
-        or os.environ.get('SQLALCHEMY_DATABASE_URI')
-        or ''
+    explicit_url = _env_first(
+        norm_env,
+        'DATABASE_URL', 'DATABASE_URI', 'DB_URL', 'DB_URI',
+        'MYSQL_URL', 'MYSQL_URI', 'MYSQL_PUBLIC_URL', 'MYSQL_DATABASE_URL',
+        'TIDB_URL', 'TIDB_DATABASE_URL', 'SQLALCHEMY_DATABASE_URI',
     ).strip().strip('"').strip("'")
 
-    db_user = (os.environ.get('DB_USER') or os.environ.get('MYSQLUSER') or os.environ.get('MYSQL_USER') or 'root').strip().strip('"').strip("'")
-    db_password = os.environ.get('DB_PASSWORD') or os.environ.get('MYSQLPASSWORD') or os.environ.get('MYSQL_PASSWORD') or ''
-    db_host = (os.environ.get('DB_HOST') or os.environ.get('MYSQLHOST') or os.environ.get('MYSQL_HOST') or '').strip().strip('"').strip("'")
-    db_port = (os.environ.get('DB_PORT') or os.environ.get('MYSQLPORT') or os.environ.get('MYSQL_PORT') or '3306').strip().strip('"').strip("'")
+    db_user = (_env_first(norm_env, 'DB_USER', 'DB_USERNAME', 'MYSQLUSER', 'MYSQL_USER', 'TIDB_USER', 'TIDB_USERNAME') or 'root').strip().strip('"').strip("'")
+    db_password = _env_first(norm_env, 'DB_PASSWORD', 'DB_PASS', 'MYSQLPASSWORD', 'MYSQL_PASSWORD', 'TIDB_PASSWORD', 'TIDB_PASS')
+    db_host = _env_first(norm_env, 'DB_HOST', 'MYSQLHOST', 'MYSQL_HOST', 'TIDB_HOST', 'HOST_DB').strip().strip('"').strip("'")
+    db_port = (_env_first(norm_env, 'DB_PORT', 'MYSQLPORT', 'MYSQL_PORT', 'TIDB_PORT') or '3306').strip().strip('"').strip("'")
     db_name = (
-        os.environ.get('DB_NAME')
-        or os.environ.get('DB_DATABASE')
-        or os.environ.get('MYSQLDATABASE')
-        or os.environ.get('MYSQL_DATABASE')
-        or os.environ.get('MYSQL_DB')
+        _env_first(norm_env, 'DB_NAME', 'DB_DATABASE', 'MYSQLDATABASE', 'MYSQL_DATABASE', 'MYSQL_DB', 'TIDB_DATABASE', 'TIDB_DB_NAME', 'TIDB_DB')
         or 'smart_civic_complaints'
     ).strip().strip('"').strip("'")
 
-    ssl_required = os.environ.get('DB_SSL', '').strip().lower() in ('1', 'true', 'yes', 'required')
-    ssl_ca_raw = os.environ.get('DB_SSL_CA', '').strip().strip('"').strip("'")
+    ssl_required = _env_first(norm_env, 'DB_SSL', 'TIDB_SSL', 'MYSQL_SSL').strip().lower() in ('1', 'true', 'yes', 'required')
+    ssl_ca_raw = _env_first(norm_env, 'DB_SSL_CA', 'MYSQL_SSL_CA', 'TIDB_SSL_CA', 'SSL_CA').strip().strip('"').strip("'")
     ssl_ca = ssl_ca_raw if (ssl_ca_raw and os.path.isfile(ssl_ca_raw)) else ''
 
     if explicit_url:
@@ -92,9 +98,14 @@ def _build_database_config():
     elif is_cloud and os.environ.get('ALLOW_EPHEMERAL_SQLITE', '').lower() != 'true':
         # Never silently fall back to ephemeral /tmp SQLite in cloud production
         uri = 'sqlite:///:memory:'
+        hint_keys = sorted([
+            k for k in norm_env.keys()
+            if any(tok in k for tok in ('DB', 'SQL', 'TIDB', 'MYSQL')) and k not in ('DB_CONNECT_TIMEOUT', 'DB_POOL_RECYCLE', 'DB_POOL_SIZE', 'DB_MAX_OVERFLOW')
+        ])
+        keys_note = f" Detected DB-like env keys: {hint_keys}." if hint_keys else " No DB env keys found on Render."
         db_config_error = (
             "Production MySQL database is not configured. Set DATABASE_URL (or DB_HOST, DB_USER, "
-            "DB_PASSWORD, DB_NAME) in Render Environment Variables. Silent SQLite fallback is disabled."
+            f"DB_PASSWORD, DB_NAME) in Render Environment Variables. Silent SQLite fallback is disabled.{keys_note}"
         )
     elif is_cloud:
         uri = 'sqlite:////tmp/smart_civic.db'

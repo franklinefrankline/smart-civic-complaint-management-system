@@ -106,6 +106,18 @@ class DeploymentSafetyTestCase(unittest.TestCase):
             _, tidb_uri, tidb_opts, *_ = _build_database_config()
             self.assertIn(':4000/smart_civic_complaints', tidb_uri)
             self.assertIn('ssl', tidb_opts['connect_args'])
+
+            # Lowercase / TIDB_* keys also resolve cleanly on Linux/Render
+            for k in list(os.environ.keys()):
+                if 'MYSQL' in k.upper():
+                    os.environ.pop(k, None)
+            os.environ['tidb_host'] = 'gateway01.ap-northeast-1.prod.aws.tidbcloud.com'
+            os.environ['tidb_port'] = '4000'
+            os.environ['tidb_user'] = '3VU8S6nsR1b1myA.root'
+            os.environ['tidb_password'] = 'SecretPass@123'
+            os.environ['tidb_database'] = 'test'
+            _, tidb_ci_uri, _, *_ = _build_database_config()
+            self.assertIn(':4000/test', tidb_ci_uri)
         finally:
             os.environ.clear()
             os.environ.update(orig_env)
