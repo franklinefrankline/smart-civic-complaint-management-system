@@ -8,13 +8,19 @@ from dotenv import load_dotenv
 # Base directory of the application
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-# Load environment variables from local .env or Render Secret Files (/etc/secrets/*)
-load_dotenv(os.path.join(BASE_DIR, '.env'))
-if os.path.isdir('/etc/secrets'):
-    for _sec_name in sorted(os.listdir('/etc/secrets')):
-        _sec_path = os.path.join('/etc/secrets', _sec_name)
-        if os.path.isfile(_sec_path) and ('env' in _sec_name.lower() or _sec_name.startswith('.')):
-            load_dotenv(_sec_path, override=False)
+def _load_secret_env_files():
+    """Load Render Secret Files (/etc/secrets/*) without overwriting explicit environment variables."""
+    if os.path.isdir('/etc/secrets'):
+        for _sec_name in sorted(os.listdir('/etc/secrets')):
+            _sec_path = os.path.join('/etc/secrets', _sec_name)
+            if os.path.isfile(_sec_path) and ('env' in _sec_name.lower() or _sec_name.startswith('.')):
+                load_dotenv(_sec_path, override=False)
+
+
+# Load local .env once in local dev only; never let local .env pollute cloud runtime
+if not os.environ.get('RENDER'):
+    load_dotenv(os.path.join(BASE_DIR, '.env'), override=False)
+_load_secret_env_files()
 
 
 def _env_first(env_map, *keys):
@@ -35,6 +41,7 @@ def _build_database_config():
       3. Local development default MySQL (127.0.0.1:3306)
       4. Refuse silent /tmp SQLite fallback in cloud production unless explicitly opted in
     """
+    _load_secret_env_files()
     norm_env = {k.strip().upper(): v for k, v in os.environ.items()}
 
     is_cloud = bool(
@@ -53,12 +60,20 @@ def _build_database_config():
         'DB_CONNECTION_STRING', 'CONNECTION_STRING',
     ).strip().strip('"').strip("'")
 
-    db_user = (_env_first(norm_env, 'DB_USER', 'DB_USERNAME', 'DATABASE_USER', 'DATABASE_USERNAME', 'MYSQLUSER', 'MYSQL_USER', 'MYSQL_USERNAME', 'TIDB_USER', 'TIDB_USERNAME') or 'root').strip().strip('"').strip("'")
-    db_password = _env_first(norm_env, 'DB_PASSWORD', 'DB_PASS', 'DATABASE_PASSWORD', 'DATABASE_PASS', 'MYSQLPASSWORD', 'MYSQL_PASSWORD', 'TIDB_PASSWORD', 'TIDB_PASS')
     db_host = _env_first(norm_env, 'DB_HOST', 'DATABASE_HOST', 'MYSQLHOST', 'MYSQL_HOST', 'TIDB_HOST', 'HOST_DB').strip().strip('"').strip("'")
+    # Support literal HOST / DATABASE / USER / PASSWORD / PORT only when clearly paired for DB use
+    bare_host = _env_first(norm_env, 'HOST').strip().strip('"').strip("'")
+    if not db_host and bare_host and bare_host not in ('0.0.0.0', '127.0.0.1', 'localhost'):
+        if _env_first(norm_env, 'DATABASE', 'DB_NAME', 'MYSQL_DATABASE', 'TIDB_HOST') or 'tidbcloud' in bare_host.lower() or 'mysql' in bare_host.lower():
+            db_host = bare_host
+
+    db_user = (_env_first(norm_env, 'DB_USER', 'DB_USERNAME', 'DATABASE_USER', 'DATABASE_USERNAME', 'MYSQLUSER', 'MYSQL_USER', 'MYSQL_USERNAME', 'TIDB_USER', 'TIDB_USERNAME', 'DB_UID', 'USER') or 'root').strip().strip('"').strip("'")
+    db_password = _env_first(norm_env, 'DB_PASSWORD', 'DB_PASS', 'DATABASE_PASSWORD', 'DATABASE_PASS', 'MYSQLPASSWORD', 'MYSQL_PASSWORD', 'TIDB_PASSWORD', 'TIDB_PASS', 'PASSWORD')
     db_port = (_env_first(norm_env, 'DB_PORT', 'DATABASE_PORT', 'MYSQLPORT', 'MYSQL_PORT', 'TIDB_PORT') or '3306').strip().strip('"').strip("'")
+    if db_port == '3306' and db_host and 'tidbcloud.com' in db_host.lower() and _env_first(norm_env, 'PORT').strip() == '4000':
+        db_port = '4000'
     db_name = (
-        _env_first(norm_env, 'DB_NAME', 'DB_DATABASE', 'DATABASE_NAME', 'DATABASE_DB', 'MYSQLDATABASE', 'MYSQL_DATABASE', 'MYSQL_DB', 'TIDB_DATABASE', 'TIDB_DB_NAME', 'TIDB_DB')
+        _env_first(norm_env, 'DB_NAME', 'DB_DATABASE', 'DATABASE_NAME', 'DATABASE_DB', 'MYSQLDATABASE', 'MYSQL_DATABASE', 'MYSQL_DB', 'TIDB_DATABASE', 'TIDB_DB_NAME', 'TIDB_DB', 'DATABASE')
         or 'smart_civic_complaints'
     ).strip().strip('"').strip("'")
 
@@ -102,9 +117,15 @@ def _build_database_config():
     elif is_cloud and os.environ.get('ALLOW_EPHEMERAL_SQLITE', '').lower() != 'true':
         # Never silently fall back to ephemeral /tmp SQLite in cloud production
         uri = 'sqlite:///:memory:'
+        _ignored_keys = {
+            'DB_CONNECT_TIMEOUT', 'DB_POOL_RECYCLE', 'DB_POOL_SIZE', 'DB_MAX_OVERFLOW',
+            'RENDER_EXTERNAL_URL', 'RENDER_INTERNAL_HOSTNAME', 'HOSTNAME',
+        }
         hint_keys = sorted([
             k for k in norm_env.keys()
-            if any(tok in k for tok in ('DB', 'SQL', 'TIDB', 'MYSQL')) and k not in ('DB_CONNECT_TIMEOUT', 'DB_POOL_RECYCLE', 'DB_POOL_SIZE', 'DB_MAX_OVERFLOW')
+            if k not in _ignored_keys
+            and not k.startswith(('RENDER_GIT_', 'RENDER_SERVICE_', 'RENDER_INSTANCE_', 'VERCEL_'))
+            and any(tok in k for tok in ('DB', 'SQL', 'TIDB', 'MYSQL', 'DATABASE', 'HOST', 'URI', 'URL'))
         ])
         keys_note = f" Detected DB-like env keys: {hint_keys}." if hint_keys else " No DB env keys found on Render."
         db_config_error = (

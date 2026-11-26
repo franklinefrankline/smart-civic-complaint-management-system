@@ -164,7 +164,23 @@ def create_app(config_name=None):
         config_name = os.environ.get('FLASK_ENV', 'default')
 
     app = Flask(__name__)
-    app.config.from_object(config_by_name.get(config_name, config_by_name['default']))
+    cfg_cls = config_by_name.get(config_name, config_by_name['default'])
+    app.config.from_object(cfg_cls)
+
+    if not app.config.get('TESTING'):
+        from config import _build_database_config
+        is_cloud, db_uri, eng_opts, db_user, db_pw, db_host, db_port, db_name, db_cfg_err = _build_database_config()
+        app.config.update(
+            IS_CLOUD=is_cloud,
+            SQLALCHEMY_DATABASE_URI=db_uri,
+            SQLALCHEMY_ENGINE_OPTIONS=eng_opts,
+            DB_USER=db_user,
+            DB_PASSWORD=db_pw,
+            DB_HOST=db_host,
+            DB_PORT=db_port,
+            DB_NAME=db_name,
+            DB_CONFIG_ERROR=db_cfg_err,
+        )
 
     # Honor reverse-proxy headers from Render and Vercel (HTTPS proto, client IP)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
@@ -220,11 +236,12 @@ def create_app(config_name=None):
                 import re as _re
                 db.session.rollback()
                 raw_reason = str(getattr(e, 'orig', e))
-                safe_reason = _re.sub(r'://([^:@]+):([^@]+)@', r'://\1:***@', raw_reason)
-                if len(safe_reason) > 280:
-                    safe_reason = safe_reason[:280] + '...'
+                safe_reason = _re.sub(r'://([^:@]+):([^@]+)@', r'://***:***@', raw_reason)
+                safe_reason = _re.sub(r"'[^']+'@'[^']+'", "'***'@'***'", safe_reason)
+                if len(safe_reason) > 220:
+                    safe_reason = safe_reason[:220] + '...'
                 app.config['DB_STARTUP_ERROR'] = (
-                    f"Database connection failed ({type(e).__name__}): {safe_reason}"
+                    f"Database connection failed ({type(e).__name__}). Verify database credentials, host access, and database name."
                 )
                 app.logger.critical(
                     f"Production DB connection failed (halting initialization): {type(e).__name__} - {safe_reason}"

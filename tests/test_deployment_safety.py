@@ -118,6 +118,21 @@ class DeploymentSafetyTestCase(unittest.TestCase):
             os.environ['tidb_database'] = 'test'
             _, tidb_ci_uri, _, *_ = _build_database_config()
             self.assertIn(':4000/test', tidb_ci_uri)
+
+            # Health endpoint never leaks credentials on misconfiguration
+            os.environ.clear()
+            os.environ.update(orig_env)
+            for k in list(os.environ.keys()):
+                if any(tok in k.upper() for tok in ('DB', 'SQL', 'TIDB', 'MYSQL', 'DATABASE')):
+                    os.environ.pop(k, None)
+            os.environ['RENDER'] = 'true'
+            app_misconf = create_app('default')
+            h_client = app_misconf.test_client()
+            h_res = h_client.get('/health')
+            self.assertEqual(h_res.status_code, 503)
+            h_json = h_res.get_json()
+            self.assertEqual(h_json['database'], 'misconfigured')
+            self.assertNotIn('password', str(h_json).lower().replace('db_password', ''))
         finally:
             os.environ.clear()
             os.environ.update(orig_env)

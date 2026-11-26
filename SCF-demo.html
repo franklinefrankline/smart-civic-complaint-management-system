@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCF — Smart Civic Flow | Role-Wise Client Demo</title>
+  <style>
+    :root {
+      --bg-page: #0b1120;
+      --bg-surface: #111827;
+      --bg-subtle: #1e293b;
+      --bg-glass: rgba(17, 24, 39, 0.88);
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --border-color: rgba(148, 163, 184, 0.18);
+      --civic-blue: #3b82f6;
+      --civic-blue-dark: #2563eb;
+      --civic-teal: #14b8a6;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --purple: #8b5cf6;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+    html[data-theme="light"] {
+      --bg-page: #f1f5f9;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f8fafc;
+      --bg-glass: rgba(255, 255, 255, 0.92);
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
+      --border-color: rgba(15, 23, 42, 0.12);
+      --civic-blue: #2563eb;
+      --civic-blue-dark: #1d4ed8;
+      --civic-teal: #0d9488;
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Role Switcher Strip */
+    .role-bar {
+      background: linear-gradient(90deg, #0f172a, #1e3a8a 55%, #0f766e);
+      color: #ffffff;
+      padding: 0.5rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+    .role-bar-left { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .role-bar-title { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em; opacity: 0.92; }
+    .role-pills { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+    .role-pill {
+      background: rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      padding: 0.3rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .role-pill:hover { background: rgba(255, 255, 255, 0.24); color: #fff; }
+    .role-pill.active {
+      background: #ffffff;
+      color: #0f172a;
+      border-color: #ffffff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+    }
+
+    .role-bar-actions { display: flex; align-items: center; gap: 0.45rem; position: relative; }
+    .top-mini-btn {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 7px;
+      padding: 0.28rem 0.6rem;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      position: relative;
+    }
+    .top-mini-btn:hover { background: rgba(255, 255, 255, 0.25); }
+    .notif-dot {
+      background: var(--danger);
+      color: #fff;
+      font-size: 0.64rem;
+      font-weight: 800;
+      padding: 0 0.35rem;
+      border-radius: 999px;
+    }
+
+    /* Main Workspace Layout */
+    .workspace {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      flex: 1;
+      min-height: calc(100vh - 46px);
+    }
+    .workspace.public-mode {
+      grid-template-columns: 1fr;
+    }
+
+    /* Role Sidebar */
+    .sidebar {
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1rem 0.85rem;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.25rem 0.4rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 0.85rem;
+    }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #1e3a8a, #0d9488);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .brand-title { font-size: 1rem; font-weight: 800; line-height: 1.1; }
+    .brand-sub { font-size: 0.66rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
+
+    .sidebar-section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      padding: 0.25rem 0.6rem 0.45rem;
+    }
+    .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 0.25rem; }
+    .sidebar-link {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      padding: 0.55rem 0.75rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      transition: all 0.14s ease;
+    }
+    .sidebar-link:hover { background: var(--bg-subtle); color: var(--text-primary); }
+    .sidebar-link.active {
+      background: rgba(37, 99, 235, 0.16);
+      color: var(--civic-blue);
+      border-left: 3px solid var(--civic-blue);
+    }
+
+    .sidebar-profile {
+      border-top: 1px solid var(--border-color);
+      padding-top: 0.85rem;
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2563eb, #14b8a6);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Main Content */
+    .main-area { padding: 1.5rem 1.75rem 3rem; max-width: 1280px; width: 100%; margin: 0 auto; }
+
+    /* Cards & Controls */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.25rem;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .card-title { font-size: 1.05rem; font-weight: 700; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.5rem 0.95rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; }
+    .btn-secondary { background: var(--bg-subtle); color: var(--text-primary); border-color: var(--border-color); }
+    .btn-success { background: #16a34a; color: #fff; }
+    .btn-warning { background: #d97706; color: #fff; }
+    .btn-sm { padding: 0.32rem 0.65rem; font-size: 0.76rem; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.18rem 0.52rem;
+      border-radius: 999px;
+      font-size: 0.71rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .badge-submitted { background: rgba(59,130,246,0.16); color: #60a5fa; border: 1px solid rgba(59,130,246,0.35); }
+    .badge-assigned { background: rgba(139,92,246,0.18); color: #a78bfa; border: 1px solid rgba(139,92,246,0.35); }
+    .badge-progress { background: rgba(245,158,11,0.18); color: #fbbf24; border: 1px solid rgba(245,158,11,0.35); }
+    .badge-verify { background: rgba(20,184,166,0.18); color: #2dd4bf; border: 1px solid rgba(20,184,166,0.35); }
+    .badge-resolved { background: rgba(34,197,94,0.18); color: #4ade80; border: 1px solid rgba(34,197,94,0.35); }
+    .badge-urgent { background: rgba(239,68,68,0.18); color: #f87171; border: 1px solid rgba(239,68,68,0.35); }
+    .badge-high { background: rgba(249,115,22,0.18); color: #fb923c; border: 1px solid rgba(249,115,22,0.35); }
+    .badge-medium { background: rgba(245,158,11,0.16); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-low { background: rgba(148,163,184,0.16); color: var(--text-secondary); border: 1px solid var(--border-color); }
+    html[data-theme="light"] .badge-submitted { color: #1d4ed8; }
+    html[data-theme="light"] .badge-assigned { color: #6d28d9; }
+    html[data-theme="light"] .badge-progress { color: #b45309; }
+    html[data-theme="light"] .badge-verify { color: #0f766e; }
+    html[data-theme="light"] .badge-resolved { color: #15803d; }
+    html[data-theme="light"] .badge-urgent { color: #b91c1c; }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem;
+    }
+    .stat-value { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+    .stat-label { font-size: 0.76rem; color: var(--text-muted); font-weight: 600; margin-top: 0.25rem; }
+
+    .role-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .role-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1.15rem;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+    .role-card:hover { transform: translateY(-2px); border-color: var(--civic-blue); }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 1.25rem; }
+    .form-group { margin-bottom: 0.85rem; }
+    .form-label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.28rem; }
+    .form-control {
+      width: 100%;
+      padding: 0.52rem 0.72rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      font-family: inherit;
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    th, td { padding: 0.68rem 0.7rem; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    th { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
+
+    .timeline { position: relative; padding-left: 1.4rem; border-left: 2px solid var(--border-color); margin-left: 0.4rem; }
+    .timeline-item { position: relative; padding-bottom: 0.9rem; }
+    .timeline-dot { position: absolute; left: -1.8rem; top: 0.24rem; width: 11px; height: 11px; border-radius: 50%; background: var(--border-color); border: 2px solid var(--bg-surface); }
+    .timeline-item.done .timeline-dot { background: var(--success); }
+
+    .bar-row { margin-bottom: 0.75rem; }
+    .bar-meta { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.22rem; }
+    .bar-track { height: 10px; border-radius: 999px; background: var(--bg-subtle); overflow: hidden; display: flex; }
+
+    .notif-panel {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 38px;
+      width: 320px;
+      max-height: 340px;
+      overflow-y: auto;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      z-index: 90;
+      color: var(--text-primary);
+    }
+    .notif-panel.show { display: block; }
+    .notif-item { padding: 0.7rem 0.85rem; border-bottom: 1px solid var(--border-color); font-size: 0.78rem; }
+    .notif-item.unread { background: rgba(59, 130, 246, 0.09); }
+
+    .toast-box { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 95; display: flex; flex-direction: column; gap: 0.5rem; max-width: 350px; }
+    .toast { background: var(--bg-surface); border: 1px solid var(--border-color); border-left: 4px solid var(--civic-blue); color: var(--text-primary); padding: 0.72rem 0.95rem; border-radius: var(--radius-sm); box-shadow: var(--shadow); font-size: 0.83rem; }
+    .toast.success { border-left-color: var(--success); }
+    .toast.warning { border-left-color: var(--warning); }
+
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(2, 6, 23, 0.7); backdrop-filter: blur(4px); z-index: 85; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.show { display: flex; }
+
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--border-color); }
+      .main-area { padding: 1.15rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Role Switcher -->
+  <header class="role-bar">
+    <div class="role-bar-left">
+      <span class="role-bar-title">SCF ROLE DEMO:</span>
+      <div class="role-pills" id="roleSwitcherPills">
+        <button type="button" class="role-pill active" data-role="public">Public Portal</button>
+        <button type="button" class="role-pill" data-role="citizen">Citizen</button>
+        <button type="button" class="role-pill" data-role="admin">Administrator</button>
+        <button type="button" class="role-pill" data-role="officer">Department Officer</button>
+        <button type="button" class="role-pill" data-role="worker">Field Worker</button>
+      </div>
+    </div>
+    <div class="role-bar-actions">
+      <button type="button" class="top-mini-btn" id="notifToggleBtn">Alerts <span class="notif-dot" id="notifCount">0</span></button>
+      <button type="button" class="top-mini-btn" id="themeToggleBtn">Theme</button>
+      <button type="button" class="top-mini-btn" onclick="resetDemoData()">Reset Demo</button>
+      <div class="notif-panel" id="notifPanel">
+        <div style="padding:0.65rem 0.85rem;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:0.82rem;" id="notifRoleTitle">Role Notifications</strong>
+          <button type="button" onclick="markRoleNotifsRead()" style="background:none;border:none;color:var(--civic-blue);font-size:0.73rem;font-weight:700;cursor:pointer;">Mark read</button>
+        </div>
+        <div id="notifList"></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="workspace" id="workspaceRoot">
+    <!-- Dynamic Role Sidebar -->
+    <aside class="sidebar" id="roleSidebar">
+      <div>
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L3 7v6c0 5.5 3.8 9.7 9 11 5.2-1.3 9-5.5 9-11V7l-9-5z"/>
+              <path d="M9 12l2 2 4-4"/>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-title">SCF</div>
+            <div class="brand-sub">Smart Civic Flow</div>
+          </div>
+        </div>
+        <div class="sidebar-section-label" id="sidebarRoleLabel">Public Menu</div>
+        <ul class="sidebar-menu" id="sidebarMenu"></ul>
+      </div>
+
+      <div class="sidebar-profile" id="sidebarProfile"></div>
+    </aside>
+
+    <!-- Role Main Content -->
+    <main class="main-area" id="roleMainContent"></main>
+  </div>
+
+  <!-- Officer Add Worker Modal -->
+  <div id="demoAddWorkerModal" class="modal-overlay">
+    <div class="card" style="width:100%;max-width:480px;margin:0;">
+      <div class="card-header">
+        <h3 class="card-title">Add New Field Worker (Water Supply &amp; Sewage)</h3>
+        <button type="button" onclick="closeAddWorkerModal()" style="background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;">&times;</button>
+      </div>
+      <form id="demoAddWorkerForm">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" id="wrkName" class="form-control" required placeholder="e.g. Karthik Water Tech">
+        </div>
+        <div class="grid-2" style="gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Email Address *</label>
+            <input type="email" id="wrkEmail" class="form-control" required placeholder="karthik@civic.gov">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number *</label>
+            <input type="tel" id="wrkPhone" class="form-control" required placeholder="9876543210">
+          </div>
+        </div>
+        <div class="grid-2" style="gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Employee ID *</label>
+            <input type="text" id="wrkEmpId" class="form-control" required placeholder="EMP-WTR-105" style="text-transform:uppercase;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Department (Locked)</label>
+            <input type="text" class="form-control" value="Water Supply & Sewage" readonly style="opacity:0.72;cursor:not-allowed;">
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:1rem;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeAddWorkerModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Create Field Worker</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast-box" id="toastBox"></div>
+
+  <script>
+    const STORAGE_KEY = 'scf_rolewise_client_demo_v2';
+
+    const ROLE_META = {
+      public: {
+        label: 'Public Civic Portal',
+        user: 'Citizen Visitor',
+        sub: 'Open Access',
+        initials: 'PV',
+        pages: [
+          { id: 'home', title: 'Overview & Role Tour' },
+          { id: 'track', title: 'Track Complaint (9 Stages)' },
+          { id: 'departments', title: 'Civic Departments' }
+        ]
+      },
+      citizen: {
+        label: 'Citizen Console',
+        user: 'Priya Citizen',
+        sub: 'Ward 14 • Citizen',
+        initials: 'PC',
+        pages: [
+          { id: 'dashboard', title: 'My Dashboard' },
+          { id: 'new', title: 'Submit New Complaint' },
+          { id: 'list', title: 'My Complaints' },
+          { id: 'track', title: 'Track Lifecycle' }
+        ]
+      },
+      admin: {
+        label: 'Administration',
+        user: 'Chief Commissioner',
+        sub: 'System Administrator',
+        initials: 'AD',
+        pages: [
+          { id: 'dashboard', title: 'Admin Overview' },
+          { id: 'complaints', title: 'Complaint Triage' },
+          { id: 'analytics', title: 'Reports & Analytics' },
+          { id: 'users', title: 'Officers & Workers Roster' }
+        ]
+      },
+      officer: {
+        label: 'Department Operations',
+        user: 'Suresh Raman',
+        sub: 'Water Supply Officer',
+        initials: 'DO',
+        pages: [
+          { id: 'dashboard', title: 'Officer Dashboard' },
+          { id: 'queue', title: 'Department Complaints' },
+          { id: 'manage-workers', title: 'Manage Workers' },
+          { id: 'verify', title: 'Work Verification' }
+        ]
+      },
+      worker: {
+        label: 'Field Technician Work',
+        user: 'Suresh Water Tech',
+        sub: 'EMP-WTR-101 • Water Dept',
+        initials: 'FW',
+        pages: [
+          { id: 'dashboard', title: 'Worker Dashboard' },
+          { id: 'tasks', title: 'Assigned Work Orders' },
+          { id: 'history', title: 'Completed History' }
+        ]
+      }
+    };
+
+    const DEPARTMENTS = [
+      { id: 1, code: 'WATER', name: 'Water Supply & Sewage', desc: 'Pipelines, main valve leaks, pressure & sewage overflow.' },
+      { id: 2, code: 'ELEC', name: 'Electricity & Power', desc: 'Transformers, power faults & live wire hazards.' },
+      { id: 3, code: 'ROADS', name: 'Roads & Transportation', desc: 'Potholes, broken asphalt & footpath safety.' },
+      { id: 4, code: 'SAN', name: 'Sanitation & Waste', desc: 'Solid waste pickup & community bin clearance.' },
+      { id: 5, code: 'DRAIN', name: 'Drainage & Flood Control', desc: 'Stormwater culverts & stagnant rainwater.' },
+      { id: 6, code: 'LIGHT', name: 'Street Lighting', desc: 'Non-working LED poles & dark stretches.' }
+    ];
+
+    const CATEGORIES = [
+      { id: 1, name: 'Drinking Water Pipe Leakage', deptId: 1 },
+      { id: 2, name: 'Contaminated Water Supply', deptId: 1 },
+      { id: 3, name: 'Power Line Hazard / Sparks', deptId: 2 },
+      { id: 4, name: 'Deep Pothole / Road Cave-in', deptId: 3 },
+      { id: 5, name: 'Overflowing Garbage Dump', deptId: 4 },
+      { id: 6, name: 'Clogged Stormwater Drain', deptId: 5 },
+      { id: 7, name: 'Streetlight Defect / Dark Zone', deptId: 6 }
+    ];
+
+    function nowFormatted() {
+      return new Date().toLocaleString([], { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function createInitialState() {
+      const ts = nowFormatted();
+      return {
+        role: 'public',
+        page: 'home',
+        trackRef: 'CMP-202611-DEMO1',
+        seq: 4,
+        complaints: [
+          {
+            ref: 'CMP-202611-DEMO1',
+            title: 'Main Water Valve Burst Near Ward 14 Tank',
+            desc: 'Clean drinking water leaking continuously near Ward 14 junction.',
+            categoryId: 1,
+            deptId: 1,
+            priority: 'urgent',
+            status: 'Assigned to Department',
+            ward: 'Ward 14',
+            city: 'Chennai',
+            citizen: 'Priya Citizen',
+            workerId: null,
+            createdAt: ts,
+            stage: 4,
+            history: [
+              { status: 'Submitted', time: ts, remarks: 'Registered by Priya Citizen.' },
+              { status: 'Assigned to Department', time: ts, remarks: 'Routed to Water Supply & Sewage Officer.' }
+            ]
+          },
+          {
+            ref: 'CMP-202611-DEMO2',
+            title: 'Streetlight Outage Along Gandhi Road',
+            desc: 'Four LED streetlight poles offline near Government High School.',
+            categoryId: 7,
+            deptId: 6,
+            priority: 'high',
+            status: 'Resolved',
+            ward: 'Ward 8',
+            city: 'Chennai',
+            citizen: 'Priya Citizen',
+            workerId: null,
+            createdAt: ts,
+            stage: 9,
+            history: [
+              { status: 'Submitted', time: ts, remarks: 'Registered via Citizen Portal.' },
+              { status: 'Assigned to Department', time: ts, remarks: 'Assigned to Street Lighting.' },
+              { status: 'In Progress', time: ts, remarks: 'Electrician replaced relay switch.' },
+              { status: 'Resolved', time: ts, remarks: 'Verified working and closed.' }
+            ]
+          },
+          {
+            ref: 'CMP-202611-DEMO3',
+            title: 'Deep Pothole Near Bus Terminus',
+            desc: 'Road cavity slowing morning traffic along main avenue.',
+            categoryId: 4,
+            deptId: 3,
+            priority: 'medium',
+            status: 'Submitted',
+            ward: 'Ward 3',
+            city: 'Chennai',
+            citizen: 'Anand Kumar',
+            workerId: null,
+            createdAt: ts,
+            stage: 1,
+            history: [{ status: 'Submitted', time: ts, remarks: 'Pending Admin triage.' }]
+          }
+        ],
+        workers: [
+          { id: 1, name: 'Suresh Water Tech', empId: 'EMP-WTR-101', email: 'suresh.water@civic.gov', phone: '9840223451', deptId: 1, available: true, active: true },
+          { id: 2, name: 'Ramesh Pipeline Lead', empId: 'EMP-WTR-102', email: 'ramesh.water@civic.gov', phone: '9840223452', deptId: 1, available: true, active: true },
+          { id: 3, name: 'Selvam Road Crew', empId: 'EMP-RDS-201', email: 'selvam.roads@civic.gov', phone: '9840223453', deptId: 3, available: true, active: true }
+        ],
+        notifications: [
+          { id: 1, role: 'admin', title: 'New Grievance: CMP-202611-DEMO3', msg: 'Pothole reported in Ward 3.', time: ts, unread: true },
+          { id: 2, role: 'officer', title: 'Assigned: CMP-202611-DEMO1', msg: 'Urgent water valve burst awaits worker dispatch.', time: ts, unread: true },
+          { id: 3, role: 'citizen', title: 'Resolved: CMP-202611-DEMO2', msg: 'Streetlight outage was verified and closed.', time: ts, unread: true }
+        ]
+      };
+    }
+
+    let state = (() => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (_) {}
+      return createInitialState();
+    })();
+
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+    }
+
+    function resetDemoData() {
+      state = createInitialState();
+      saveState();
+      renderApp();
+      showToast('Demo data reset cleanly.', 'success');
+    }
+
+    function showToast(msg, variant) {
+      const box = document.getElementById('toastBox');
+      const el = document.createElement('div');
+      el.className = 'toast ' + (variant || '');
+      el.textContent = msg;
+      box.appendChild(el);
+      setTimeout(() => el.remove(), 3400);
+    }
+
+    function pushNotif(role, title, msg) {
+      state.notifications.unshift({ id: Date.now(), role, title, msg, time: nowFormatted(), unread: true });
+      if (state.notifications.length > 30) state.notifications.pop();
+    }
+
+    function getDeptName(id) {
+      return (DEPARTMENTS.find(d => d.id === Number(id)) || {}).name || 'General Civic';
+    }
+    function getWorkerName(id) {
+      const w = state.workers.find(x => x.id === Number(id));
+      return w ? `${w.name} (${w.empId})` : 'Unassigned';
+    }
+    function statusBadgeClass(status) {
+      if (status === 'Submitted') return 'badge-submitted';
+      if (status === 'Assigned to Department' || status === 'Officer Accepted' || status === 'Assigned to Worker') return 'badge-assigned';
+      if (status === 'In Progress') return 'badge-progress';
+      if (status === 'Verification Pending') return 'badge-verify';
+      return 'badge-resolved';
+    }
+
+    function switchRole(role, page) {
+      if (!ROLE_META[role]) return;
+      state.role = role;
+      state.page = page || ROLE_META[role].pages[0].id;
+      saveState();
+      renderApp();
+    }
+
+    function switchPage(pageId) {
+      state.page = pageId;
+      saveState();
+      renderApp();
+    }
+
+    document.getElementById('roleSwitcherPills').addEventListener('click', (e) => {
+      const btn = e.target.closest('.role-pill[data-role]');
+      if (btn) switchRole(btn.dataset.role);
+    });
+
+    document.getElementById('themeToggleBtn').addEventListener('click', () => {
+      const html = document.documentElement;
+      html.setAttribute('data-theme', html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+
+    const notifPanel = document.getElementById('notifPanel');
+    document.getElementById('notifToggleBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      notifPanel.classList.toggle('show');
+    });
+    document.addEventListener('click', (e) => {
+      if (!notifPanel.contains(e.target) && e.target.id !== 'notifToggleBtn') notifPanel.classList.remove('show');
+    });
+
+    function markRoleNotifsRead() {
+      state.notifications.forEach(n => {
+        if (state.role === 'public' || n.role === state.role) n.unread = false;
+      });
+      saveState();
+      renderNotifications();
+      showToast('Alerts marked as read.', 'success');
+    }
+
+    function renderNotifications() {
+      const items = state.role === 'public'
+        ? state.notifications
+        : state.notifications.filter(n => n.role === state.role);
+      const unread = items.filter(n => n.unread).length;
+      document.getElementById('notifCount').textContent = String(unread);
+      document.getElementById('notifCount').style.display = unread > 0 ? 'inline-block' : 'none';
+      document.getElementById('notifRoleTitle').textContent = `${ROLE_META[state.role].label} Alerts`;
+      document.getElementById('notifList').innerHTML = items.length
+        ? items.map(n => `
+            <div class="notif-item ${n.unread ? 'unread' : ''}">
+              <div style="display:flex;justify-content:space-between;gap:0.4rem;">
+                <strong>${n.title}</strong>
+                <span style="color:var(--text-muted);font-size:0.7rem;white-space:nowrap;">${n.time}</span>
+              </div>
+              <div style="color:var(--text-secondary);margin-top:0.2rem;">${n.msg}</div>
+            </div>`).join('')
+        : '<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:0.8rem;">No alerts for this role.</div>';
+    }
+
+    function renderSidebar() {
+      document.querySelectorAll('.role-pill').forEach(p => p.classList.toggle('active', p.dataset.role === state.role));
+      const meta = ROLE_META[state.role];
+      document.getElementById('sidebarRoleLabel').textContent = meta.label;
+      document.getElementById('sidebarMenu').innerHTML = meta.pages.map(pg => `
+        <li>
+          <button type="button" class="sidebar-link ${state.page === pg.id ? 'active' : ''}" onclick="switchPage('${pg.id}')">
+            <span>&rsaquo;</span><span>${pg.title}</span>
+          </button>
+        </li>
+      `).join('');
+
+      document.getElementById('sidebarProfile').innerHTML = `
+        <div class="avatar">${meta.initials}</div>
+        <div style="min-width:0;">
+          <div style="font-size:0.84rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${meta.user}</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);">${meta.sub}</div>
+        </div>
+      `;
+    }
+
+    function renderTrackBlock() {
+      const pills = state.complaints.slice(0, 6).map(c =>
+        `<button type="button" class="btn btn-secondary btn-sm" onclick="openTrackedRef('${c.ref}')">${c.ref}</button>`
+      ).join('');
+      const q = (state.trackRef || state.complaints[0]?.ref || '').trim().toUpperCase();
+      const c = state.complaints.find(x => x.ref === q);
+      const stages = [
+        'Complaint Submitted', 'Reviewed by Admin', 'Department Assigned', 'Officer Accepted',
+        'Worker Assigned', 'Work Started', 'Work Completed', 'Officer Verification', 'Resolved'
+      ];
+
+      return `
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">9-Stage Civic Grievance Tracker</h2>
+              <p style="font-size:0.8rem;color:var(--text-muted);">Live milestone tracking from citizen submission to resolution.</p>
+            </div>
+            <div style="display:flex;gap:0.45rem;flex-wrap:wrap;">
+              <input type="text" id="trackRefBox" class="form-control" style="width:210px;" value="${q}">
+              <button type="button" class="btn btn-primary btn-sm" onclick="openTrackedRef(document.getElementById('trackRefBox').value)">Lookup</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem;">
+            <span style="font-size:0.75rem;color:var(--text-muted);">Select Ref:</span> ${pills}
+          </div>
+          ${c ? `
+            <div style="background:var(--bg-subtle);padding:1rem;border-radius:var(--radius-sm);margin-bottom:1rem;">
+              <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+                <div>
+                  <strong style="font-family:monospace;color:var(--civic-blue);">${c.ref}</strong>
+                  <h3 style="font-size:1.1rem;margin-top:0.15rem;">${c.title}</h3>
+                  <div style="font-size:0.78rem;color:var(--text-muted);">${getDeptName(c.deptId)} • ${c.ward}, ${c.city} • ${c.createdAt}</div>
+                </div>
+                <div style="display:flex;gap:0.4rem;align-items:flex-start;">
+                  <span class="badge ${statusBadgeClass(c.status)}">${c.status}</span>
+                  <span class="badge badge-${c.priority}">${c.priority.toUpperCase()}</span>
+                </div>
+              </div>
+              <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-secondary);">${c.desc}</p>
+            </div>
+            <div class="grid-2">
+              <div>
+                <h4 style="font-size:0.9rem;margin-bottom:0.65rem;">9-Stage Redressal Lifecycle</h4>
+                <div class="timeline">
+                  ${stages.map((lbl, idx) => `
+                    <div class="timeline-item ${idx + 1 <= c.stage ? 'done' : ''}">
+                      <div class="timeline-dot"></div>
+                      <div style="display:flex;justify-content:space-between;gap:0.5rem;">
+                        <strong style="font-size:0.82rem;color:${idx + 1 <= c.stage ? 'var(--text-primary)' : 'var(--text-muted)'};">${idx + 1}. ${lbl}</strong>
+                      </div>
+                    </div>`).join('')}
+                </div>
+              </div>
+              <div>
+                <h4 style="font-size:0.9rem;margin-bottom:0.65rem;">Action History</h4>
+                <div class="timeline">
+                  ${c.history.map(h => `
+                    <div class="timeline-item done">
+                      <div class="timeline-dot"></div>
+                      <div style="display:flex;justify-content:space-between;gap:0.5rem;">
+                        <strong style="font-size:0.82rem;color:var(--civic-blue);">${h.status}</strong>
+                        <span style="font-size:0.72rem;color:var(--text-muted);">${h.time}</span>
+                      </div>
+                      <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:0.15rem;">${h.remarks}</div>
+                    </div>`).join('')}
+                </div>
+              </div>
+            </div>
+          ` : `<div style="padding:1rem;color:var(--text-muted);">No complaint found for reference <strong>${q}</strong>.</div>`}
+        </div>
+      `;
+    }
+
+    function openTrackedRef(ref) {
+      state.trackRef = String(ref || '').trim().toUpperCase();
+      state.page = 'track';
+      if (state.role === 'admin' || state.role === 'officer' || state.role === 'worker') {
+        state.role = 'public';
+      }
+      saveState();
+      renderApp();
+    }
+
+    function renderPublicPages(main) {
+      const total = state.complaints.length;
+      const resolved = state.complaints.filter(c => c.status === 'Resolved').length;
+      const inProg = state.complaints.filter(c => c.status === 'In Progress' || c.status === 'Verification Pending').length;
+
+      if (state.page === 'track') {
+        main.innerHTML = renderTrackBlock();
+        return;
+      }
+      if (state.page === 'departments') {
+        main.innerHTML = `
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Municipal Departments Directory</h2></div>
+            <div class="grid-2">${DEPARTMENTS.map(d => `
+              <div style="padding:0.95rem;background:var(--bg-subtle);border:1px solid var(--border-color);border-radius:var(--radius-sm);">
+                <div style="font-family:monospace;font-size:0.72rem;color:var(--civic-teal);font-weight:700;">${d.code}</div>
+                <strong style="display:block;margin:0.2rem 0;">${d.name}</strong>
+                <div style="font-size:0.8rem;color:var(--text-muted);">${d.desc}</div>
+              </div>`).join('')}
+            </div>
+          </div>`;
+        return;
+      }
+
+      main.innerHTML = `
+        <div class="card" style="background:linear-gradient(135deg, rgba(37,99,235,0.16), rgba(20,184,166,0.14));">
+          <span class="badge badge-assigned" style="margin-bottom:0.55rem;">Role-Based Client Walkthrough</span>
+          <h1 style="font-size:1.85rem;font-weight:800;line-height:1.2;margin-bottom:0.55rem;">SCF — Smart Civic Flow</h1>
+          <p style="color:var(--text-secondary);font-size:0.92rem;max-width:740px;margin-bottom:1.1rem;">
+            Choose any portal role below (or in the top bar) to explore exact role-scoped dashboards, permissions, analytics, worker creation, and real-time complaint progression.
+          </p>
+          <div class="stat-grid" style="margin-bottom:0;">
+            <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Total Complaints</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--civic-blue);">${inProg}</div><div class="stat-label">Active Field Work</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--success);">${resolved}</div><div class="stat-label">Resolved Cases</div></div>
+            <div class="stat-card"><div class="stat-value">${DEPARTMENTS.length}</div><div class="stat-label">Civic Departments</div></div>
+          </div>
+        </div>
+
+        <h3 style="font-size:0.95rem;margin-bottom:0.75rem;color:var(--text-secondary);">Explore By Role:</h3>
+        <div class="role-cards">
+          <div class="role-card" onclick="switchRole('citizen')">
+            <span class="badge badge-submitted">Role 1</span>
+            <h3 style="margin:0.55rem 0 0.3rem;font-size:1.02rem;">Citizen</h3>
+            <p style="font-size:0.8rem;color:var(--text-muted);">Submit new grievances, track my issues, and inspect the 9-stage timeline.</p>
+          </div>
+          <div class="role-card" onclick="switchRole('admin')">
+            <span class="badge badge-assigned">Role 2</span>
+            <h3 style="margin:0.55rem 0 0.3rem;font-size:1.02rem;">Administrator</h3>
+            <p style="font-size:0.8rem;color:var(--text-muted);">Triage incoming complaints, assign officers, monitor Analytics charts &amp; all staff.</p>
+          </div>
+          <div class="role-card" onclick="switchRole('officer')">
+            <span class="badge badge-verify">Role 3</span>
+            <h3 style="margin:0.55rem 0 0.3rem;font-size:1.02rem;">Department Officer</h3>
+            <p style="font-size:0.8rem;color:var(--text-muted);">Manage Workers in your department, dispatch field tasks, and verify completed work.</p>
+          </div>
+          <div class="role-card" onclick="switchRole('worker')">
+            <span class="badge badge-progress">Role 4</span>
+            <h3 style="margin:0.55rem 0 0.3rem;font-size:1.02rem;">Field Worker</h3>
+            <p style="font-size:0.8rem;color:var(--text-muted);">See only assigned department work orders, start field work, and submit completion.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCitizenPages(main) {
+      const myList = state.complaints.filter(c => c.citizen === 'Priya Citizen');
+      if (state.page === 'track') {
+        main.innerHTML = renderTrackBlock();
+        return;
+      }
+      if (state.page === 'new') {
+        main.innerHTML = `
+          <div class="card" style="max-width:640px;">
+            <div class="card-header"><h2 class="card-title">Submit New Civic Complaint</h2></div>
+            <form id="citizenNewForm" onsubmit="submitCitizenComplaint(event)">
+              <div class="form-group">
+                <label class="form-label">Issue Title *</label>
+                <input type="text" id="cmpTitle" class="form-control" required placeholder="e.g. Broken drinking water main on 4th Street">
+              </div>
+              <div class="grid-2" style="gap:0.75rem;">
+                <div class="form-group">
+                  <label class="form-label">Category *</label>
+                  <select id="cmpCategory" class="form-control">${CATEGORIES.map(c => `<option value="${c.id}">${c.name} (${getDeptName(c.deptId)})</option>`).join('')}</select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Priority *</label>
+                  <select id="cmpPriority" class="form-control">
+                    <option value="urgent">Urgent (24h)</option>
+                    <option value="high" selected>High (48h)</option>
+                    <option value="medium">Medium (96h)</option>
+                    <option value="low">Low (168h)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-2" style="gap:0.75rem;">
+                <div class="form-group"><label class="form-label">Ward *</label><input type="text" id="cmpWard" class="form-control" value="Ward 14" required></div>
+                <div class="form-group"><label class="form-label">City *</label><input type="text" id="cmpCity" class="form-control" value="Chennai" required></div>
+              </div>
+              <div class="form-group"><label class="form-label">Description *</label><textarea id="cmpDesc" class="form-control" rows="3" required placeholder="Provide location details..."></textarea></div>
+              <button type="submit" class="btn btn-primary">Submit Grievance</button>
+            </form>
+          </div>`;
+        return;
+      }
+
+      main.innerHTML = `
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-value">${myList.length}</div><div class="stat-label">My Total Complaints</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--warning);">${myList.filter(c => c.status !== 'Resolved').length}</div><div class="stat-label">Active / Pending</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--success);">${myList.filter(c => c.status === 'Resolved').length}</div><div class="stat-label">Resolved</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">My Submitted Complaints (Priya Citizen)</h2>
+            <button type="button" class="btn btn-primary btn-sm" onclick="switchPage('new')">+ Submit Complaint</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Ref</th><th>Title</th><th>Department</th><th>Status</th><th>Submitted</th><th>Track</th></tr></thead>
+              <tbody>
+                ${myList.map(c => `
+                  <tr>
+                    <td><strong style="font-family:monospace;color:var(--civic-blue);">${c.ref}</strong></td>
+                    <td>${c.title}</td>
+                    <td>${getDeptName(c.deptId)}</td>
+                    <td><span class="badge ${statusBadgeClass(c.status)}">${c.status}</span></td>
+                    <td style="font-size:0.75rem;color:var(--text-muted);">${c.createdAt}</td>
+                    <td><button type="button" class="btn btn-secondary btn-sm" onclick="openTrackedRef('${c.ref}')">Track</button></td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    function submitCitizenComplaint(e) {
+      e.preventDefault();
+      const title = document.getElementById('cmpTitle').value.trim();
+      const desc = document.getElementById('cmpDesc').value.trim();
+      const cat = CATEGORIES.find(c => c.id === Number(document.getElementById('cmpCategory').value)) || CATEGORIES[0];
+      const priority = document.getElementById('cmpPriority').value;
+      const ward = document.getElementById('cmpWard').value.trim();
+      const city = document.getElementById('cmpCity').value.trim();
+      if (!title || !desc) return;
+      const ref = `CMP-202611-DEMO${state.seq++}`;
+      const ts = nowFormatted();
+      state.complaints.unshift({
+        ref, title, desc, categoryId: cat.id, deptId: cat.deptId, priority,
+        status: 'Submitted', ward, city, citizen: 'Priya Citizen', workerId: null, createdAt: ts, stage: 1,
+        history: [{ status: 'Submitted', time: ts, remarks: 'Registered via Citizen Portal.' }]
+      });
+      pushNotif('admin', `New Complaint: ${ref}`, `'${title}' submitted in ${ward}.`);
+      state.trackRef = ref;
+      state.page = 'list';
+      saveState();
+      renderApp();
+      showToast(`Complaint ${ref} submitted! Switch to Administrator to assign it.`, 'success');
+    }
+
+    function renderAdminPages(main) {
+      const total = state.complaints.length;
+      const resolved = state.complaints.filter(c => c.status === 'Resolved').length;
+      const inProg = state.complaints.filter(c => c.status === 'In Progress' || c.status === 'Verification Pending').length;
+      const pending = total - resolved - inProg;
+
+      if (state.page === 'users') {
+        main.innerHTML = `
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">All Department Workers Roster (Admin View Across All Departments)</h2></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Email &amp; Phone</th><th>Status</th></tr></thead>
+                <tbody>${state.workers.map(w => `
+                  <tr>
+                    <td><strong style="font-family:monospace;color:var(--civic-blue);">${w.empId}</strong></td>
+                    <td>${w.name}</td>
+                    <td>${getDeptName(w.deptId)}</td>
+                    <td>${w.email} • ${w.phone}</td>
+                    <td><span class="badge ${w.active ? 'badge-resolved' : 'badge-urgent'}">${w.active ? 'Active' : 'Inactive'}</span></td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+        return;
+      }
+
+      const maxDept = Math.max(1, ...DEPARTMENTS.map(d => state.complaints.filter(c => c.deptId === d.id).length));
+      const analyticsHtml = `
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Department Complaint Volume vs Resolution</h3></div>
+            ${DEPARTMENTS.map(d => {
+              const dt = state.complaints.filter(c => c.deptId === d.id).length;
+              const dr = state.complaints.filter(c => c.deptId === d.id && c.status === 'Resolved').length;
+              return `<div class="bar-row"><div class="bar-meta"><span>${d.name}</span><span>${dr}/${dt} resolved</span></div><div class="bar-track"><div style="width:${Math.round((dr/maxDept)*100)}%;background:#16a34a;"></div><div style="width:${Math.round(((dt-dr)/maxDept)*100)}%;background:#3b82f6;"></div></div></div>`;
+            }).join('')}
+          </div>
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Workflow Status Distribution</h3></div>
+            <div class="bar-row"><div class="bar-meta"><span>Pending / Assigned</span><strong>${pending}</strong></div><div class="bar-track"><div style="width:${total?Math.round((pending/total)*100):0}%;background:#d97706;"></div></div></div>
+            <div class="bar-row"><div class="bar-meta"><span>In Progress / Verification</span><strong>${inProg}</strong></div><div class="bar-track"><div style="width:${total?Math.round((inProg/total)*100):0}%;background:#3b82f6;"></div></div></div>
+            <div class="bar-row"><div class="bar-meta"><span>Resolved</span><strong>${resolved}</strong></div><div class="bar-track"><div style="width:${total?Math.round((resolved/total)*100):0}%;background:#16a34a;"></div></div></div>
+          </div>
+        </div>`;
+
+      if (state.page === 'analytics') {
+        main.innerHTML = analyticsHtml;
+        return;
+      }
+
+      main.innerHTML = `
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Total Complaints</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--warning);">${pending}</div><div class="stat-label">Pending / Assigned</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--civic-blue);">${inProg}</div><div class="stat-label">In Progress / Verify</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--success);">${resolved}</div><div class="stat-label">Resolved (${total?Math.round((resolved/total)*100):0}%)</div></div>
+        </div>
+        ${state.page === 'dashboard' ? analyticsHtml : ''}
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Admin Triage &amp; Department Officer Assignment</h2></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Ref</th><th>Complaint</th><th>Department</th><th>Priority</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>${state.complaints.map(c => `
+                <tr>
+                  <td><strong style="font-family:monospace;color:var(--civic-blue);">${c.ref}</strong></td>
+                  <td><strong>${c.title}</strong><div style="font-size:0.74rem;color:var(--text-muted);">${c.citizen} • ${c.ward}</div></td>
+                  <td>${getDeptName(c.deptId)}</td>
+                  <td><span class="badge badge-${c.priority}">${c.priority.toUpperCase()}</span></td>
+                  <td><span class="badge ${statusBadgeClass(c.status)}">${c.status}</span></td>
+                  <td>${c.status === 'Submitted'
+                    ? `<button type="button" class="btn btn-primary btn-sm" onclick="adminAssignOfficer('${c.ref}')">Assign Officer</button>`
+                    : `<button type="button" class="btn btn-secondary btn-sm" onclick="openTrackedRef('${c.ref}')">Track</button>`}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    function adminAssignOfficer(ref) {
+      const c = state.complaints.find(x => x.ref === ref);
+      if (!c) return;
+      c.status = 'Assigned to Department';
+      c.stage = Math.max(c.stage, 3);
+      c.history.push({ status: 'Assigned to Department', time: nowFormatted(), remarks: `Administrator assigned to ${getDeptName(c.deptId)} Officer.` });
+      pushNotif('officer', `Assigned: ${ref}`, `Routed to ${getDeptName(c.deptId)}.`);
+      saveState();
+      renderApp();
+      showToast(`${ref} assigned to Department Officer.`, 'success');
+    }
+
+    function renderOfficerPages(main) {
+      const deptWorkers = state.workers.filter(w => w.deptId === 1);
+      const availWorkers = deptWorkers.filter(w => w.active && w.available);
+      const workerOpts = availWorkers.map(w => `<option value="${w.id}">${w.name} (${w.empId})</option>`).join('');
+      const deptComplaints = state.complaints.filter(c => c.deptId === 1);
+
+      if (state.page === 'manage-workers') {
+        main.innerHTML = `
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-value">${deptWorkers.length}</div><div class="stat-label">Water Dept Workers</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--success);">${availWorkers.length}</div><div class="stat-label">Available on Duty</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--civic-blue);">${deptComplaints.filter(c => c.workerId && c.status !== 'Resolved').length}</div><div class="stat-label">Active Dispatched Tasks</div></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Manage Workers — Water Supply &amp; Sewage</h2>
+                <p style="font-size:0.78rem;color:var(--text-muted);">Strict department access: only Water Supply &amp; Sewage workers are visible and manageable here.</p>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" onclick="openAddWorkerModal()">+ Add Worker</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Worker &amp; Employee ID</th><th>Contact</th><th>Assigned Tasks</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody>${deptWorkers.map(w => `
+                  <tr>
+                    <td><strong>${w.name}</strong> <span style="font-family:monospace;font-size:0.72rem;color:var(--civic-blue);">${w.empId}</span></td>
+                    <td style="font-size:0.78rem;color:var(--text-muted);">${w.email} • ${w.phone}</td>
+                    <td><span class="badge badge-submitted">${state.complaints.filter(c => c.workerId === w.id && c.status !== 'Resolved').length} active</span></td>
+                    <td><span class="badge ${w.active ? 'badge-resolved' : 'badge-urgent'}">${w.active ? 'Active' : 'Inactive'}</span></td>
+                    <td><button type="button" class="btn btn-secondary btn-sm" onclick="toggleWorkerStatus(${w.id})">${w.active ? 'Deactivate' : 'Activate'}</button></td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+        return;
+      }
+
+      const list = state.page === 'verify'
+        ? deptComplaints.filter(c => c.status === 'Verification Pending')
+        : deptComplaints;
+
+      main.innerHTML = `
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-value">${deptComplaints.length}</div><div class="stat-label">Water Dept Complaints</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--warning);">${deptComplaints.filter(c => c.status === 'Assigned to Department' || c.status === 'Submitted').length}</div><div class="stat-label">Awaiting Worker Dispatch</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--civic-teal);">${deptComplaints.filter(c => c.status === 'Verification Pending').length}</div><div class="stat-label">Pending Verification</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">${state.page === 'verify' ? 'Work Verification Queue' : 'Water Supply & Sewage Complaints Queue'}</h2>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="switchPage('manage-workers')">Manage Workers (${deptWorkers.length})</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Ref</th><th>Title</th><th>Priority</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>${list.map(c => {
+                let act = `<button type="button" class="btn btn-secondary btn-sm" onclick="openTrackedRef('${c.ref}')">Track</button>`;
+                if (c.status === 'Submitted' || c.status === 'Assigned to Department') {
+                  act = availWorkers.length
+                    ? `<div style="display:flex;gap:0.35rem;"><select id="sel-${c.ref}" class="form-control" style="width:165px;padding:0.24rem 0.45rem;font-size:0.76rem;">${workerOpts}</select><button type="button" class="btn btn-primary btn-sm" onclick="officerAssignWorker('${c.ref}')">Dispatch</button></div>`
+                    : '<span style="font-size:0.75rem;color:var(--warning);">Activate a worker first</span>';
+                } else if (c.status === 'Verification Pending') {
+                  act = `<button type="button" class="btn btn-success btn-sm" onclick="officerVerifyResolve('${c.ref}')">Verify &amp; Resolve</button>`;
+                }
+                return `<tr><td><strong style="font-family:monospace;color:var(--civic-blue);">${c.ref}</strong></td><td>${c.title}</td><td><span class="badge badge-${c.priority}">${c.priority.toUpperCase()}</span></td><td><span class="badge ${statusBadgeClass(c.status)}">${c.status}</span></td><td>${act}</td></tr>`;
+              }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No items in this view.</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    function officerAssignWorker(ref) {
+      const wid = Number(document.getElementById('sel-' + ref)?.value || 0);
+      const c = state.complaints.find(x => x.ref === ref);
+      if (!c || !wid) return;
+      c.workerId = wid;
+      c.status = 'Assigned to Worker';
+      c.stage = Math.max(c.stage, 5);
+      c.history.push({ status: 'Assigned to Worker', time: nowFormatted(), remarks: `Dispatched to ${getWorkerName(wid)}.` });
+      pushNotif('worker', `New Work Order: ${ref}`, `Assigned to ${getWorkerName(wid)}.`);
+      saveState();
+      renderApp();
+      showToast(`${ref} dispatched to ${getWorkerName(wid)}. Switch to Field Worker to complete it!`, 'success');
+    }
+
+    function officerVerifyResolve(ref) {
+      const c = state.complaints.find(x => x.ref === ref);
+      if (!c) return;
+      c.status = 'Resolved';
+      c.stage = 9;
+      c.history.push({ status: 'Resolved', time: nowFormatted(), remarks: 'Completion verified by Department Officer.' });
+      pushNotif('citizen', `Resolved: ${ref}`, `'${c.title}' is verified & resolved.`);
+      saveState();
+      renderApp();
+      showToast(`${ref} verified and marked Resolved!`, 'success');
+    }
+
+    function toggleWorkerStatus(wid) {
+      const w = state.workers.find(x => x.id === wid);
+      if (!w) return;
+      w.active = !w.active;
+      w.available = w.active;
+      saveState();
+      renderApp();
+      showToast(`${w.name} ${w.active ? 'activated' : 'deactivated'}.`, 'warning');
+    }
+
+    function openAddWorkerModal() {
+      document.getElementById('demoAddWorkerForm').reset();
+      document.getElementById('demoAddWorkerModal').classList.add('show');
+    }
+    function closeAddWorkerModal() {
+      document.getElementById('demoAddWorkerModal').classList.remove('show');
+    }
+
+    document.getElementById('demoAddWorkerForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('wrkName').value.trim();
+      const email = document.getElementById('wrkEmail').value.trim().toLowerCase();
+      const phone = document.getElementById('wrkPhone').value.trim();
+      const empId = document.getElementById('wrkEmpId').value.trim().toUpperCase();
+      if (!name || !email || !phone || !empId) return;
+      if (state.workers.some(w => w.email === email || w.empId === empId)) {
+        showToast('Duplicate Email or Employee ID.', 'warning');
+        return;
+      }
+      state.workers.push({ id: Date.now(), name, empId, email, phone, deptId: 1, available: true, active: true });
+      pushNotif('admin', 'New Worker Registered', `${name} (${empId}) added by Water Supply Officer.`);
+      saveState();
+      closeAddWorkerModal();
+      renderApp();
+      showToast(`Field worker ${name} (${empId}) added!`, 'success');
+    });
+
+    function renderWorkerPages(main) {
+      const allAssigned = state.complaints.filter(c => c.workerId !== null);
+      const list = state.page === 'history'
+        ? allAssigned.filter(c => c.status === 'Resolved')
+        : allAssigned.filter(c => c.status !== 'Resolved');
+
+      main.innerHTML = `
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-value">${allAssigned.length}</div><div class="stat-label">Total Assigned Tasks</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--warning);">${allAssigned.filter(c => c.status === 'Assigned to Worker' || c.status === 'In Progress').length}</div><div class="stat-label">Open Field Tasks</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--success);">${allAssigned.filter(c => c.status === 'Resolved').length}</div><div class="stat-label">Completed &amp; Verified</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">${state.page === 'history' ? 'Completed Task History' : 'My Assigned Field Work Orders'}</h2>
+            <span class="badge badge-assigned">Water Supply &amp; Sewage • EMP-WTR-101</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Ref</th><th>Work Order</th><th>Location</th><th>Assigned Worker</th><th>Status</th><th>Field Action</th></tr></thead>
+              <tbody>${list.map(c => {
+                let act = '<span style="font-size:0.76rem;color:var(--text-muted);">Done</span>';
+                if (c.status === 'Assigned to Worker') {
+                  act = `<button type="button" class="btn btn-warning btn-sm" onclick="workerUpdate('${c.ref}', 'In Progress', 6)">Start Work</button>`;
+                } else if (c.status === 'In Progress') {
+                  act = `<button type="button" class="btn btn-success btn-sm" onclick="workerUpdate('${c.ref}', 'Verification Pending', 7)">Complete Work</button>`;
+                } else if (c.status === 'Verification Pending') {
+                  act = '<span style="font-size:0.75rem;color:var(--civic-teal);">Pending Officer Verification</span>';
+                }
+                return `<tr><td><strong style="font-family:monospace;color:var(--civic-blue);">${c.ref}</strong></td><td>${c.title}</td><td>${c.ward}, ${c.city}</td><td>${getWorkerName(c.workerId)}</td><td><span class="badge ${statusBadgeClass(c.status)}">${c.status}</span></td><td>${act}</td></tr>`;
+              }).join('') || '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--text-muted);">No tasks here yet. Dispatch a task from Department Officer!</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    function workerUpdate(ref, nextStatus, stageNum) {
+      const c = state.complaints.find(x => x.ref === ref);
+      if (!c) return;
+      c.status = nextStatus;
+      c.stage = Math.max(c.stage, stageNum);
+      c.history.push({
+        status: nextStatus,
+        time: nowFormatted(),
+        remarks: nextStatus === 'In Progress' ? 'Field technician started on-site work.' : 'Work finished; submitted for officer verification.'
+      });
+      pushNotif('officer', `${nextStatus}: ${ref}`, `Updated by ${getWorkerName(c.workerId)}.`);
+      saveState();
+      renderApp();
+      showToast(`${ref} updated to '${nextStatus}'!`, 'success');
+    }
+
+    function renderApp() {
+      renderNotifications();
+      renderSidebar();
+      const main = document.getElementById('roleMainContent');
+      if (state.role === 'public') renderPublicPages(main);
+      else if (state.role === 'citizen') renderCitizenPages(main);
+      else if (state.role === 'admin') renderAdminPages(main);
+      else if (state.role === 'officer') renderOfficerPages(main);
+      else if (state.role === 'worker') renderWorkerPages(main);
+    }
+
+    renderApp();
+  </script>
+</body>
+</html>
