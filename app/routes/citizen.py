@@ -17,6 +17,7 @@ from app.services.complaint_service import (
 from app.utils.decorators import login_required, role_required, _is_api_or_ajax
 from app.utils.helpers import save_uploaded_file
 from app.services.audit_service import log_action
+from app.services.notification_service import notify_admins
 
 citizen_bp = Blueprint('citizen', __name__)
 
@@ -267,6 +268,14 @@ def submit_feedback(complaint_id):
         )
         db.session.add(fb)
 
+    notify_admins(
+        title=f"Citizen Feedback ({rating}/5): {complaint.complaint_ref}",
+        message=f"{user.full_name} rated '{complaint.title}' {rating}/5 stars. {comment[:120] if comment else ''}".strip(),
+        link=url_for('admin.dashboard') + '#citizenFeedbackCard',
+        notification_type='info',
+        complaint_id=complaint.id,
+        commit=False,
+    )
     log_action(user.id, 'SUBMIT_FEEDBACK', 'complaint', complaint.id, details={'rating': rating}, commit=False)
     db.session.commit()
 

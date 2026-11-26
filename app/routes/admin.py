@@ -108,6 +108,23 @@ def dashboard():
     else:
         unread_contact_count = ContactMessage.query.filter_by(is_read=False).count()
 
+    recent_feedbacks = (
+        Feedback.query.options(
+            joinedload(Feedback.citizen),
+            joinedload(Feedback.complaint).joinedload(Complaint.department),
+        )
+        .order_by(Feedback.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    if len(recent_feedbacks) < 20:
+        feedback_total = len(recent_feedbacks)
+        feedback_avg = round(sum(f.rating for f in recent_feedbacks) / feedback_total, 1) if feedback_total else 0.0
+    else:
+        fb_agg = db.session.query(func.count(Feedback.id), func.avg(Feedback.rating)).one()
+        feedback_total = int(fb_agg[0] or 0)
+        feedback_avg = round(float(fb_agg[1]), 1) if fb_agg[1] is not None else 0.0
+
     return render_template(
         'admin/dashboard.html',
         stats=stats,
@@ -117,6 +134,9 @@ def dashboard():
         chart_data=chart_data,
         contact_messages=contact_messages,
         unread_contact_count=unread_contact_count,
+        recent_feedbacks=recent_feedbacks,
+        feedback_total=feedback_total,
+        feedback_avg=feedback_avg,
     )
 
 

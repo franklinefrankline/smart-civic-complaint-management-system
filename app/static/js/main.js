@@ -404,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (window.showPageLoader) window.showPageLoader('Processing request...');
         const controller = new AbortController();
-        const reqTimeout = setTimeout(() => controller.abort(), 25000);
+        const reqTimeout = setTimeout(() => controller.abort(), 55000);
         let actionSucceeded = false;
         let responseData = null;
         try {

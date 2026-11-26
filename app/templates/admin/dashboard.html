@@ -383,6 +383,98 @@
         </div>
       {% endif %}
     </div>
+
+    <!-- Citizen Satisfaction & Feedback -->
+    <div id="citizenFeedbackCard" class="card" style="box-shadow: none; margin-top: 1.25rem; border-top: 3px solid #f59e0b;">
+      <div class="card-header" style="margin-bottom: 0.85rem; padding-bottom: 0.6rem;">
+        <div>
+          <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="star" class="icon-sm" style="color: #f59e0b;"></i>
+            Citizen Feedback &amp; Ratings ({{ feedback_total if feedback_total is defined else (recent_feedbacks|length if recent_feedbacks is defined else 0) }})
+          </h3>
+          <span style="font-size: 0.78rem; color: var(--text-muted);">
+            Post-resolution ratings and comments submitted by citizens.
+          </span>
+        </div>
+        {% if feedback_total is defined and feedback_total > 0 %}
+          <span class="badge" style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a; font-weight: 700;">
+            Avg {{ feedback_avg }} / 5.0 &#9733;
+          </span>
+        {% endif %}
+      </div>
+
+      {% if recent_feedbacks is defined and recent_feedbacks %}
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Complaint</th>
+                <th>Citizen</th>
+                <th>Department</th>
+                <th>Rating</th>
+                <th>Feedback Comment</th>
+                <th>Submitted</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for fb in recent_feedbacks %}
+                <tr>
+                  <td>
+                    {% if fb.complaint %}
+                      <span style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">
+                        {{ fb.complaint.complaint_ref }}
+                      </span>
+                      <div style="font-size: 0.76rem; color: var(--text-muted); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{ fb.complaint.title }}
+                      </div>
+                    {% else %}
+                      #{{ fb.complaint_id }}
+                    {% endif %}
+                  </td>
+                  <td style="font-weight: 600;">{{ fb.citizen.full_name if fb.citizen else 'Citizen' }}</td>
+                  <td style="font-size: 0.84rem;">
+                    {{ fb.complaint.department.name if fb.complaint and fb.complaint.department else 'General Civic' }}
+                  </td>
+                  <td style="white-space: nowrap;">
+                    <span style="color: #f59e0b; font-weight: 700; letter-spacing: 1px;">
+                      {% for i in range(fb.rating) %}&#9733;{% endfor %}{% for i in range(5 - fb.rating) %}<span style="color: var(--border-color);">&#9733;</span>{% endfor %}
+                    </span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 0.25rem;">({{ fb.rating }}/5)</span>
+                    {% if fb.response_speed_rating or fb.work_quality_rating %}
+                      <div style="font-size: 0.72rem; color: var(--text-muted);">
+                        {% if fb.response_speed_rating %}Speed: {{ fb.response_speed_rating }}/5{% endif %}
+                        {% if fb.response_speed_rating and fb.work_quality_rating %} &bull; {% endif %}
+                        {% if fb.work_quality_rating %}Quality: {{ fb.work_quality_rating }}/5{% endif %}
+                      </div>
+                    {% endif %}
+                  </td>
+                  <td style="font-size: 0.85rem; max-width: 340px; white-space: normal;">
+                    {{ fb.comment or 'No written remarks provided.' }}
+                  </td>
+                  <td style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap;">
+                    {{ fb.created_at | local_time('%d %b %Y, %I:%M %p') }}
+                  </td>
+                  <td>
+                    {% if fb.complaint %}
+                      <a href="{{ url_for('admin.complaint_detail', complaint_id=fb.complaint.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.55rem; font-size: 0.75rem;">
+                        View
+                      </a>
+                    {% else %}
+                      &mdash;
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">
+          No citizen feedback submitted yet.
+        </div>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

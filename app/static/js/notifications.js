@@ -233,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
         '#recentComplaintsCard',
         '#auditStreamCard',
         '#contactInquiriesCard',
+        '#citizenFeedbackCard',
         '.timeline'
       ];
 
