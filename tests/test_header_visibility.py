@@ -117,8 +117,16 @@ class HeaderVisibilityTestCase(unittest.TestCase):
         self.assertIn(b'Public Complaint Tracking', res_unauth.data)
         self.assertIn(b'href="/track" class="nav-link active"', res_unauth.data)
 
-        # Authenticated citizen track
+        # Authenticated citizen track inside dashboard sidebar (/citizen/track)
         self.client.post('/auth/login', data={'login_id': 'citizen.vis@test.gov', 'password': 'Citizen@123'})
+        res_cit_track = self.client.get('/citizen/track')
+        self.assertEqual(res_cit_track.status_code, 200)
+        self.assertNotIn(b'<nav class="navbar', res_cit_track.data)
+        self.assertIn(b'id="dashboardSidebar"', res_cit_track.data)
+        self.assertIn(b'Track Complaint Status', res_cit_track.data)
+        self.assertIn(b'href="/citizen/track"', res_cit_track.data)
+
+        # Authenticated citizen public track (/track) retains public navbar
         res_auth = self.client.get('/track')
         self.assertEqual(res_auth.status_code, 200)
         self.assertIn(b'<nav class="navbar', res_auth.data)

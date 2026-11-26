@@ -39,7 +39,7 @@
             <select name="category_id" id="category_id" class="form-control" required>
               <option value="">-- Select Grievance Category --</option>
               {% for cat in categories %}
-                <option value="{{ cat.id }}" data-dept="{{ cat.department_id }}">{{ cat.name }} ({{ cat.department.name }})</option>
+                <option value="{{ cat.id }}" data-dept="{{ cat.department_id }}">{{ cat.name }} ({{ cat.department.name if cat.department else 'General Civic' }})</option>
               {% endfor %}
             </select>
           </div>

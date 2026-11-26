@@ -34,9 +34,9 @@ def save_uploaded_file(file_obj, subfolder='complaints'):
     if not allowed_file(file_obj.filename):
         return None
 
-    orig_name = secure_filename(file_obj.filename)
+    orig_name = (secure_filename(file_obj.filename) or 'attachment')[:255]
     ext = orig_name.rsplit('.', 1)[1].lower() if '.' in orig_name else 'jpg'
-    unique_filename = f"{uuid.uuid4().hex}_{int(datetime.utcnow().timestamp())}.{ext}"
+    unique_filename = f"{uuid.uuid4().hex}_{int(datetime.utcnow().timestamp())}.{ext}"[:255]
 
     # Read binary bytes into memory for persistent DB storage
     stream = file_obj.stream
@@ -57,14 +57,15 @@ def save_uploaded_file(file_obj, subfolder='complaints'):
     except Exception:
         pass
 
-    relative_path = f"uploads/{subfolder}/{unique_filename}"
+    relative_path = f"uploads/{subfolder}/{unique_filename}"[:255]
+    safe_mime = (file_obj.mimetype or 'application/octet-stream')[:100]
 
     return {
         'filename': unique_filename,
         'original_name': orig_name,
         'file_path': relative_path,
         'file_size': file_size,
-        'mime_type': file_obj.mimetype,
+        'mime_type': safe_mime,
         'file_data': file_bytes
     }
 

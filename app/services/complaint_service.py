@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 from flask import current_app
 from sqlalchemy import func, case
+from sqlalchemy.orm import joinedload
 from app import db
 from app.utils.ttl_cache import app_cache
 from app.models.complaint import Complaint
@@ -148,15 +149,25 @@ def create_complaint(citizen_id, title, description, category_id, priority,
     # Auto-assign department if not specified
     if not department_id:
         department_id = cat.department_id
-        
-    sla_due = calculate_sla_due_date(priority)
+
+    safe_priority = (priority or 'medium').strip().lower()
+    if safe_priority not in ('low', 'medium', 'high', 'urgent'):
+        safe_priority = 'medium'
+
+    sla_due = calculate_sla_due_date(safe_priority)
     ref_id = generate_complaint_ref()
-    
-    clean_address = address.strip() if address else None
-    if not clean_address and street_name:
-        parts = [p for p in [street_name, locality, landmark] if p]
-        clean_address = ", ".join(parts)
-        
+
+    clean_street = street_name.strip()[:255] if street_name and street_name.strip() else None
+    clean_locality = locality.strip()[:150] if locality and locality.strip() else None
+    clean_landmark = landmark.strip()[:150] if landmark and landmark.strip() else None
+    clean_address = address.strip()[:255] if address and address.strip() else None
+    if not clean_address and clean_street:
+        parts = [p for p in [clean_street, clean_locality, clean_landmark] if p]
+        clean_address = ", ".join(parts)[:255]
+
+    safe_lat = latitude if (latitude is not None and -90.0 <= float(latitude) <= 90.0) else None
+    safe_lng = longitude if (longitude is not None and -180.0 <= float(longitude) <= 180.0) else None
+
     complaint = Complaint(
         complaint_ref=ref_id,
         citizen_id=citizen_id,
@@ -164,21 +175,21 @@ def create_complaint(citizen_id, title, description, category_id, priority,
         assigned_officer_id=None,
         assigned_worker_id=None,
         category_id=category_id,
-        title=title.strip(),
+        title=title.strip()[:200],
         description=description.strip(),
-        priority=priority,
+        priority=safe_priority,
         status='Submitted',
         address=clean_address,
-        city=city.strip() if city else 'Chennai',
-        ward_number=ward_number.strip() if ward_number else None,
-        state=state.strip() if state else 'Tamil Nadu',
-        district=district.strip() if district else 'Chennai',
-        street_name=street_name.strip() if street_name else clean_address,
-        locality=locality.strip() if locality else None,
-        landmark=landmark.strip() if landmark else None,
-        pincode=pincode.strip() if pincode else None,
-        latitude=latitude,
-        longitude=longitude,
+        city=(city.strip() if city and city.strip() else 'Chennai')[:100],
+        ward_number=ward_number.strip()[:50] if ward_number and ward_number.strip() else None,
+        state=(state.strip() if state and state.strip() else 'Tamil Nadu')[:100],
+        district=(district.strip() if district and district.strip() else 'Chennai')[:100],
+        street_name=(clean_street or clean_address),
+        locality=clean_locality,
+        landmark=clean_landmark,
+        pincode=pincode.strip()[:20] if pincode and pincode.strip() else None,
+        latitude=safe_lat,
+        longitude=safe_lng,
         sla_due_date=sla_due
     )
     db.session.add(complaint)
@@ -727,6 +738,34 @@ def get_complaint_9_stage_timeline(complaint, history=None):
     return stages
 
 
+def lookup_tracked_complaint(ref, identifier=None):
+    """Look up a complaint by reference ID (and optional email/mobile tail verification)."""
+    complaint = None
+    not_found = False
+    clean_ref = ref.strip().upper() if ref else None
+    if not clean_ref:
+        return None, False, None, []
+
+    complaint_obj = Complaint.query.filter_by(complaint_ref=clean_ref).first()
+    if identifier and identifier.strip():
+        ident = identifier.strip().lower()
+        if complaint_obj and complaint_obj.citizen:
+            citizen = complaint_obj.citizen
+            if citizen.email.lower() == ident or citizen.mobile_number.endswith(ident[-4:]):
+                complaint = complaint_obj
+            else:
+                not_found = True
+        else:
+            not_found = True
+    else:
+        complaint = complaint_obj
+        if not complaint:
+            not_found = True
+
+    stages = get_complaint_9_stage_timeline(complaint) if complaint else []
+    return complaint, not_found, clean_ref, stages
+
+
 def get_complaint_aggregate_counts(*filters):
     """
     Compute complaint dashboard KPIs in a SINGLE SQL aggregate query instead of
@@ -805,12 +844,18 @@ def get_cached_active_categories():
         cached = app_cache.get('ref:active_categories')
         if cached is not None:
             return cached
-    rows = ComplaintCategory.query.filter_by(is_active=True).order_by(ComplaintCategory.id.asc()).all()
+    rows = (
+        ComplaintCategory.query.filter_by(is_active=True)
+        .options(joinedload(ComplaintCategory.department))
+        .order_by(ComplaintCategory.id.asc())
+        .all()
+    )
     if not use_cache:
         return rows
     snap = [
         SimpleNamespace(
             id=c.id, name=c.name, department_id=c.department_id,
+            department=SimpleNamespace(id=c.department.id, name=c.department.name) if c.department else None,
             default_priority=c.default_priority, sla_hours=c.sla_hours,
             description=c.description, is_active=True
         )

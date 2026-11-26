@@ -447,8 +447,10 @@ class ProductionReadinessTestCase(unittest.TestCase):
             get_cached_active_departments,
             get_cached_active_categories,
         )
+        cats = get_cached_active_categories()
         self.assertGreaterEqual(len(get_cached_active_departments()), 1)
-        self.assertGreaterEqual(len(get_cached_active_categories()), 1)
+        self.assertGreaterEqual(len(cats), 1)
+        self.assertIsNotNone(cats[0].department)
         payload = build_admin_analytics_payload()
         self.assertIn('submitted', payload['summary'])
 

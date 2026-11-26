@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g, session, jsonify, current_app
 from sqlalchemy.orm import joinedload
 from app import db
 from app.models.complaint import Complaint
@@ -13,6 +13,7 @@ from app.services.complaint_service import (
     get_complaint_aggregate_counts,
     get_cached_active_departments,
     get_cached_active_categories,
+    lookup_tracked_complaint,
     PENDING_STATUSES,
     IN_PROGRESS_STATUSES,
 )
@@ -133,16 +134,16 @@ def new_complaint():
             flash("Please select a valid complaint category.", "danger")
             return render_template('citizen/new_complaint.html', categories=categories, departments=departments)
             
-        # Handle file uploads
-        uploaded_attachments = []
-        files = request.files.getlist('attachments')
-        for f in files:
-            if f and f.filename != '':
-                saved = save_uploaded_file(f, 'complaints')
-                if saved:
-                    uploaded_attachments.append(saved)
-                    
         try:
+            # Handle file uploads inside protected try block
+            uploaded_attachments = []
+            files = request.files.getlist('attachments')
+            for f in files:
+                if f and f.filename != '':
+                    saved = save_uploaded_file(f, 'complaints')
+                    if saved:
+                        uploaded_attachments.append(saved)
+
             complaint = create_complaint(
                 citizen_id=user.id,
                 title=title,
@@ -167,7 +168,10 @@ def new_complaint():
             return redirect(url_for('citizen.complaint_detail', complaint_id=complaint.id))
         except Exception as e:
             db.session.rollback()
+            current_app.logger.exception("Error registering citizen complaint")
             flash(f"Error registering complaint: {str(e)}", "danger")
+            categories = get_cached_active_categories()
+            departments = get_cached_active_departments()
             
     return render_template('citizen/new_complaint.html', categories=categories, departments=departments)
 
@@ -328,3 +332,30 @@ def feedback():
     user = g.user
     resolved_complaints = Complaint.query.filter_by(citizen_id=user.id, status='Resolved').order_by(Complaint.resolved_at.desc()).all()
     return render_template('citizen/feedback.html', complaints=resolved_complaints)
+
+
+@citizen_bp.route('/track', methods=['GET', 'POST'])
+def track():
+    user = g.user
+    ref = request.args.get('ref') or (request.form.get('ref') if request.method == 'POST' else None)
+    identifier = request.args.get('identifier') or (request.form.get('identifier') if request.method == 'POST' else None)
+    complaint, not_found, clean_ref, stages = lookup_tracked_complaint(ref, identifier)
+    quick_refs = (
+        db.session.query(Complaint.complaint_ref, Complaint.title, Complaint.status)
+        .filter_by(citizen_id=user.id)
+        .order_by(Complaint.created_at.desc())
+        .limit(6)
+        .all()
+    )
+    return render_template(
+        'public/track.html',
+        complaint=complaint,
+        not_found=not_found,
+        search_ref=clean_ref,
+        stages=stages,
+        quick_refs=quick_refs,
+        dashboard_sidebar=True,
+        track_action_url=url_for('citizen.track'),
+        track_heading='Track Complaint Status',
+        track_subheading='Check the real-time status, 9-stage timeline, assigned department, and resolution history for any complaint reference.',
+    )

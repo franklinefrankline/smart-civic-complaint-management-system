@@ -1,21 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}Track Complaint Status | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ 'Track Complaint' if dashboard_sidebar else 'Track Complaint Status' }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
+{% if dashboard_sidebar %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+  <div class="dashboard-content">
+{% else %}
 <div class="container" style="padding: 3rem 2rem 4rem;">
   <div style="width: 100%;">
+{% endif %}
     <!-- Search Bar -->
     <div class="card" style="padding: 2rem; margin-bottom: 2.5rem; border-top: 4px solid var(--civic-blue);">
       <h2
         style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-        <i data-lucide="search" class="icon-sm"></i> Public Complaint Tracking
+        <i data-lucide="search" class="icon-sm"></i> {{ track_heading or 'Public Complaint Tracking' }}
       </h2>
       <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-        Check the real-time status, timeline, assigned department, and resolution stage of any civic complaint.
+        {{ track_subheading or 'Check the real-time status, timeline, assigned department, and resolution stage of any civic complaint.' }}
       </p>
 
-      <form method="GET" action="{{ url_for('public.track') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <form method="GET" action="{{ track_action_url or url_for('public.track') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
         <input type="text" name="ref" class="form-control" placeholder="Enter Reference ID (e.g. CMP-202611-XXXX)"
           value="{{ search_ref or '' }}" required
           style="flex: 2; min-width: 200px; font-family: monospace; text-transform: uppercase;">
@@ -25,6 +31,17 @@
           Track Status
         </button>
       </form>
+
+      {% if quick_refs %}
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid var(--border-color);">
+        <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted);">My Recent Tickets:</span>
+        {% for r_ref, r_title, r_status in quick_refs %}
+          <a href="{{ track_action_url or url_for('citizen.track') }}?ref={{ r_ref }}" class="btn btn-secondary btn-sm" style="font-family: monospace; font-size: 0.75rem;">
+            {{ r_ref }}
+          </a>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
 
     {% if not_found %}
@@ -74,7 +91,7 @@
           <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">
             Category</div>
           <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-top: 0.2rem;">{{
-            complaint.category.name }}</div>
+            complaint.category.name if complaint.category else 'General' }}</div>
         </div>
         <div>
           <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">
@@ -142,7 +159,7 @@
 
       <!-- Lifecycle Timeline -->
       <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); margin-bottom: 1rem;">
-        Resolution Timeline & History
+        Resolution Timeline &amp; History
       </h3>
       <div class="timeline stagger-in">
         {% for hist in complaint.status_history %}

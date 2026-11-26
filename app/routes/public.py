@@ -7,7 +7,11 @@ from app.models.user import User
 from app.models.feedback import Feedback
 from app.models.contact import ContactMessage
 
-from app.services.complaint_service import get_complaint_9_stage_timeline, get_complaint_aggregate_counts
+from app.services.complaint_service import (
+    get_complaint_9_stage_timeline,
+    get_complaint_aggregate_counts,
+    lookup_tracked_complaint,
+)
 from app.services.notification_service import notify_admins
 from app.utils.decorators import _is_api_or_ajax
 from app.utils.ttl_cache import app_cache
@@ -85,35 +89,10 @@ def departments():
 
 @public_bp.route('/track', methods=['GET', 'POST'])
 def track():
-    complaint = None
-    not_found = False
-    
     ref = request.args.get('ref') or (request.form.get('ref') if request.method == 'POST' else None)
     identifier = request.args.get('identifier') or (request.form.get('identifier') if request.method == 'POST' else None)
-    
-    if ref:
-        ref = ref.strip().upper()
-        query = Complaint.query.filter_by(complaint_ref=ref)
-        
-        # Privacy verification if phone/email provided
-        if identifier:
-            identifier = identifier.strip().lower()
-            complaint_obj = query.first()
-            if complaint_obj and complaint_obj.citizen:
-                citizen = complaint_obj.citizen
-                if citizen.email.lower() == identifier or citizen.mobile_number.endswith(identifier[-4:]):
-                    complaint = complaint_obj
-                else:
-                    not_found = True
-            else:
-                not_found = True
-        else:
-            complaint = query.first()
-            if not complaint:
-                not_found = True
-                
-    stages = get_complaint_9_stage_timeline(complaint) if complaint else []
-    return render_template('public/track.html', complaint=complaint, not_found=not_found, search_ref=ref, stages=stages)
+    complaint, not_found, clean_ref, stages = lookup_tracked_complaint(ref, identifier)
+    return render_template('public/track.html', complaint=complaint, not_found=not_found, search_ref=clean_ref, stages=stages)
 
 @public_bp.route('/contact', methods=['GET', 'POST'])
 def contact():
