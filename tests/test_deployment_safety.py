@@ -96,6 +96,16 @@ class DeploymentSafetyTestCase(unittest.TestCase):
             self.assertIsNone(alias_err)
             self.assertTrue(alias_uri.startswith('mysql+pymysql://produser:'))
             self.assertIn('mysql.prod.example.com:3306/civic_prod', alias_uri)
+
+            # TiDB Cloud hosts automatically configure verified TLS SSLContext/CA bundle
+            os.environ['MYSQL_HOST'] = 'gateway01.ap-northeast-1.prod.aws.tidbcloud.com'
+            os.environ['MYSQL_PORT'] = '4000'
+            os.environ['MYSQL_USER'] = '3VU8S6nsR1b1myA.root'
+            os.environ['MYSQL_PASSWORD'] = 'SecretPass@123'
+            os.environ['MYSQL_DATABASE'] = 'smart_civic_complaints'
+            _, tidb_uri, tidb_opts, *_ = _build_database_config()
+            self.assertIn(':4000/smart_civic_complaints', tidb_uri)
+            self.assertIn('ssl', tidb_opts['connect_args'])
         finally:
             os.environ.clear()
             os.environ.update(orig_env)

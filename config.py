@@ -1,4 +1,5 @@
 import os
+import ssl
 import sys
 from datetime import timedelta
 from urllib.parse import quote_plus, urlparse, parse_qs, urlencode, urlunparse
@@ -112,10 +113,39 @@ def _build_database_config():
         connect_args = {
             'connect_timeout': int(os.environ.get('DB_CONNECT_TIMEOUT', 10))
         }
+        lower_uri = uri.lower()
+        needs_cloud_tls = (
+            ssl_required
+            or bool(ssl_ca)
+            or any(h in lower_uri for h in ('tidbcloud.com', 'aivencloud.com', 'psdb.cloud', 'planetscale', 'sky-sql'))
+        )
         if ssl_ca:
-            connect_args['ssl'] = {'ca': ssl_ca}
-        elif ssl_required:
-            connect_args['ssl'] = {'ssl_mode': 'PREFERRED'}
+            connect_args['ssl'] = {'ca': ssl_ca, 'check_hostname': True, 'verify_mode': True}
+        elif needs_cloud_tls:
+            resolved_ca = None
+            for candidate in (
+                '/etc/ssl/certs/ca-certificates.crt',
+                '/etc/ssl/cert.pem',
+                '/etc/pki/tls/certs/ca-bundle.crt',
+            ):
+                if os.path.isfile(candidate):
+                    resolved_ca = candidate
+                    break
+            if not resolved_ca:
+                try:
+                    import certifi
+                    resolved_ca = certifi.where()
+                except Exception:
+                    resolved_ca = None
+            if resolved_ca:
+                connect_args['ssl'] = {'ca': resolved_ca, 'check_hostname': True, 'verify_mode': True}
+            else:
+                ctx = ssl.create_default_context()
+                if hasattr(ssl, 'VERIFY_X509_STRICT'):
+                    ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
+                ctx.check_hostname = True
+                ctx.verify_mode = ssl.CERT_REQUIRED
+                connect_args['ssl'] = ctx
 
         engine_options = {
             'pool_recycle': int(os.environ.get('DB_POOL_RECYCLE', 280)),
