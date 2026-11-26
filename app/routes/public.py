@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, g, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, g, jsonify, current_app
 from app import db
 from app.models.department import Department
 from app.models.category import ComplaintCategory
@@ -10,11 +10,22 @@ from app.models.contact import ContactMessage
 from app.services.complaint_service import get_complaint_9_stage_timeline, get_complaint_aggregate_counts
 from app.services.notification_service import notify_admins
 from app.utils.decorators import _is_api_or_ajax
+from app.utils.ttl_cache import app_cache
 
 public_bp = Blueprint('public', __name__)
 
 @public_bp.route('/')
 def index():
+    use_cache = not current_app.config.get('TESTING')
+    cached = app_cache.get('public:index') if use_cache else None
+    if cached is not None:
+        return render_template(
+            'public/index.html',
+            departments=cached['departments'],
+            categories=cached['categories'],
+            stats=cached['stats']
+        )
+
     departments = Department.query.filter_by(is_active=True).all()
     categories = ComplaintCategory.query.filter_by(is_active=True).limit(8).all()
     
@@ -33,7 +44,11 @@ def index():
         'departments': active_departments,
         'rating': avg_rating
     }
-    
+    if use_cache:
+        dept_snap = [{'id': d.id, 'name': d.name, 'code': d.code, 'description': d.description, 'contact_email': d.contact_email, 'contact_phone': d.contact_phone} for d in departments]
+        cat_snap = [{'id': c.id, 'name': c.name, 'description': c.description, 'default_priority': c.default_priority, 'sla_hours': c.sla_hours} for c in categories]
+        app_cache.set('public:index', {'departments': dept_snap, 'categories': cat_snap, 'stats': stats}, ttl_seconds=30)
+
     return render_template(
         'public/index.html',
         departments=departments,
@@ -43,7 +58,12 @@ def index():
 
 @public_bp.route('/about')
 def about():
-    departments_count = Department.query.filter_by(is_active=True).count()
+    use_cache = not current_app.config.get('TESTING')
+    departments_count = app_cache.get('public:dept_count') if use_cache else None
+    if departments_count is None:
+        departments_count = Department.query.filter_by(is_active=True).count()
+        if use_cache:
+            app_cache.set('public:dept_count', departments_count, ttl_seconds=60)
     return render_template('public/about.html', departments_count=departments_count)
 
 @public_bp.route('/how-it-works')
@@ -52,7 +72,15 @@ def how_it_works():
 
 @public_bp.route('/departments')
 def departments():
-    dept_list = Department.query.filter_by(is_active=True).all()
+    use_cache = not current_app.config.get('TESTING')
+    dept_list = app_cache.get('public:departments') if use_cache else None
+    if dept_list is None:
+        rows = Department.query.filter_by(is_active=True).all()
+        if use_cache:
+            dept_list = [{'id': d.id, 'name': d.name, 'code': d.code, 'description': d.description, 'contact_email': d.contact_email, 'contact_phone': d.contact_phone} for d in rows]
+            app_cache.set('public:departments', dept_list, ttl_seconds=60)
+        else:
+            dept_list = rows
     return render_template('public/departments.html', departments=dept_list)
 
 @public_bp.route('/track', methods=['GET', 'POST'])

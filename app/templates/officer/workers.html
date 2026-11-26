@@ -460,9 +460,10 @@
 
         const submitBtn = form.querySelector('button[type="submit"]');
         if (submitBtn) submitBtn.disabled = true;
+        if (window.showPageLoader) window.showPageLoader('Saving...');
 
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 55000);
+        const timer = setTimeout(() => controller.abort(), 25000);
         try {
           const actionUrl = window.getApiUrl ? window.getApiUrl(form.getAttribute('action')) : form.getAttribute('action');
           const res = await fetch(actionUrl, {
@@ -478,6 +479,7 @@
           clearTimeout(timer);
           const data = await res.json().catch(() => null);
           if (res.ok && data && data.success) {
+            window.__sccmtPauseLiveSyncUntil = Date.now() + 8000;
             if (window.closeModal) window.closeModal(modalId);
             if (window.showToast && data.message) window.showToast(data.message, 'success');
             if (window.refreshDashboardContent) {
@@ -510,6 +512,7 @@
             window.showToast(msg, 'error');
           }
         } finally {
+          if (window.hidePageLoader) window.hidePageLoader();
           if (submitBtn) submitBtn.disabled = false;
         }
       });

@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!document.hidden) {
         pollLiveUpdatesOnce(false);
       }
-    }, isVercelProxied ? 15000 : 10000);
+    }, isVercelProxied ? 30000 : 12000);
   }
 
   function stopFallbackPolling() {
@@ -448,12 +448,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (hasAuthSession) {
-    // Defer initial background live-sync slightly so critical page interactions are never queued behind it
+    // Defer initial background live-sync so initial page load & interactions never queue behind it
     setTimeout(() => {
       pollLiveUpdatesOnce(true).then(() => {
         connectSSE();
       });
-    }, 900);
+    }, 2500);
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {

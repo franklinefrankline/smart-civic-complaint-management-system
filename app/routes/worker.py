@@ -356,7 +356,7 @@ def task_detail(complaint_id):
 
     history = complaint.status_history.all()
     attachments = complaint.attachments.all()
-    stages = get_complaint_9_stage_timeline(complaint)
+    stages = get_complaint_9_stage_timeline(complaint, history=history)
     return render_template(
         'worker/task_detail.html',
         complaint=complaint,

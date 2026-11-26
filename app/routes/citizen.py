@@ -180,7 +180,7 @@ def complaint_detail(complaint_id):
     history = complaint.status_history.all()
     attachments = complaint.attachments.all()
     existing_feedback = Feedback.query.filter_by(complaint_id=complaint.id).first()
-    stages = get_complaint_9_stage_timeline(complaint)
+    stages = get_complaint_9_stage_timeline(complaint, history=history)
     
     return render_template(
         'citizen/complaint_detail.html',

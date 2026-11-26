@@ -19,7 +19,7 @@ class ComplaintAttachment(db.Model):
     file_path = db.Column(db.String(255), nullable=False)
     file_size = db.Column(db.Integer, nullable=True)
     mime_type = db.Column(db.String(100), nullable=True)
-    file_data = db.Column(db.LargeBinary().with_variant(LONGBLOB, 'mysql'), nullable=True)
+    file_data = db.deferred(db.Column(db.LargeBinary().with_variant(LONGBLOB, 'mysql'), nullable=True))
     remarks = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

@@ -615,14 +615,17 @@ def officer_verify_work(complaint, officer_user, action, remarks, rework_reason=
         
     return complaint
 
-def get_complaint_9_stage_timeline(complaint):
+def get_complaint_9_stage_timeline(complaint, history=None):
     """
     LEVEL 6: Build structured 9-stage civic redressal timeline
     """
     if not complaint:
         return []
 
-    history = complaint.status_history.order_by(ComplaintStatusHistory.created_at.asc()).all()
+    if history is None:
+        history = complaint.status_history.order_by(ComplaintStatusHistory.created_at.asc()).all()
+    else:
+        history = sorted(history, key=lambda h: (h.created_at or datetime.min, h.id or 0))
     status_map = {h.new_status: h for h in history}
 
     # 1. Complaint Submitted
@@ -823,6 +826,7 @@ def build_admin_analytics_payload():
     uncategorized_count = 0
 
     total = len(complaint_rows)
+    submitted_count = 0
     pending_count = 0
     in_progress_count = 0
     resolved_count = 0
@@ -837,6 +841,8 @@ def build_admin_analytics_payload():
             bucket = unassigned_bucket
 
         bucket['total'] += 1
+        if status == 'Submitted':
+            submitted_count += 1
         if status in PENDING_STATUSES:
             pending_count += 1
             bucket['pending'] += 1
@@ -888,6 +894,7 @@ def build_admin_analytics_payload():
     return {
         'summary': {
             'total': total,
+            'submitted': submitted_count,
             'pending': pending_count,
             'in_progress': in_progress_count,
             'resolved': resolved_count,

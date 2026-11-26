@@ -1,7 +1,8 @@
 import io
 import csv
+import time
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g, Response, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g, Response, jsonify, current_app
 from sqlalchemy.orm import joinedload
 from app import db
 from app.models.complaint import Complaint
@@ -48,9 +49,17 @@ def _escalated_or_overdue_expr(now=None):
     )
 
 
-def _sync_overdue_escalations():
+_LAST_SLA_SWEEP_TS = 0.0
+
+
+def _sync_overdue_escalations(force=False):
+    global _LAST_SLA_SWEEP_TS
+    now_mono = time.monotonic()
+    if not force and not current_app.config.get('TESTING') and (now_mono - _LAST_SLA_SWEEP_TS) < 60.0:
+        return
     try:
         check_and_escalate_overdue_complaints()
+        _LAST_SLA_SWEEP_TS = now_mono
     except Exception:
         db.session.rollback()
 
@@ -258,7 +267,7 @@ def complaint_detail(complaint_id):
     history = complaint.status_history.all()
     attachments = complaint.attachments.all()
     workers = Worker.query.filter_by(department_id=dept_id, is_available=True).options(joinedload(Worker.user)).all()
-    stages = get_complaint_9_stage_timeline(complaint)
+    stages = get_complaint_9_stage_timeline(complaint, history=history)
         
     return render_template(
         'officer/complaint_detail.html',
@@ -724,7 +733,7 @@ def verification():
 
 @officer_bp.route('/escalations')
 def escalations():
-    _sync_overdue_escalations()
+    _sync_overdue_escalations(force=True)
     return _render_officer_queue(
         _escalated_or_overdue_expr(),
         page_title='Escalated Department Complaints',

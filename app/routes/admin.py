@@ -38,9 +38,6 @@ def before_request():
 
 @admin_bp.route('/dashboard')
 def dashboard():
-    # Single SQL aggregate for all complaint dashboard KPIs (replaces 8 COUNT queries)
-    counts = get_complaint_aggregate_counts()
-
     # Single SQL aggregate for citizen count and pending password resets
     user_row = db.session.query(
         func.sum(case((User.role == 'citizen', 1), else_=0)).label('citizens'),
@@ -65,6 +62,7 @@ def dashboard():
     )
 
     analytics = build_admin_analytics_payload()
+    summary = analytics['summary']
     dept_labels = [r['name'] for r in analytics['dept_rows']]
     dept_complaint_counts = [r['total'] for r in analytics['dept_rows']]
     cat_labels = analytics['cat_labels'] if analytics['cat_labels'] else analytics['all_cat_labels'][:6]
@@ -72,13 +70,13 @@ def dashboard():
 
     stats = {
         'citizens': int(user_row.citizens or 0),
-        'total': counts['total'],
-        'new': counts['submitted'],
-        'pending': counts['pending'],
-        'in_progress': counts['in_progress'],
-        'resolved': counts['resolved'],
-        'rejected': counts['rejected'],
-        'overdue': counts['overdue'],
+        'total': summary['total'],
+        'new': summary['submitted'],
+        'pending': summary['pending'],
+        'in_progress': summary['in_progress'],
+        'resolved': summary['resolved'],
+        'rejected': summary['rejected'],
+        'overdue': summary['overdue'],
         'pending_password_resets': int(user_row.resets or 0)
     }
 
@@ -87,7 +85,7 @@ def dashboard():
         'dept_counts': dept_complaint_counts,
         'cat_labels': cat_labels,
         'cat_counts': cat_counts,
-        'status_counts': [counts['pending'], counts['in_progress'], counts['resolved'], counts['rejected']]
+        'status_counts': [summary['pending'], summary['in_progress'], summary['resolved'], summary['rejected']]
     }
 
     new_complaints_queue = (
@@ -105,7 +103,10 @@ def dashboard():
     )
 
     contact_messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).limit(20).all()
-    unread_contact_count = ContactMessage.query.filter_by(is_read=False).count()
+    if len(contact_messages) < 20:
+        unread_contact_count = sum(1 for m in contact_messages if not m.is_read)
+    else:
+        unread_contact_count = ContactMessage.query.filter_by(is_read=False).count()
 
     return render_template(
         'admin/dashboard.html',
@@ -272,7 +273,7 @@ def complaint_detail(complaint_id):
     departments = Department.query.filter_by(is_active=True).all()
     officers = User.query.filter_by(role='officer', is_active=True).options(joinedload(User.department)).all()
     workers = Worker.query.filter_by(is_available=True).options(joinedload(Worker.user), joinedload(Worker.department)).all()
-    stages = get_complaint_9_stage_timeline(complaint)
+    stages = get_complaint_9_stage_timeline(complaint, history=history)
         
     return render_template(
         'admin/complaint_detail.html',

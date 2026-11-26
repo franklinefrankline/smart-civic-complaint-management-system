@@ -190,7 +190,7 @@ def trigger_sla_check():
 
 
 def _build_user_live_snapshot(user_id, role, department_id, since_notif_id=None):
-    """Build strictly user/role-scoped real-time snapshot from the database."""
+    """Build strictly user/role-scoped real-time snapshot using combined SQL aggregates."""
     query = Complaint.query
 
     if role == 'officer' and department_id:
@@ -212,21 +212,26 @@ def _build_user_live_snapshot(user_id, role, department_id, since_notif_id=None)
     total_row = query.with_entities(
         func.count(Complaint.id).label('total'),
         func.sum(case((Complaint.status.in_(PENDING_STATUSES), 1), else_=0)).label('pending'),
+        func.max(Complaint.id).label('latest_id'),
+        func.max(Complaint.updated_at).label('latest_updated'),
     ).one()
     total_count = int(total_row.total or 0)
     pending_count = int(total_row.pending or 0)
-    latest = query.order_by(Complaint.updated_at.desc(), Complaint.id.desc()).first()
-    latest_id = latest.id if latest else 0
-    latest_updated = latest.updated_at.isoformat() if latest and latest.updated_at else ''
+    latest_id = int(total_row.latest_id or 0)
+    latest_updated = total_row.latest_updated.isoformat() if total_row.latest_updated else ''
 
-    unread_notifs = Notification.query.filter_by(user_id=user_id, is_read=False).count()
-    latest_notif = (
-        Notification.query.filter_by(user_id=user_id)
-        .order_by(Notification.id.desc())
-        .first()
+    notif_agg = (
+        db.session.query(
+            func.sum(case((Notification.is_read == False, 1), else_=0)).label('unread'),
+            func.max(Notification.id).label('latest_notif_id'),
+        )
+        .filter(Notification.user_id == user_id)
+        .one()
     )
-    latest_notif_id = latest_notif.id if latest_notif else 0
+    unread_notifs = int(notif_agg.unread or 0)
+    latest_notif_id = int(notif_agg.latest_notif_id or 0)
 
+    latest_notif = None
     new_notifications = []
     if since_notif_id is not None and latest_notif_id > since_notif_id:
         missed = (
@@ -239,6 +244,10 @@ def _build_user_live_snapshot(user_id, role, department_id, since_notif_id=None)
             .all()
         )
         new_notifications = [n.to_dict() for n in missed]
+        if missed:
+            latest_notif = missed[-1]
+    elif latest_notif_id > 0:
+        latest_notif = db.session.get(Notification, latest_notif_id)
 
     fingerprint = f"{total_count}:{pending_count}:{latest_id}:{latest_updated}"
     return {

@@ -434,6 +434,27 @@ class ProductionReadinessTestCase(unittest.TestCase):
         self.assertNotIn('@keyframes btnSpinner', css)
         self.assertNotIn('.global-page-loader', css)
 
+    def test_ttl_cache_invalidation_and_live_snapshot_queries(self):
+        from app.utils.ttl_cache import TTLCache
+        cache = TTLCache(max_entries=8)
+        cache.set('public:index', {'ok': True}, ttl_seconds=30)
+        self.assertEqual(cache.get('public:index'), {'ok': True})
+        cache.invalidate_prefix('public:')
+        self.assertIsNone(cache.get('public:index'))
+
+        from app.services.complaint_service import build_admin_analytics_payload
+        payload = build_admin_analytics_payload()
+        self.assertIn('submitted', payload['summary'])
+
+        client = self.app.test_client()
+        login_res = client.post('/auth/login', data={'login_id': 'admin@prod.gov', 'password': 'Admin@123'})
+        self.assertEqual(login_res.status_code, 302)
+        snap = client.get('/api/live-updates')
+        self.assertEqual(snap.status_code, 200)
+        snap_json = snap.get_json()
+        self.assertIn('fingerprint', snap_json)
+        self.assertIn('unread_notifications', snap_json)
+
     def test_admin_analytics_empty_and_populated_metrics(self):
         a_client = self.app.test_client()
         self.assertEqual(

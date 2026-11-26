@@ -1,5 +1,6 @@
 from functools import wraps
 from flask import session, redirect, url_for, flash, request, g, jsonify
+from sqlalchemy.orm import joinedload
 from app import db
 from app.models.user import User
 
@@ -28,7 +29,12 @@ def login_required(f):
             flash("Please sign in to access this page.", "warning")
             return redirect(url_for('auth.login', next=_relative_next_path()))
 
-        user = db.session.get(User, user_id)
+        user = (
+            db.session.query(User)
+            .options(joinedload(User.department))
+            .filter_by(id=user_id)
+            .first()
+        )
         if not user or not user.is_active:
             session.clear()
             if _is_api_or_ajax():
@@ -56,24 +62,28 @@ def role_required(*allowed_roles):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            user_id = session.get('user_id')
-            if not user_id:
-                if _is_api_or_ajax():
-                    return jsonify({'success': False, 'message': 'Authentication required.'}), 401
-                flash("Please sign in to access this section.", "warning")
-                return redirect(url_for('auth.login', next=_relative_next_path()))
+            user = getattr(g, 'user', None)
+            if user is None:
+                user_id = session.get('user_id')
+                if not user_id:
+                    if _is_api_or_ajax():
+                        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+                    flash("Please sign in to access this section.", "warning")
+                    return redirect(url_for('auth.login', next=_relative_next_path()))
 
-            cached_user = getattr(g, 'user', None)
-            if cached_user is not None and getattr(cached_user, 'id', None) == user_id and cached_user.is_active:
-                user = cached_user
-            else:
-                user = db.session.get(User, user_id)
+                user = (
+            db.session.query(User)
+            .options(joinedload(User.department))
+            .filter_by(id=user_id)
+            .first()
+        )
                 if not user or not user.is_active:
                     session.clear()
                     if _is_api_or_ajax():
                         return jsonify({'success': False, 'message': 'Account inactive or unavailable.'}), 401
                     flash("Your account is inactive. Please contact support.", "danger")
                     return redirect(url_for('auth.login'))
+
                 g.user = user
 
             if user.role not in allowed_roles:

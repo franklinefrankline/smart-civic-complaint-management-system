@@ -404,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (window.showPageLoader) window.showPageLoader('Processing request...');
         const controller = new AbortController();
-        const reqTimeout = setTimeout(() => controller.abort(), 55000);
+        const reqTimeout = setTimeout(() => controller.abort(), 25000);
         let actionSucceeded = false;
         let responseData = null;
         try {
@@ -438,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           actionSucceeded = true;
           responseData = data;
-          window.__sccmtPauseLiveSyncUntil = Date.now() + 3500;
+          window.__sccmtPauseLiveSyncUntil = Date.now() + (data.reload_sections ? 10000 : 3500);
 
           if (window.showToast && data.message) {
             window.showToast(data.message, 'success');
@@ -462,7 +462,11 @@ document.addEventListener('DOMContentLoaded', () => {
               el.textContent = String(data.priority).toUpperCase();
             });
           } else if (data.reload_sections && window.refreshDashboardContent) {
-            // Non-fatal UI refresh: never overwrite a succeeded POST with a false timeout error
+            // Unlock button & hide loader right after POST succeeds; refresh DOM cleanly with short timeout
+            if (submitBtn && submitBtn.isConnected) {
+              submitBtn.classList.remove('btn-loading');
+              submitBtn.disabled = false;
+            }
             try {
               await window.refreshDashboardContent();
             } catch (refreshErr) {
@@ -489,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.classList.remove('btn-loading');
             submitBtn.disabled = false;
           }
-          if (actionSucceeded && responseData) {
+          if (actionSucceeded && responseData && !responseData.reload_sections) {
             window.dispatchEvent(new CustomEvent('sccmt:action-synced', { detail: responseData }));
           }
         }
@@ -558,27 +562,51 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 8. Global Loader & Background Dashboard Section Refresh
+  let loaderDelayTimer = null;
   let loaderAutoHideTimer = null;
-  window.showPageLoader = function(message) {
+  window.showPageLoader = function(message, delayMs) {
     const loader = document.getElementById('globalPageLoader');
     if (!loader) return;
     const textEl = document.getElementById('globalLoaderText');
     if (textEl) textEl.textContent = message || 'Loading...';
-    loader.classList.add('is-active');
-    loader.setAttribute('aria-hidden', 'false');
-    clearTimeout(loaderAutoHideTimer);
-    loaderAutoHideTimer = setTimeout(() => {
-      if (window.hidePageLoader) window.hidePageLoader();
-    }, 25000);
+
+    const activate = () => {
+      loader.classList.add('is-active');
+      loader.setAttribute('aria-hidden', 'false');
+      clearTimeout(loaderAutoHideTimer);
+      loaderAutoHideTimer = setTimeout(() => {
+        if (window.hidePageLoader) window.hidePageLoader();
+      }, 25000);
+    };
+
+    clearTimeout(loaderDelayTimer);
+    const delay = typeof delayMs === 'number' ? delayMs : 80;
+    if (delay > 0) {
+      loaderDelayTimer = setTimeout(activate, delay);
+    } else {
+      activate();
+    }
   };
 
   window.hidePageLoader = function() {
+    clearTimeout(loaderDelayTimer);
     clearTimeout(loaderAutoHideTimer);
     const loader = document.getElementById('globalPageLoader');
     if (!loader) return;
     loader.classList.remove('is-active');
     loader.setAttribute('aria-hidden', 'true');
   };
+
+  // Warm-cache loader.gif quietly after initial page paint so it never blocks first render
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      const loaderImg = document.querySelector('#globalPageLoader img.global-loader-gif');
+      if (loaderImg && loaderImg.src) {
+        const pre = new Image();
+        pre.src = loaderImg.src;
+      }
+    }, 600);
+  }, { once: true });
   let activeRefreshController = null;
   let activeRefreshSuperseded = false;
   window.refreshDashboardContent = async function(targetUrl) {
@@ -594,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const controller = new AbortController();
     activeRefreshController = controller;
     activeRefreshSuperseded = false;
-    const timeoutId = setTimeout(() => controller.abort(), 35000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     const fetchUrl = targetUrl || window.location.href;
     const prevScrollTop = dashContent.scrollTop;
     const prevWinY = window.scrollY;

@@ -2,10 +2,18 @@ import os
 from flask import Flask, session, g, render_template, request, jsonify, Response, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.middleware.proxy_fix import ProxyFix
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, text, event
+from sqlalchemy.orm import joinedload, Session
 from config import config_by_name, BASE_DIR
 
 db = SQLAlchemy()
+
+from app.utils.ttl_cache import app_cache
+
+
+@event.listens_for(Session, 'after_commit')
+def _invalidate_cache_on_commit(session):
+    app_cache.invalidate_prefix()
 
 
 def _run_safe_schema_migrations(app):
@@ -314,18 +322,33 @@ def create_app(config_name=None):
         unread_notifications_count = 0
         if user is None and user_id:
             try:
-                user = db.session.get(User, user_id)
+                user = (
+                    db.session.query(User)
+                    .options(joinedload(User.department))
+                    .filter_by(id=user_id)
+                    .first()
+                )
+                if user is not None:
+                    g.user = user
             except Exception:
                 db.session.rollback()
                 user = None
 
         if user:
-            try:
-                unread_notifications_count = Notification.query.filter_by(
-                    user_id=user.id, is_read=False
-                ).count()
-            except Exception:
-                db.session.rollback()
+            cache_key = f"notif:unread:{user.id}"
+            use_cache = not app.config.get('TESTING')
+            cached_count = app_cache.get(cache_key) if use_cache else None
+            if cached_count is not None:
+                unread_notifications_count = cached_count
+            else:
+                try:
+                    unread_notifications_count = Notification.query.filter_by(
+                        user_id=user.id, is_read=False
+                    ).count()
+                    if use_cache:
+                        app_cache.set(cache_key, unread_notifications_count, ttl_seconds=15)
+                except Exception:
+                    db.session.rollback()
 
         def t(key, default=None):
             return get_translation(key, current_lang, default)

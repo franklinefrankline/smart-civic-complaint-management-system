@@ -1,7 +1,37 @@
 from datetime import datetime
+from flask import current_app
 from app import db
 from app.models.notification import Notification
 from app.models.user import User
+from app.utils.ttl_cache import app_cache
+
+
+def _get_active_admin_ids():
+    use_cache = bool(current_app and not current_app.config.get('TESTING'))
+    if use_cache:
+        cached = app_cache.get('notif:admin_ids')
+        if cached is not None:
+            return cached
+    ids = [r[0] for r in db.session.query(User.id).filter_by(role='admin', is_active=True).all()]
+    if use_cache:
+        app_cache.set('notif:admin_ids', ids, ttl_seconds=120)
+    return ids
+
+
+def _get_dept_officer_ids(department_id):
+    use_cache = bool(current_app and not current_app.config.get('TESTING'))
+    key = f'notif:dept_officers:{department_id}'
+    if use_cache:
+        cached = app_cache.get(key)
+        if cached is not None:
+            return cached
+    ids = [
+        r[0]
+        for r in db.session.query(User.id).filter_by(role='officer', department_id=department_id, is_active=True).all()
+    ]
+    if use_cache:
+        app_cache.set(key, ids, ttl_seconds=120)
+    return ids
 
 
 def create_notification(user_id, title, message, link=None, notification_type='info', complaint_id=None, commit=True):
@@ -26,7 +56,7 @@ def create_notification(user_id, title, message, link=None, notification_type='i
 
 def notify_admins(title, message, link=None, notification_type='admin_alert', complaint_id=None, commit=True):
     """Broadcast notification to all active administrators in a single batch insert."""
-    admin_ids = [r[0] for r in db.session.query(User.id).filter_by(role='admin', is_active=True).all()]
+    admin_ids = _get_active_admin_ids()
     if not admin_ids:
         return []
     notifs = [
@@ -52,10 +82,7 @@ def notify_admins(title, message, link=None, notification_type='admin_alert', co
 
 def notify_department_officers(department_id, title, message, link=None, notification_type='dept_alert', complaint_id=None, commit=True):
     """Broadcast notification to all officers belonging to a department in a single batch insert."""
-    officer_ids = [
-        r[0]
-        for r in db.session.query(User.id).filter_by(role='officer', department_id=department_id, is_active=True).all()
-    ]
+    officer_ids = _get_dept_officer_ids(department_id)
     if not officer_ids:
         return []
     notifs = [
