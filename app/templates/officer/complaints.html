@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Department Complaints | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ page_title or 'Department Complaints' }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -10,10 +10,10 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
       <div>
         <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
-          Department Complaint Queue
+          {{ page_title or 'Department Complaint Queue' }}
         </h1>
         <p style="color: var(--text-muted); font-size: 0.92rem;">
-          All grievances assigned to {{ current_user.department.name if current_user.department else 'your department' }}.
+          {{ page_subtitle or ('All grievances assigned to ' ~ (current_user.department.name if current_user.department else 'your department') ~ '.') }}
         </p>
       </div>
 
@@ -24,9 +24,10 @@
 
     <!-- Filter Bar -->
     <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
-      <form method="GET" action="{{ url_for('officer.complaints') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-        <input type="text" name="search" class="form-control" placeholder="Search reference, citizen, title..." value="{{ search_query }}" style="flex: 2; min-width: 200px;">
+      <form method="GET" action="{{ filter_action or url_for('officer.complaints') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <input type="text" name="search" class="form-control" placeholder="Search reference, citizen, title..." value="{{ search_query or '' }}" style="flex: 2; min-width: 200px;">
         
+        {% if show_status_filter is not defined or show_status_filter %}
         <select name="status" class="form-control" style="flex: 1; min-width: 140px;">
           <option value="">All Statuses</option>
           <option value="Submitted" {% if current_status == 'Submitted' %}selected{% endif %}>Submitted</option>
@@ -40,9 +41,11 @@
           <option value="Work Completed" {% if current_status == 'Work Completed' %}selected{% endif %}>Work Completed</option>
           <option value="Verification Pending" {% if current_status == 'Verification Pending' %}selected{% endif %}>Verification Pending</option>
           <option value="Rework Required" {% if current_status == 'Rework Required' %}selected{% endif %}>Rework Required</option>
+          <option value="Escalated" {% if current_status == 'Escalated' %}selected{% endif %}>Escalated</option>
           <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>Resolved</option>
           <option value="Rejected" {% if current_status == 'Rejected' %}selected{% endif %}>Rejected</option>
         </select>
+        {% endif %}
 
         <select name="priority" class="form-control" style="flex: 1; min-width: 120px;">
           <option value="">All Priorities</option>
@@ -53,7 +56,7 @@
         </select>
 
         <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-        <a href="{{ url_for('officer.complaints') }}" class="btn btn-secondary btn-sm">Reset</a>
+        <a href="{{ reset_url or url_for('officer.complaints') }}" class="btn btn-secondary btn-sm">Reset</a>
       </form>
     </div>
 
@@ -86,7 +89,7 @@
                 <td style="font-weight: 600; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                   {{ c.title }}
                 </td>
-                <td>{{ c.citizen.full_name }}</td>
+                <td>{{ c.citizen.full_name if c.citizen else 'Citizen' }}</td>
                 <td>
                   <span class="badge badge-priority-{{ c.priority }}">
                     {{ c.priority.upper() }}
@@ -104,6 +107,12 @@
                   <a href="{{ url_for('officer.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm">
                     Manage
                   </a>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2.5rem 1rem;">
+                  {{ empty_message or 'No complaints found in this queue.' }}
                 </td>
               </tr>
             {% endfor %}

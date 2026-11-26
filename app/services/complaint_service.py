@@ -726,6 +726,16 @@ def get_complaint_aggregate_counts(*filters):
     Compute complaint dashboard KPIs in a SINGLE SQL aggregate query instead of
     7-8 sequential COUNT(*) round-trips.
     """
+    now = datetime.utcnow()
+    overdue_expr = (
+        (Complaint.is_escalated == True)
+        | (Complaint.status == 'Escalated')
+        | (
+            Complaint.status.notin_(['Resolved', 'Rejected'])
+            & Complaint.sla_due_date.isnot(None)
+            & (Complaint.sla_due_date < now)
+        )
+    )
     row = (
         db.session.query(
             func.count(Complaint.id).label('total'),
@@ -740,7 +750,7 @@ def get_complaint_aggregate_counts(*filters):
             func.sum(case((Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES + ['Resolved']), 1), else_=0)).label('worker_completed'),
             func.sum(case((Complaint.status == 'Resolved', 1), else_=0)).label('resolved'),
             func.sum(case((Complaint.status == 'Rejected', 1), else_=0)).label('rejected'),
-            func.sum(case(((Complaint.is_escalated == True) | (Complaint.status == 'Escalated'), 1), else_=0)).label('overdue'),
+            func.sum(case((overdue_expr, 1), else_=0)).label('overdue'),
         )
         .filter(*filters)
         .one()

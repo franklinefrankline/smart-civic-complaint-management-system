@@ -13,8 +13,10 @@ from app.services.complaint_service import (
     officer_verify_work,
     get_complaint_9_stage_timeline,
     get_complaint_aggregate_counts,
+    COMPLETED_PENDING_VERIF_STATUSES,
     IN_PROGRESS_STATUSES,
 )
+from app.services.sla_service import check_and_escalate_overdue_complaints
 from app.services.audit_service import log_action
 from app.utils.decorators import login_required, role_required, _is_api_or_ajax
 from app.utils.helpers import validate_email, validate_mobile_number
@@ -27,6 +29,96 @@ officer_bp = Blueprint('officer', __name__)
 def before_request():
     pass
 
+def _officer_dept_scope_filter(dept_id):
+    return (Complaint.department_id == dept_id) & (
+        (Complaint.assigned_officer_id == g.user.id) | (Complaint.assigned_officer_id.is_(None))
+    )
+
+
+def _escalated_or_overdue_expr(now=None):
+    now = now or datetime.utcnow()
+    return (
+        (Complaint.is_escalated == True)
+        | (Complaint.status == 'Escalated')
+        | (
+            Complaint.status.notin_(['Resolved', 'Rejected'])
+            & Complaint.sla_due_date.isnot(None)
+            & (Complaint.sla_due_date < now)
+        )
+    )
+
+
+def _sync_overdue_escalations():
+    try:
+        check_and_escalate_overdue_complaints()
+    except Exception:
+        db.session.rollback()
+
+
+def _render_officer_queue(
+    extra_filter=None,
+    *,
+    page_title='Department Complaint Queue',
+    page_subtitle=None,
+    default_status=None,
+    allow_status_filter=True,
+    order_clauses=None,
+    filter_action=None,
+    reset_url=None,
+    empty_message=None,
+):
+    dept_id = g.user.department_id
+    if dept_id:
+        query = (
+            Complaint.query.filter(_officer_dept_scope_filter(dept_id))
+            .options(joinedload(Complaint.category), joinedload(Complaint.citizen), joinedload(Complaint.assigned_worker))
+        )
+        if extra_filter is not None:
+            query = query.filter(extra_filter)
+    else:
+        query = Complaint.query.filter_by(id=-1)
+
+    search = request.args.get('search', '').strip()
+    if search:
+        query = query.filter(
+            (Complaint.complaint_ref.ilike(f'%{search}%')) |
+            (Complaint.title.ilike(f'%{search}%')) |
+            (Complaint.description.ilike(f'%{search}%'))
+        )
+
+    status = request.args.get('status') if allow_status_filter else default_status
+    if allow_status_filter and status:
+        if status == 'Escalated':
+            query = query.filter(_escalated_or_overdue_expr())
+        elif status in COMPLETED_PENDING_VERIF_STATUSES:
+            query = query.filter(Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES))
+        else:
+            query = query.filter_by(status=status)
+
+    priority = request.args.get('priority')
+    if priority:
+        query = query.filter_by(priority=priority)
+
+    clauses = order_clauses or (Complaint.created_at.desc(),)
+    page = max(1, request.args.get('page', 1, type=int))
+    pagination = query.order_by(*clauses).paginate(page=page, per_page=25, error_out=False)
+
+    return render_template(
+        'officer/complaints.html',
+        complaints=pagination.items,
+        pagination=pagination,
+        current_status=status,
+        current_priority=priority,
+        search_query=search,
+        page_title=page_title,
+        page_subtitle=page_subtitle,
+        filter_action=filter_action or url_for('officer.complaints'),
+        reset_url=reset_url or url_for('officer.complaints'),
+        show_status_filter=allow_status_filter,
+        empty_message=empty_message,
+    )
+
+
 @officer_bp.route('/dashboard')
 def dashboard():
     dept_id = g.user.department_id
@@ -34,9 +126,8 @@ def dashboard():
         flash("You are not currently assigned to any civic department. Please contact an administrator.", "warning")
 
     if dept_id:
-        dept_filter = (Complaint.department_id == dept_id) & (
-            (Complaint.assigned_officer_id == g.user.id) | (Complaint.assigned_officer_id.is_(None))
-        )
+        _sync_overdue_escalations()
+        dept_filter = _officer_dept_scope_filter(dept_id)
         counts = get_complaint_aggregate_counts(dept_filter)
         recent_complaints = (
             Complaint.query.filter(dept_filter)
@@ -73,40 +164,9 @@ def dashboard():
 @officer_bp.route('/complaints', strict_slashes=False)
 @officer_bp.route('/complaint', strict_slashes=False)
 def complaints():
-    dept_id = g.user.department_id
-    query = (
-        Complaint.query.filter_by(department_id=dept_id)
-        .filter((Complaint.assigned_officer_id == g.user.id) | (Complaint.assigned_officer_id.is_(None)))
-        .options(joinedload(Complaint.category), joinedload(Complaint.citizen), joinedload(Complaint.assigned_worker))
-        if dept_id else Complaint.query.filter_by(id=-1)
-    )
-
-    search = request.args.get('search', '').strip()
-    if search:
-        query = query.filter(
-            (Complaint.complaint_ref.ilike(f'%{search}%')) |
-            (Complaint.title.ilike(f'%{search}%')) |
-            (Complaint.description.ilike(f'%{search}%'))
-        )
-
-    status = request.args.get('status')
-    if status:
-        query = query.filter_by(status=status)
-
-    priority = request.args.get('priority')
-    if priority:
-        query = query.filter_by(priority=priority)
-
-    page = max(1, request.args.get('page', 1, type=int))
-    pagination = query.order_by(Complaint.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
-
-    return render_template(
-        'officer/complaints.html',
-        complaints=pagination.items,
-        pagination=pagination,
-        current_status=status,
-        current_priority=priority,
-        search_query=search
+    return _render_officer_queue(
+        page_title='Department Complaint Queue',
+        empty_message='No complaints found matching the selected filters.',
     )
 
 @officer_bp.route('/complaints/<int:complaint_id>', methods=['GET', 'POST'], strict_slashes=False)
@@ -634,26 +694,48 @@ def reports():
 
 @officer_bp.route('/incoming')
 def incoming():
-    dept_id = g.user.department_id
-    query = Complaint.query.filter_by(department_id=dept_id).filter(
-        Complaint.status.in_(['Submitted', 'Assigned to Department'])
-    ) if dept_id else Complaint.query.filter_by(id=-1)
-    incoming_list = query.order_by(Complaint.created_at.desc()).all()
-    return render_template('officer/complaints.html', complaints=incoming_list, current_status='Assigned to Department', page_title='Incoming Complaints Requiring Review')
+    return _render_officer_queue(
+        Complaint.status.in_(['Submitted', 'Assigned to Department']),
+        page_title='Incoming Complaints Requiring Review',
+        page_subtitle='Newly submitted or admin-routed grievances awaiting department acceptance or worker dispatch.',
+        default_status='Assigned to Department',
+        allow_status_filter=False,
+        order_clauses=(Complaint.created_at.desc(),),
+        filter_action=url_for('officer.incoming'),
+        reset_url=url_for('officer.incoming'),
+        empty_message='No incoming complaints are currently awaiting department review.',
+    )
+
 
 @officer_bp.route('/verification')
 def verification():
-    dept_id = g.user.department_id
-    query = Complaint.query.filter_by(department_id=dept_id, status='Verification Pending') if dept_id else Complaint.query.filter_by(id=-1)
-    verif_list = query.order_by(Complaint.updated_at.desc()).all()
-    return render_template('officer/complaints.html', complaints=verif_list, current_status='Verification Pending', page_title='Work Verification Queue')
+    return _render_officer_queue(
+        Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES),
+        page_title='Work Verification Queue',
+        page_subtitle='Completed field work submitted by technicians awaiting your verification and resolution approval.',
+        default_status='Verification Pending',
+        allow_status_filter=False,
+        order_clauses=(Complaint.updated_at.desc(),),
+        filter_action=url_for('officer.verification'),
+        reset_url=url_for('officer.verification'),
+        empty_message='No completed tasks are currently awaiting work verification.',
+    )
+
 
 @officer_bp.route('/escalations')
 def escalations():
-    dept_id = g.user.department_id
-    query = Complaint.query.filter_by(department_id=dept_id).filter((Complaint.is_escalated == True) | (Complaint.status == 'Escalated')) if dept_id else Complaint.query.filter_by(id=-1)
-    esc_list = query.order_by(Complaint.created_at.asc()).all()
-    return render_template('officer/complaints.html', complaints=esc_list, current_status='Escalated', page_title='Escalated Department Complaints')
+    _sync_overdue_escalations()
+    return _render_officer_queue(
+        _escalated_or_overdue_expr(),
+        page_title='Escalated Department Complaints',
+        page_subtitle='SLA-overdue and administratively escalated complaints requiring immediate supervisor action.',
+        default_status='Escalated',
+        allow_status_filter=False,
+        order_clauses=(Complaint.escalated_at.asc(), Complaint.created_at.asc()),
+        filter_action=url_for('officer.escalations'),
+        reset_url=url_for('officer.escalations'),
+        empty_message='No escalated or overdue complaints in your department right now.',
+    )
 
 @officer_bp.route('/notifications')
 def notifications():
