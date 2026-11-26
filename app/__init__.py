@@ -225,13 +225,19 @@ def create_app(config_name=None):
                 db.session.execute(text('SELECT 1'))
                 db.create_all()
                 _run_safe_schema_migrations(app)
-                auto_seed = os.environ.get('AUTO_SEED', '').lower() == 'true'
-                if auto_seed or not app.config.get('IS_CLOUD'):
+                if os.environ.get('AUTO_SEED', '').strip().lower() != 'false':
                     from app.models.department import Department
                     from app.models.user import User
-                    if not Department.query.first() and not User.query.first():
-                        from app.services.seed_service import seed_all
-                        seed_all()
+                    from sqlalchemy.exc import IntegrityError
+                    has_departments = Department.query.first() is not None
+                    has_admin = User.query.filter_by(role='admin').first() is not None
+                    if not has_departments or not has_admin:
+                        try:
+                            from app.services.seed_service import seed_all
+                            seed_all()
+                        except IntegrityError:
+                            # Concurrent multi-worker startup already seeded initial records.
+                            db.session.rollback()
             except Exception as e:
                 import re as _re
                 db.session.rollback()

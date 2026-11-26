@@ -89,19 +89,22 @@ def _build_database_config():
         elif explicit_url.startswith('mysql2://'):
             explicit_url = explicit_url.replace('mysql2://', 'mysql+pymysql://', 1)
 
-        # Strip unsupported PyMySQL query args like ssl-mode / sslmode and enable SSL safely
-        parsed = urlparse(explicit_url)
-        query = parse_qs(parsed.query, keep_blank_values=True)
-        for ssl_key in ('ssl-mode', 'ssl_mode', 'sslmode'):
-            if ssl_key in query:
-                val = (query.pop(ssl_key)[0] or '').lower()
-                if val in ('required', 'verify_ca', 'verify_identity', 'true', '1'):
-                    ssl_required = True
-        if 'mysql' in parsed.scheme and 'charset' not in query:
-            query['charset'] = ['utf8mb4']
+        if explicit_url.startswith('sqlite'):
+            uri = explicit_url
+        else:
+            # Strip unsupported PyMySQL query args like ssl-mode / sslmode and enable SSL safely
+            parsed = urlparse(explicit_url)
+            query = parse_qs(parsed.query, keep_blank_values=True)
+            for ssl_key in ('ssl-mode', 'ssl_mode', 'sslmode'):
+                if ssl_key in query:
+                    val = (query.pop(ssl_key)[0] or '').lower()
+                    if val in ('required', 'verify_ca', 'verify_identity', 'true', '1'):
+                        ssl_required = True
+            if 'mysql' in parsed.scheme and 'charset' not in query:
+                query['charset'] = ['utf8mb4']
 
-        clean_query = urlencode(query, doseq=True)
-        uri = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, clean_query, parsed.fragment))
+            clean_query = urlencode(query, doseq=True)
+            uri = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, clean_query, parsed.fragment))
         db_config_error = None
         if is_cloud and uri.startswith('sqlite') and os.environ.get('ALLOW_EPHEMERAL_SQLITE', '').lower() != 'true':
             db_config_error = (

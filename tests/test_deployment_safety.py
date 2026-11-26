@@ -249,6 +249,33 @@ class DeploymentSafetyTestCase(unittest.TestCase):
         self.assertIn('Deployment preservation leak report', detail_html)
         self.assertIn('Deploy test triage', detail_html)
 
+    def test_cloud_startup_auto_seeds_empty_mysql_admin_and_departments(self):
+        orig_env = os.environ.copy()
+        try:
+            for k in list(os.environ.keys()):
+                if any(tok in k.upper() for tok in ('DB', 'SQL', 'TIDB', 'MYSQL', 'DATABASE')):
+                    os.environ.pop(k, None)
+            with tempfile.TemporaryDirectory() as tmpdir:
+                db_path = os.path.join(tmpdir, 'cloud_empty_seed.db').replace('\\', '/')
+                os.environ['RENDER'] = 'true'
+                os.environ['ALLOW_EPHEMERAL_SQLITE'] = 'true'
+                os.environ['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+                os.environ.pop('AUTO_SEED', None)
+
+                cloud_app = create_app('default')
+                self.assertTrue(cloud_app.config['IS_CLOUD'])
+                self.assertIn('cloud_empty_seed.db', cloud_app.config['SQLALCHEMY_DATABASE_URI'])
+                with cloud_app.app_context():
+                    admin = User.query.filter_by(email='admin@civic.gov').first()
+                    self.assertIsNotNone(admin)
+                    self.assertTrue(admin.check_password('Admin@123'))
+                    self.assertGreaterEqual(Department.query.count(), 1)
+                    db.session.remove()
+                    db.engine.dispose()
+        finally:
+            os.environ.clear()
+            os.environ.update(orig_env)
+
 
 if __name__ == '__main__':
     unittest.main()
