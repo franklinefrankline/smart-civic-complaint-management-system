@@ -217,12 +217,18 @@ def create_app(config_name=None):
                         from app.services.seed_service import seed_all
                         seed_all()
             except Exception as e:
+                import re as _re
                 db.session.rollback()
+                raw_reason = str(getattr(e, 'orig', e))
+                safe_reason = _re.sub(r'://([^:@]+):([^@]+)@', r'://\1:***@', raw_reason)
+                if len(safe_reason) > 280:
+                    safe_reason = safe_reason[:280] + '...'
                 app.config['DB_STARTUP_ERROR'] = (
-                    "Database connection failed during startup. Please verify persistent MySQL settings "
-                    "and ensure the database server is reachable."
+                    f"Database connection failed ({type(e).__name__}): {safe_reason}"
                 )
-                app.logger.critical(f"Production DB connection failed (halting initialization): {type(e).__name__}")
+                app.logger.critical(
+                    f"Production DB connection failed (halting initialization): {type(e).__name__} - {safe_reason}"
+                )
 
     @app.before_request
     def guard_database_availability():
