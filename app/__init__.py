@@ -193,8 +193,11 @@ def create_app(config_name=None):
     # Honor reverse-proxy headers from Render and Vercel (HTTPS proto, client IP)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-    # Ensure upload directories exist safely (with /tmp fallback for read-only cloud filesystems)
+    # Ensure upload directories exist safely as absolute paths (with /tmp fallback for read-only cloud filesystems)
     upload_dir = app.config.get('UPLOAD_FOLDER', '/tmp/uploads')
+    if not os.path.isabs(upload_dir):
+        upload_dir = os.path.abspath(os.path.join(BASE_DIR, upload_dir))
+    app.config['UPLOAD_FOLDER'] = upload_dir
     try:
         os.makedirs(upload_dir, exist_ok=True)
         os.makedirs(os.path.join(upload_dir, 'complaints'), exist_ok=True)
@@ -307,14 +310,28 @@ def create_app(config_name=None):
     # Context processor for templates
     @app.context_processor
     def inject_global_data():
-        if request.path.startswith(('/api/', '/static/', '/health', '/uploads/', '/proofs/')):
-            return {}
-
         from app.utils.translations import get_translation
+        current_lang = session.get('lang', 'en')
+
+        def t(key, default=None):
+            return get_translation(key, current_lang, default)
+
+        if request.path.startswith(('/api/', '/static/', '/health', '/uploads/', '/proofs/')):
+            return dict(
+                current_user=None,
+                current_lang=current_lang,
+                t=t,
+                unread_notifications_count=0,
+                api_base_url=app.config.get('API_BASE_URL', ''),
+                available_languages=[
+                    {'code': 'en', 'name': 'English', 'native': 'English'},
+                    {'code': 'ta', 'name': 'Tamil', 'native': 'தமிழ்'},
+                    {'code': 'hi', 'name': 'Hindi', 'native': 'हिन्दी'}
+                ]
+            )
+
         from app.models.user import User
         from app.models.notification import Notification
-
-        current_lang = session.get('lang', 'en')
 
         user_id = session.get('user_id')
         cached_user = getattr(g, 'user', None)
@@ -437,6 +454,7 @@ def create_app(config_name=None):
 
     # Persistent uploads handler: checks local disk first, falls back to MySQL BLOB storage
     def _serve_attachment_from_db(filename_or_path):
+        import mimetypes
         from app.models.attachment import ComplaintAttachment
         clean = filename_or_path.replace('\\', '/').lstrip('/')
         basename = os.path.basename(clean)
@@ -444,12 +462,23 @@ def create_app(config_name=None):
             (ComplaintAttachment.filename == basename)
             | (ComplaintAttachment.file_path == clean)
             | (ComplaintAttachment.file_path == f"uploads/{clean}")
+            | (ComplaintAttachment.file_path == f"uploads/proofs/{basename}")
+            | (ComplaintAttachment.file_path == f"uploads/complaints/{basename}")
         ).first()
         if att and att.file_data:
-            resp = Response(att.file_data, mimetype=att.mime_type or 'application/octet-stream')
+            mime = att.mime_type or 'application/octet-stream'
+            if mime == 'application/octet-stream':
+                guessed, _ = mimetypes.guess_type(att.filename or basename)
+                if guessed:
+                    mime = guessed
+            resp = Response(att.file_data, mimetype=mime)
             resp.headers['Cache-Control'] = 'public, max-age=86400'
             return resp
         return None
+
+    def _resolved_upload_root():
+        raw_dir = app.config.get('UPLOAD_FOLDER', '/tmp/uploads')
+        return raw_dir if os.path.isabs(raw_dir) else os.path.abspath(os.path.join(BASE_DIR, raw_dir))
 
     @app.route('/uploads/<path:filename>', strict_slashes=False)
     def uploaded_file(filename):
@@ -457,13 +486,14 @@ def create_app(config_name=None):
         while clean_filename.startswith('uploads/'):
             clean_filename = clean_filename[8:]
 
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], clean_filename)
-        if os.path.isfile(file_path):
-            return send_from_directory(app.config['UPLOAD_FOLDER'], clean_filename)
-
-        alt_path = os.path.join(BASE_DIR, 'uploads', clean_filename)
-        if os.path.isfile(alt_path):
-            return send_from_directory(os.path.join(BASE_DIR, 'uploads'), clean_filename)
+        abs_upload_dir = _resolved_upload_root()
+        for candidate_dir in (abs_upload_dir, os.path.abspath(os.path.join(BASE_DIR, 'uploads'))):
+            file_path = os.path.join(candidate_dir, clean_filename)
+            if os.path.isfile(file_path):
+                try:
+                    return send_from_directory(candidate_dir, clean_filename)
+                except Exception:
+                    pass
 
         db_resp = _serve_attachment_from_db(clean_filename)
         if db_resp is not None:
@@ -474,9 +504,16 @@ def create_app(config_name=None):
     @app.route('/proofs/<path:filename>', strict_slashes=False)
     def uploaded_proofs(filename):
         clean = filename.replace('\\', '/')
-        proofs_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'proofs')
-        if os.path.isfile(os.path.join(proofs_dir, clean)):
-            return send_from_directory(proofs_dir, clean)
+        abs_upload_dir = _resolved_upload_root()
+        for candidate_dir in (
+            os.path.join(abs_upload_dir, 'proofs'),
+            os.path.abspath(os.path.join(BASE_DIR, 'uploads', 'proofs')),
+        ):
+            if os.path.isfile(os.path.join(candidate_dir, clean)):
+                try:
+                    return send_from_directory(candidate_dir, clean)
+                except Exception:
+                    pass
 
         db_resp = _serve_attachment_from_db(clean)
         if db_resp is not None:

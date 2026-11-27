@@ -49,8 +49,11 @@
                 <input type="password" name="password" class="auth-input" required placeholder="Enter your password"
                   autocomplete="current-password">
                 <button type="button" class="auth-password-toggle" onclick="togglePasswordVisibility(this)"
-                  aria-label="Toggle password visibility" title="Show/Hide password" tabindex="-1">
-                  <i data-lucide="eye" class="icon-sm"></i>
+                  aria-label="Show password" aria-pressed="false" title="Show password">
+                  <svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
                 </button>
               </div>
             </div>
@@ -137,8 +140,11 @@
                   <input type="password" name="password" class="auth-input" required placeholder="Min 8 characters"
                     autocomplete="new-password">
                   <button type="button" class="auth-password-toggle" onclick="togglePasswordVisibility(this)"
-                    aria-label="Toggle password visibility" title="Show/Hide password" tabindex="-1">
-                    <i data-lucide="eye" class="icon-sm"></i>
+                    aria-label="Show password" aria-pressed="false" title="Show password">
+                    <svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -150,8 +156,11 @@
                   <input type="password" name="confirm_password" class="auth-input" required
                     placeholder="Re-enter password" autocomplete="new-password">
                   <button type="button" class="auth-password-toggle" onclick="togglePasswordVisibility(this)"
-                    aria-label="Toggle password visibility" title="Show/Hide password" tabindex="-1">
-                    <i data-lucide="eye" class="icon-sm"></i>
+                    aria-label="Show password" aria-pressed="false" title="Show password">
+                    <svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -258,4 +267,32 @@
     </div>
   </div>
 </div>
+
+{% if dup_popup_message %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const f = document.querySelector('form[action*="/auth/register"]');
+    const dupField = {{ (dup_popup_field or '') | tojson }};
+    if (f && dupField) {
+      const targetNames = dupField === 'both' ? ['email', 'mobile'] : [dupField];
+      targetNames.forEach((n) => {
+        const el = f.querySelector(`[name="${n}"]`);
+        if (el) {
+          el.classList.add('is-invalid');
+          el.style.borderColor = '#ef4444';
+          el.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.2)';
+        }
+      });
+    }
+    if (window.showPersistentAlertPopup) {
+      window.showPersistentAlertPopup({
+        title: {{ (dup_popup_title or 'Duplicate Account Details') | tojson }},
+        message: {{ dup_popup_message | tojson }},
+        variant: 'danger',
+        closeText: 'Close'
+      });
+    }
+  });
+</script>
+{% endif %}
 {% endblock %}

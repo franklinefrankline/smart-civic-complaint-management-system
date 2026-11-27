@@ -125,7 +125,12 @@
       <button type="button" onclick="closeModal('dispatchModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
     </div>
 
-    <form method="POST" action="{{ url_for('admin.assignments') }}">
+    <div id="dispatchErrorAlert" class="alert alert-danger" style="display: none; align-items: center; gap: 0.65rem; margin-bottom: 1.25rem; padding: 0.8rem 1rem; border-radius: var(--radius-md); font-size: 0.88rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5;">
+      <i data-lucide="alert-circle" class="icon-sm" style="flex-shrink: 0; color: #ef4444;"></i>
+      <span id="dispatchErrorMessage"></span>
+    </div>
+
+    <form id="adminDispatchForm" method="POST" action="{{ url_for('admin.assignments') }}" data-custom-ajax="1" novalidate>
       <input type="hidden" name="action" value="assign_worker">
 
       <div class="form-group">

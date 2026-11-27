@@ -69,6 +69,7 @@
               <th>Reference</th>
               <th>Title</th>
               <th>Citizen</th>
+              <th>Assigned Worker</th>
               <th>Priority</th>
               <th>Status</th>
               <th>SLA Deadline</th>
@@ -90,6 +91,7 @@
                   {{ c.title }}
                 </td>
                 <td>{{ c.citizen.full_name if c.citizen else 'Citizen' }}</td>
+                <td style="font-size: 0.82rem;">{{ c.assigned_worker.full_name if c.assigned_worker else 'Unassigned' }}</td>
                 <td>
                   <span class="badge badge-priority-{{ c.priority }}">
                     {{ c.priority.upper() }}
@@ -111,7 +113,7 @@
               </tr>
             {% else %}
               <tr>
-                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2.5rem 1rem;">
+                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2.5rem 1rem;">
                   {{ empty_message or 'No complaints found in this queue.' }}
                 </td>
               </tr>

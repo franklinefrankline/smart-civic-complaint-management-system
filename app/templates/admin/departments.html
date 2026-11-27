@@ -106,7 +106,12 @@
       <button type="button" onclick="closeModal('createDeptModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
     </div>
 
-    <form method="POST" action="{{ url_for('admin.departments') }}">
+    <div id="createDeptErrorAlert" class="alert alert-danger" style="display: none; align-items: center; gap: 0.65rem; margin-bottom: 1.25rem; padding: 0.8rem 1rem; border-radius: var(--radius-md); font-size: 0.88rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5;">
+      <i data-lucide="alert-circle" class="icon-sm" style="flex-shrink: 0; color: #ef4444;"></i>
+      <span id="createDeptErrorMessage"></span>
+    </div>
+
+    <form id="adminCreateDeptForm" method="POST" action="{{ url_for('admin.departments') }}" data-custom-ajax="1" novalidate>
       <input type="hidden" name="action" value="create">
       <div class="form-group">
         <label class="form-label">Department Name</label>

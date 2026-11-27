@@ -1,6 +1,14 @@
 import unittest
 from app import create_app, db
 from app.models.user import User
+from app.services.user_service import (
+    DUP_BOTH_MSG,
+    DUP_BOTH_TITLE,
+    DUP_EMAIL_MSG,
+    DUP_EMAIL_TITLE,
+    DUP_MOBILE_MSG,
+    DUP_MOBILE_TITLE,
+)
 
 class TestAdminUserModal(unittest.TestCase):
     def setUp(self):
@@ -58,7 +66,8 @@ class TestAdminUserModal(unittest.TestCase):
         data = res.get_json()
         self.assertFalse(data['success'])
         self.assertEqual(data['field'], 'mobile')
-        self.assertIn('mobile number already exists', data['message'])
+        self.assertEqual(data['title'], DUP_MOBILE_TITLE)
+        self.assertEqual(data['message'], DUP_MOBILE_MSG)
 
     def test_duplicate_email_does_not_close_form(self):
         """When submitting duplicate email via AJAX, return 400 with field='email' without closing modal"""
@@ -75,7 +84,8 @@ class TestAdminUserModal(unittest.TestCase):
         data = res.get_json()
         self.assertFalse(data['success'])
         self.assertEqual(data['field'], 'email')
-        self.assertIn('email already exists', data['message'])
+        self.assertEqual(data['title'], DUP_EMAIL_TITLE)
+        self.assertEqual(data['message'], DUP_EMAIL_MSG)
 
     def test_duplicate_both_indicates_both_fields(self):
         """When submitting both duplicate email and mobile, return 400 with field='both'"""
@@ -92,6 +102,8 @@ class TestAdminUserModal(unittest.TestCase):
         data = res.get_json()
         self.assertFalse(data['success'])
         self.assertEqual(data['field'], 'both')
+        self.assertEqual(data['title'], DUP_BOTH_TITLE)
+        self.assertEqual(data['message'], DUP_BOTH_MSG)
 
     def test_successful_user_creation(self):
         """When submitting unique details, create user and return 200 success"""
@@ -126,7 +138,9 @@ class TestAdminUserModal(unittest.TestCase):
         html = res.data.decode('utf-8')
         self.assertIn('Fallback User', html)
         self.assertIn('fallback_unique@civic.gov', html)
-        self.assertIn('User with this mobile number already exists.', html)
+        self.assertIn(DUP_MOBILE_TITLE, html)
+        self.assertIn(DUP_MOBILE_MSG, html)
+        self.assertIn('scfPersistentAlertModal', html)
 
 if __name__ == '__main__':
     unittest.main()

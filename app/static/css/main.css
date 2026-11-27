@@ -2321,6 +2321,52 @@ textarea.form-control {
   backdrop-filter: blur(4px);
 }
 
+/* Persistent Alert Popup (Renders above all form modals and closes ONLY via Close button) */
+.persistent-alert-overlay {
+  z-index: 100050 !important;
+  background-color: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(5px);
+}
+
+.persistent-alert-dialog {
+  max-width: 460px;
+}
+
+.persistent-alert-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.persistent-alert-close {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.persistent-alert-close:hover {
+  background-color: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
+.confirm-modal-icon.variant-success {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+
 .confirm-modal-dialog {
   max-width: 440px;
   border-radius: 14px;
@@ -3227,6 +3273,13 @@ textarea.form-control {
 .auth-password-toggle:focus,
 .password-toggle-btn:focus {
   outline: none;
+  color: var(--civic-blue);
+}
+
+.auth-password-toggle:focus-visible,
+.password-toggle-btn:focus-visible {
+  outline: 2px solid var(--civic-blue);
+  outline-offset: 2px;
   color: var(--civic-blue);
 }
 
@@ -4185,6 +4238,13 @@ textarea.form-control {
 .auth-password-toggle:focus,
 .password-toggle-btn:focus {
   outline: none;
+  color: var(--civic-blue);
+}
+
+.auth-password-toggle:focus-visible,
+.password-toggle-btn:focus-visible {
+  outline: 2px solid var(--civic-blue);
+  outline-offset: 2px;
   color: var(--civic-blue);
 }
 

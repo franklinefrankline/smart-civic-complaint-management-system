@@ -26,7 +26,7 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png', v='20261125g') }}">
 
   <!-- Master Stylesheet -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261126f') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261127a') }}">
   
   <!-- Preconnect for Icon CDN -->
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
@@ -304,6 +304,27 @@
     </div>
   </div>
 
+  <!-- Persistent Duplicate / Validation Alert Popup (Closes ONLY on explicit button click) -->
+  <div id="scfPersistentAlertModal" class="modal-overlay persistent-alert-overlay" role="alertdialog" aria-modal="true" aria-labelledby="scfPersistentAlertTitle" aria-describedby="scfPersistentAlertMessage" style="display: none;">
+    <div class="modal-dialog confirm-modal-dialog persistent-alert-dialog">
+      <div class="persistent-alert-top">
+        <div class="confirm-modal-header" style="flex: 1;">
+          <div id="scfPersistentAlertIconWrap" class="confirm-modal-icon variant-danger">
+            <i id="scfPersistentAlertIcon" data-lucide="alert-octagon" class="icon-md"></i>
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <h3 id="scfPersistentAlertTitle" class="confirm-modal-title">Validation Alert</h3>
+            <p id="scfPersistentAlertMessage" class="confirm-modal-desc"></p>
+          </div>
+        </div>
+        <button type="button" id="scfPersistentAlertCloseBtn" class="persistent-alert-close" aria-label="Close alert" title="Close">&times;</button>
+      </div>
+      <div class="confirm-modal-actions">
+        <button type="button" id="scfPersistentAlertFooterBtn" class="btn btn-primary btn-sm">OK, Got It</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Global Page Loading Overlay (uses /static/img/loader.gif) -->
   <div id="globalPageLoader" class="global-loader-overlay" role="status" aria-live="polite" aria-hidden="true">
     <div class="global-loader-card">
@@ -316,7 +337,7 @@
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
   <!-- Master Application Scripts -->
-  <script src="{{ url_for('static', filename='js/main.js', v='20261126f') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/main.js', v='20261127d') }}" defer></script>
   <script src="{{ url_for('static', filename='js/notifications.js', v='20261126c') }}" defer></script>
   
   {% block extra_scripts %}{% endblock %}

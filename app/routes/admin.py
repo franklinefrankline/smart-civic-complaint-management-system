@@ -3,6 +3,7 @@ import io
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, Response, jsonify
 from sqlalchemy import func, case
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from app import db
 from app.models.complaint import Complaint
@@ -28,6 +29,11 @@ from app.services.complaint_service import (
     IN_PROGRESS_STATUSES,
 )
 from app.services.audit_service import log_action
+from app.services.user_service import (
+    validate_contact_and_duplicates,
+    resolve_duplicate_integrity_error,
+    duplicate_title_for_field,
+)
 from app.utils.decorators import login_required, role_required, _is_api_or_ajax
 
 admin_bp = Blueprint('admin', __name__)
@@ -127,6 +133,22 @@ def dashboard():
         feedback_total = int(fb_agg[0] or 0)
         feedback_avg = round(float(fb_agg[1]), 1) if fb_agg[1] is not None else 0.0
 
+    worker_evidence_filter = ComplaintAttachment.attachment_type.in_(['before_work', 'after_work', 'verification'])
+    recent_worker_evidence = (
+        ComplaintAttachment.query.filter(worker_evidence_filter)
+        .options(
+            joinedload(ComplaintAttachment.uploaded_by),
+            joinedload(ComplaintAttachment.complaint).joinedload(Complaint.department),
+        )
+        .order_by(ComplaintAttachment.created_at.desc())
+        .limit(12)
+        .all()
+    )
+    if len(recent_worker_evidence) < 12:
+        worker_evidence_total = len(recent_worker_evidence)
+    else:
+        worker_evidence_total = ComplaintAttachment.query.filter(worker_evidence_filter).count()
+
     return render_template(
         'admin/dashboard.html',
         stats=stats,
@@ -139,6 +161,8 @@ def dashboard():
         recent_feedbacks=recent_feedbacks,
         feedback_total=feedback_total,
         feedback_avg=feedback_avg,
+        recent_worker_evidence=recent_worker_evidence,
+        worker_evidence_total=worker_evidence_total,
     )
 
 
@@ -291,7 +315,11 @@ def complaint_detail(complaint_id):
         return redirect(url_for('admin.complaint_detail', complaint_id=complaint.id))
 
     history = complaint.status_history.all()
-    attachments = complaint.attachments.all()
+    attachments = (
+        complaint.attachments.options(joinedload(ComplaintAttachment.uploaded_by))
+        .order_by(ComplaintAttachment.created_at.desc())
+        .all()
+    )
     departments = get_cached_active_departments()
     officers = User.query.filter_by(role='officer', is_active=True).options(joinedload(User.department)).all()
     workers = Worker.query.filter_by(is_available=True).options(joinedload(Worker.user), joinedload(Worker.department)).all()
@@ -319,96 +347,90 @@ def users():
                       'application/json' in request.headers.get('Accept', '')
 
             full_name = request.form.get('full_name', '').strip()
-            email = request.form.get('email', '').strip().lower()
-            mobile = request.form.get('mobile', '').strip()
+            email_raw = request.form.get('email', '').strip()
+            mobile_raw = request.form.get('mobile', '').strip()
             role = request.form.get('role', 'citizen')
             dept_id = request.form.get('department_id', type=int) if role in ['officer', 'worker'] else None
             password = request.form.get('password', 'Admin@123')
-            
-            email_exists = bool(User.query.filter_by(email=email).first())
-            mobile_exists = bool(User.query.filter_by(mobile_number=mobile).first())
 
             error_msg = None
             error_field = None
+            email = email_raw.lower()
+            mobile = mobile_raw
 
             if not full_name:
-                error_msg = "Full name is required."
-                error_field = "full_name"
-            elif not email:
-                error_msg = "Email address is required."
-                error_field = "email"
-            elif not mobile:
-                error_msg = "Mobile number is required."
-                error_field = "mobile"
-            elif email_exists and mobile_exists:
-                error_msg = "User with this email and mobile number already exists."
-                error_field = "both"
-            elif email_exists:
-                error_msg = "User with this email already exists."
-                error_field = "email"
-            elif mobile_exists:
-                error_msg = "User with this mobile number already exists."
-                error_field = "mobile"
-            elif role in ['officer', 'worker'] and not dept_id:
-                error_msg = "Please select a department for Officer or Worker role."
-                error_field = "department_id"
-            elif len(password) < 6:
-                error_msg = "Password must be at least 6 characters."
-                error_field = "password"
+                error_msg, error_field = "Full name is required.", "full_name"
+            else:
+                error_msg, error_field, email, mobile = validate_contact_and_duplicates(email_raw, mobile_raw)
 
-            if error_msg:
+            if not error_msg:
+                if role in ['officer', 'worker'] and not dept_id:
+                    error_msg, error_field = "Please select a department for Officer or Worker role.", "department_id"
+                elif len(password) < 6:
+                    error_msg, error_field = "Password must be at least 6 characters.", "password"
+
+            def _render_add_user_error(err_text, err_col):
+                err_title = duplicate_title_for_field(err_col)
                 if is_ajax:
                     return jsonify({
                         'success': False,
-                        'message': error_msg,
-                        'field': error_field
+                        'title': err_title,
+                        'message': err_text,
+                        'field': err_col
                     }), 400
-                else:
-                    flash(error_msg, "danger")
-                    role_filter = request.args.get('role')
-                    search = request.args.get('search', '').strip()
-                    query = User.query
-                    if role_filter:
-                        query = query.filter_by(role=role_filter)
-                    if search:
-                        query = query.filter(
-                            (User.full_name.ilike(f'%{search}%')) |
-                            (User.email.ilike(f'%{search}%')) |
-                            (User.mobile_number.ilike(f'%{search}%'))
-                        )
-                    user_list = query.order_by(User.created_at.desc()).all()
-                    departments_list = Department.query.filter_by(is_active=True).all()
-                    return render_template(
-                        'admin/users.html',
-                        users=user_list,
-                        departments=departments_list,
-                        current_role=role_filter,
-                        search_query=search,
-                        modal_open=True,
-                        modal_error=error_msg,
-                        modal_error_field=error_field,
-                        form_data=request.form
+                role_filter = request.args.get('role')
+                search = request.args.get('search', '').strip()
+                query = User.query
+                if role_filter:
+                    query = query.filter_by(role=role_filter)
+                if search:
+                    query = query.filter(
+                        (User.full_name.ilike(f'%{search}%')) |
+                        (User.email.ilike(f'%{search}%')) |
+                        (User.mobile_number.ilike(f'%{search}%'))
                     )
+                user_list = query.order_by(User.created_at.desc()).all()
+                departments_list = Department.query.filter_by(is_active=True).all()
+                return render_template(
+                    'admin/users.html',
+                    users=user_list,
+                    departments=departments_list,
+                    current_role=role_filter,
+                    search_query=search,
+                    modal_open=True,
+                    modal_error=err_text,
+                    modal_error_title=err_title,
+                    modal_error_field=err_col,
+                    form_data=request.form
+                )
 
-            new_user = User(
-                full_name=full_name,
-                email=email,
-                mobile_number=mobile,
-                role=role,
-                department_id=dept_id,
-                is_active=True,
-                is_password_reset_required=True,
-                password_changed_at=None
-            )
-            new_user.set_password(password)
-            db.session.add(new_user)
-            db.session.flush()
-            
-            if role == 'worker' and dept_id:
-                worker_profile = Worker(user_id=new_user.id, department_id=dept_id)
-                db.session.add(worker_profile)
-                
-            db.session.commit()
+            if error_msg:
+                return _render_add_user_error(error_msg, error_field)
+
+            try:
+                new_user = User(
+                    full_name=full_name,
+                    email=email,
+                    mobile_number=mobile,
+                    role=role,
+                    department_id=dept_id,
+                    is_active=True,
+                    is_password_reset_required=True,
+                    password_changed_at=None
+                )
+                new_user.set_password(password)
+                db.session.add(new_user)
+                db.session.flush()
+
+                if role == 'worker' and dept_id:
+                    worker_profile = Worker(user_id=new_user.id, department_id=dept_id)
+                    db.session.add(worker_profile)
+
+                db.session.commit()
+            except IntegrityError as exc:
+                err_text, err_col = resolve_duplicate_integrity_error(exc, email, mobile)
+                return _render_add_user_error(err_text, err_col)
+
             log_action(g.user.id, 'CREATE_USER', 'user', new_user.id, details={'role': role, 'email': email})
             flash(f"User {full_name} created successfully.", "success")
 
@@ -516,16 +538,45 @@ def departments():
             email = request.form.get('contact_email', '').strip()
             phone = request.form.get('contact_phone', '').strip()
 
-            if Department.query.filter_by(name=name).first() or Department.query.filter_by(code=code).first():
-                if is_ajax:
-                    return jsonify({'success': False, 'message': "Department with this name or code already exists."}), 400
-                flash("Department with this name or code already exists.", "danger")
+            err_title, err_msg, err_field = None, None, None
+            if not name:
+                err_title, err_msg, err_field = "Department Name Required", "Please enter the municipal department name.", "name"
+            elif not code:
+                err_title, err_msg, err_field = "Department Code Required", "Please enter the department code.", "code"
             else:
-                dept = Department(name=name, code=code, description=description, contact_email=email, contact_phone=phone)
-                db.session.add(dept)
-                db.session.flush()
-                log_action(g.user.id, 'CREATE_DEPARTMENT', 'department', dept.id, details={'code': code}, commit=False)
-                db.session.commit()
+                dup_name = Department.query.filter(Department.name.ilike(name)).first()
+                dup_code = Department.query.filter(Department.code.ilike(code)).first()
+                if dup_name and dup_code:
+                    err_title = "Department Already Exists!"
+                    err_msg = "A department with this name and code already exists. Please enter different details."
+                    err_field = "dept_both"
+                elif dup_name:
+                    err_title = "Department Name Already Exists!"
+                    err_msg = "A department with this name already exists. Please enter a different department name."
+                    err_field = "name"
+                elif dup_code:
+                    err_title = "Department Code Already Exists!"
+                    err_msg = "A department with this code already exists. Please enter a different department code."
+                    err_field = "code"
+
+            if err_msg:
+                if is_ajax:
+                    return jsonify({'success': False, 'title': err_title, 'message': err_msg, 'field': err_field}), 400
+                flash(err_msg, "danger")
+            else:
+                try:
+                    dept = Department(name=name, code=code, description=description, contact_email=email, contact_phone=phone)
+                    db.session.add(dept)
+                    db.session.flush()
+                    log_action(g.user.id, 'CREATE_DEPARTMENT', 'department', dept.id, details={'code': code}, commit=False)
+                    db.session.commit()
+                except IntegrityError:
+                    db.session.rollback()
+                    dup_msg = "A department with this name or code already exists. Please enter different details."
+                    if is_ajax:
+                        return jsonify({'success': False, 'title': 'Department Already Exists!', 'message': dup_msg, 'field': 'dept_both'}), 400
+                    flash(dup_msg, "danger")
+                    return redirect(url_for('admin.departments'))
                 msg = f"Department '{name}' created successfully."
                 if is_ajax:
                     return jsonify({'success': True, 'message': msg, 'reload_sections': True})
@@ -581,28 +632,51 @@ def workers():
                 flash("Worker availability updated.", "info")
         elif action == 'add_worker':
             full_name = request.form.get('full_name', '').strip()
-            email = request.form.get('email', '').strip().lower()
-            mobile = request.form.get('mobile', '').strip()
+            email_raw = request.form.get('email', '').strip()
+            mobile_raw = request.form.get('mobile', '').strip()
             dept_id = request.form.get('department_id', type=int)
             employee_id = request.form.get('employee_id', '').strip().upper() or None
             designation = request.form.get('designation', '').strip() or 'Field Technician'
             password = request.form.get('password', 'Welcome@123')
 
             err_msg = None
-            if not full_name or not email or not mobile or not dept_id:
-                err_msg = "All fields including assigned department are required."
-            elif User.query.filter_by(email=email).first():
-                err_msg = "A user with this email address already exists."
-            elif User.query.filter_by(mobile_number=mobile).first():
-                err_msg = "A user with this mobile number already exists."
-            elif employee_id and Worker.query.filter_by(employee_id=employee_id).first():
-                err_msg = "A worker with this Employee ID already exists."
+            err_field = None
+            email = email_raw.lower()
+            mobile = mobile_raw
+
+            if not full_name:
+                err_msg, err_field = "Full name is required.", "full_name"
+            elif not dept_id:
+                err_msg, err_field = "Please select a department for the technician.", "department_id"
+            else:
+                err_msg, err_field, email, mobile = validate_contact_and_duplicates(email_raw, mobile_raw)
+
+            if not err_msg and employee_id and Worker.query.filter_by(employee_id=employee_id).first():
+                err_msg, err_field = "A worker with this Employee ID already exists.", "employee_id"
+            if not err_msg and len(password) < 6:
+                err_msg, err_field = "Password must be at least 6 characters.", "password"
+
+            def _render_add_worker_error(err_text, err_col):
+                err_title = duplicate_title_for_field(err_col)
+                if is_ajax:
+                    return jsonify({'success': False, 'title': err_title, 'message': err_text, 'field': err_col}), 400
+                worker_list = Worker.query.options(joinedload(Worker.user), joinedload(Worker.department)).all()
+                departments = get_cached_active_departments()
+                return render_template(
+                    'admin/workers.html',
+                    workers=worker_list,
+                    departments=departments,
+                    modal_open=True,
+                    modal_error=err_text,
+                    modal_error_title=err_title,
+                    modal_error_field=err_col,
+                    form_data=request.form,
+                )
 
             if err_msg:
-                if is_ajax:
-                    return jsonify({'success': False, 'message': err_msg}), 400
-                flash(err_msg, "danger")
-            else:
+                return _render_add_worker_error(err_msg, err_field)
+
+            try:
                 new_worker_user = User(
                     full_name=full_name,
                     email=email,
@@ -629,12 +703,15 @@ def workers():
                 db.session.flush()
                 log_action(g.user.id, 'CREATE_WORKER', 'worker', new_worker.id, details={'email': email, 'dept_id': dept_id}, commit=False)
                 db.session.commit()
+            except IntegrityError as exc:
+                err_text, err_col = resolve_duplicate_integrity_error(exc, email, mobile)
+                return _render_add_worker_error(err_text, err_col)
 
-                msg = f"Field technician '{full_name}' created successfully with pending initial password reset."
-                if is_ajax:
-                    return jsonify({'success': True, 'message': msg, 'reload_sections': True})
-                flash(msg, "success")
-        return redirect(url_for('admin.workers'))
+            msg = f"Field technician '{full_name}' created successfully with pending initial password reset."
+            if is_ajax:
+                return jsonify({'success': True, 'message': msg, 'reload_sections': True})
+            flash(msg, "success")
+            return redirect(url_for('admin.workers'))
 
     worker_list = Worker.query.options(joinedload(Worker.user), joinedload(Worker.department)).all()
     departments = get_cached_active_departments()
@@ -736,24 +813,56 @@ def officers():
         is_ajax = _is_api_or_ajax()
         if action == 'add_officer':
             full_name = request.form.get('full_name', '').strip()
-            email = request.form.get('email', '').strip().lower()
-            mobile = request.form.get('mobile', '').strip()
+            email_raw = request.form.get('email', '').strip()
+            mobile_raw = request.form.get('mobile', '').strip()
             dept_id = request.form.get('department_id', type=int)
             password = request.form.get('password', 'Welcome@123')
 
             err_msg = None
-            if not full_name or not email or not mobile or not dept_id:
-                err_msg = "All fields including assigned department are required."
-            elif User.query.filter_by(email=email).first():
-                err_msg = "A user with this email address already exists."
-            elif User.query.filter_by(mobile_number=mobile).first():
-                err_msg = "A user with this mobile number already exists."
+            err_field = None
+            email = email_raw.lower()
+            mobile = mobile_raw
+
+            if not full_name:
+                err_msg, err_field = "Full name is required.", "full_name"
+            elif not dept_id:
+                err_msg, err_field = "Please select a civic department.", "department_id"
+            else:
+                err_msg, err_field, email, mobile = validate_contact_and_duplicates(email_raw, mobile_raw)
+
+            if not err_msg and len(password) < 6:
+                err_msg, err_field = "Password must be at least 6 characters.", "password"
+
+            def _render_add_officer_error(err_text, err_col):
+                err_title = duplicate_title_for_field(err_col)
+                if is_ajax:
+                    return jsonify({'success': False, 'title': err_title, 'message': err_text, 'field': err_col}), 400
+                search_val = request.args.get('search', '').strip()
+                q = User.query.filter_by(role='officer')
+                if search_val:
+                    q = q.filter(
+                        (User.full_name.ilike(f'%{search_val}%')) |
+                        (User.email.ilike(f'%{search_val}%')) |
+                        (User.mobile_number.ilike(f'%{search_val}%'))
+                    )
+                officers_list = q.order_by(User.created_at.desc()).all()
+                departments = get_cached_active_departments()
+                return render_template(
+                    'admin/officers.html',
+                    officers=officers_list,
+                    departments=departments,
+                    search_query=search_val,
+                    modal_open=True,
+                    modal_error=err_text,
+                    modal_error_title=err_title,
+                    modal_error_field=err_col,
+                    form_data=request.form,
+                )
 
             if err_msg:
-                if is_ajax:
-                    return jsonify({'success': False, 'message': err_msg}), 400
-                flash(err_msg, "danger")
-            else:
+                return _render_add_officer_error(err_msg, err_field)
+
+            try:
                 new_officer = User(
                     full_name=full_name,
                     email=email,
@@ -767,12 +876,16 @@ def officers():
                 new_officer.set_password(password)
                 db.session.add(new_officer)
                 db.session.commit()
-                log_action(g.user.id, 'CREATE_OFFICER', 'user', new_officer.id, details={'dept_id': dept_id, 'email': email})
-                msg = f"Department Officer {full_name} created successfully."
-                if is_ajax:
-                    return jsonify({'success': True, 'message': msg, 'reload_sections': True})
-                flash(msg, "success")
-        return redirect(url_for('admin.officers'))
+            except IntegrityError as exc:
+                err_text, err_col = resolve_duplicate_integrity_error(exc, email, mobile)
+                return _render_add_officer_error(err_text, err_col)
+
+            log_action(g.user.id, 'CREATE_OFFICER', 'user', new_officer.id, details={'dept_id': dept_id, 'email': email})
+            msg = f"Department Officer {full_name} created successfully."
+            if is_ajax:
+                return jsonify({'success': True, 'message': msg, 'reload_sections': True})
+            flash(msg, "success")
+            return redirect(url_for('admin.officers'))
 
     search = request.args.get('search', '').strip()
     query = User.query.filter_by(role='officer')
@@ -796,14 +909,25 @@ def assignments():
             worker_user_id = request.form.get('worker_user_id', type=int)
             instructions = request.form.get('instructions', '').strip()
 
-            complaint = Complaint.query.get(complaint_id)
+            complaint = Complaint.query.get(complaint_id) if complaint_id else None
             if not complaint:
+                err_msg = "Please select an active grievance to dispatch." if not complaint_id else "Selected complaint could not be found."
                 if is_ajax:
-                    return jsonify({'success': False, 'message': "Selected complaint could not be found."}), 404
-                flash("Selected complaint could not be found.", "danger")
+                    return jsonify({
+                        'success': False,
+                        'title': 'Grievance Selection Required' if not complaint_id else 'Complaint Not Found',
+                        'message': err_msg,
+                        'field': 'complaint_id',
+                    }), 400 if not complaint_id else 404
+                flash(err_msg, "danger")
             elif not worker_user_id:
                 if is_ajax:
-                    return jsonify({'success': False, 'message': "Please select an available field technician to dispatch."}), 400
+                    return jsonify({
+                        'success': False,
+                        'title': 'Technician Selection Required',
+                        'message': "Please select an available field technician to dispatch.",
+                        'field': 'worker_user_id',
+                    }), 400
                 flash("Please select an available field technician to dispatch.", "danger")
             else:
                 try:

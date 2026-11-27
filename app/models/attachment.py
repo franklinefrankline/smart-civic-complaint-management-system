@@ -25,6 +25,32 @@ class ComplaintAttachment(db.Model):
 
     uploaded_by = db.relationship('User', foreign_keys=[uploaded_by_user_id])
 
+    _IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.jfif', '.avif', '.heic', '.heif')
+
+    @property
+    def is_image(self):
+        if self.mime_type and 'image' in self.mime_type.lower():
+            return True
+        name = (self.file_path or self.filename or '').lower()
+        return name.endswith(self._IMAGE_EXTENSIONS)
+
+    @property
+    def public_url(self):
+        clean = (self.file_path or '').replace('\\', '/').lstrip('/')
+        if clean:
+            return f"/{clean}"
+        return f"/uploads/proofs/{self.filename}"
+
+    @property
+    def display_type_label(self):
+        labels = {
+            'initial': 'Citizen Photo',
+            'before_work': 'Pre-Work Photo',
+            'after_work': 'After-Work Proof',
+            'verification': 'Site Evidence',
+        }
+        return labels.get(self.attachment_type, (self.attachment_type or 'Attachment').replace('_', ' ').title())
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -33,6 +59,8 @@ class ComplaintAttachment(db.Model):
             'filename': self.filename,
             'original_name': self.original_name,
             'file_path': self.file_path,
+            'public_url': self.public_url,
+            'is_image': self.is_image,
             'remarks': self.remarks,
             'uploaded_by': self.uploaded_by.full_name if self.uploaded_by else 'User',
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None

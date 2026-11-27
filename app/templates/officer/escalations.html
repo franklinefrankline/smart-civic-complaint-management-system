@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Escalated Department Complaints | {{ t('app_name') }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  {% include 'shared/_sidebar.html' %}
+
+  <div class="dashboard-content">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+          Escalated Department Complaints
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.92rem;">
+          SLA-overdue and administratively escalated complaints requiring immediate supervisor intervention.
+        </p>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card" style="padding: 1.15rem; margin-bottom: 1.5rem;">
+      <form method="GET" action="{{ url_for('officer.escalations') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <input type="text" name="search" class="form-control" placeholder="Search complaint ref, title, or citizen..." value="{{ search_query or '' }}" style="flex: 2; min-width: 220px;">
+        <select name="priority" class="form-control" style="flex: 1; min-width: 140px;">
+          <option value="">All Priorities</option>
+          <option value="urgent" {% if current_priority == 'urgent' %}selected{% endif %}>Urgent</option>
+          <option value="high" {% if current_priority == 'high' %}selected{% endif %}>High</option>
+          <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>Medium</option>
+          <option value="low" {% if current_priority == 'low' %}selected{% endif %}>Low</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="{{ url_for('officer.escalations') }}" class="btn btn-secondary btn-sm">Reset</a>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Reference</th>
+              <th>Complaint &amp; Escalation History</th>
+              <th>Department</th>
+              <th>Priority</th>
+              <th>SLA Deadline</th>
+              <th>Responsible Person</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in complaints %}
+              {% set latest_hist = remarks_map.get(c.id) if remarks_map is defined else none %}
+              <tr>
+                <td>
+                  <span style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">{{ c.complaint_ref }}</span>
+                  {% if c.is_escalated %}
+                    <span class="badge badge-escalated" style="display: block; margin-top: 0.25rem; width: fit-content; font-size: 0.65rem;">ESCALATED</span>
+                  {% endif %}
+                </td>
+                <td style="max-width: 250px;">
+                  <div style="font-weight: 600;">{{ c.title }}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    {{ c.escalation_reason or (latest_hist.remarks if latest_hist else 'SLA breach flagged') }}
+                  </div>
+                </td>
+                <td style="font-size: 0.84rem;">{{ c.department.name if c.department else '-' }}</td>
+                <td><span class="badge badge-priority-{{ c.priority }}">{{ c.priority.upper() }}</span></td>
+                <td style="font-size: 0.8rem; color: var(--status-rejected); font-weight: 700; white-space: nowrap;">
+                  {{ c.sla_due_date | local_time('%Y-%m-%d %H:%M', 'Overdue') }}
+                </td>
+                <td style="font-size: 0.82rem;">
+                  {% if c.assigned_worker %}
+                    <div><strong>{{ c.assigned_worker.full_name }}</strong> <span style="color: var(--text-muted);">(Worker)</span></div>
+                  {% elif c.assigned_officer %}
+                    <div><strong>{{ c.assigned_officer.full_name }}</strong> <span style="color: var(--text-muted);">(Officer)</span></div>
+                  {% else %}
+                    <span style="color: var(--text-muted);">Department Desk</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;">
+                    {% if not c.is_escalated %}
+                      <form method="POST" action="{{ url_for('officer.escalations') }}" style="margin: 0; display: inline;">
+                        <input type="hidden" name="action" value="escalate_complaint">
+                        <input type="hidden" name="complaint_id" value="{{ c.id }}">
+                        <input type="hidden" name="remarks" value="Escalated by Department Officer for urgent intervention.">
+                        <button type="submit" class="btn btn-warning btn-sm" style="white-space: nowrap;">Escalate</button>
+                      </form>
+                    {% endif %}
+                    <a href="{{ url_for('officer.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm">Manage</a>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+                  No escalated or overdue complaints in your department right now.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include 'shared/_pagination.html' %}
+    </div>
+  </div>
+</div>
+{% endblock %}

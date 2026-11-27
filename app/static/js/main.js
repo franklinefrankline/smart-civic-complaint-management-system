@@ -80,6 +80,379 @@
       el.textContent = formatDateWithPattern(d, fmt);
     });
   };
+
+  // Modal & Persistent Alert Popup Controllers (Exposed synchronously so template DOMContentLoaded listeners always see them)
+  window.openModal = function(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.add('modal-overlay');
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  };
+
+  window.closeModal = function(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.remove('show');
+    setTimeout(() => {
+      modal.style.display = 'none';
+    }, 220);
+  };
+
+  let persistentAlertOnClose = null;
+  let persistentAlertPrevFocus = null;
+
+  window.closePersistentAlertPopup = function() {
+    const modal = document.getElementById('scfPersistentAlertModal');
+    if (!modal || (!modal.classList.contains('show') && modal.style.display === 'none')) return;
+
+    const cb = persistentAlertOnClose;
+    const prevFocus = persistentAlertPrevFocus;
+    persistentAlertOnClose = null;
+    persistentAlertPrevFocus = null;
+
+    modal.classList.remove('show');
+    setTimeout(() => {
+      modal.style.display = 'none';
+      if (typeof cb === 'function') {
+        try { cb(); } catch (_) {}
+      } else if (prevFocus && typeof prevFocus.focus === 'function') {
+        try { prevFocus.focus(); } catch (_) {}
+      }
+    }, 180);
+  };
+
+  window.showPersistentAlertPopup = function(options) {
+    const opts = typeof options === 'string' ? { message: options } : (options || {});
+    const modal = document.getElementById('scfPersistentAlertModal');
+    const titleEl = document.getElementById('scfPersistentAlertTitle');
+    const msgEl = document.getElementById('scfPersistentAlertMessage');
+    const iconWrap = document.getElementById('scfPersistentAlertIconWrap');
+    const closeBtn = document.getElementById('scfPersistentAlertCloseBtn');
+    const footerBtn = document.getElementById('scfPersistentAlertFooterBtn');
+
+    // Suppress any top-right flash/toast alert so only the single center popup is visible
+    const flashWrap = document.getElementById('flashToastContainer');
+    if (flashWrap) flashWrap.remove();
+    const toastWrap = document.getElementById('toastContainer');
+    if (toastWrap) toastWrap.innerHTML = '';
+
+    if (!modal || !titleEl || !msgEl) {
+      if (window.showToast && opts.message) {
+        window.showToast(opts.message, opts.variant === 'success' ? 'success' : 'error', opts.title);
+      }
+      return;
+    }
+
+    if (!modal.dataset.boundPersistentAlert) {
+      modal.dataset.boundPersistentAlert = '1';
+      if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          window.closePersistentAlertPopup();
+        });
+      }
+      if (footerBtn) {
+        footerBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          window.closePersistentAlertPopup();
+        });
+      }
+    }
+
+    persistentAlertPrevFocus = document.activeElement;
+    persistentAlertOnClose = typeof opts.onClose === 'function' ? opts.onClose : null;
+
+    const variant = opts.variant || 'danger';
+    titleEl.textContent = opts.title || (variant === 'success' ? 'Success' : 'Validation Alert');
+    msgEl.textContent = opts.message || '';
+
+    if (footerBtn) {
+      footerBtn.textContent = opts.closeText || 'Close';
+      footerBtn.className = 'btn btn-sm ' + (variant === 'success' ? 'btn-primary' : 'btn-danger');
+    }
+
+    if (iconWrap) {
+      iconWrap.className = `confirm-modal-icon variant-${variant}`;
+      const iconName = variant === 'success'
+        ? 'check-circle-2'
+        : (variant === 'warning' ? 'alert-triangle' : 'alert-octagon');
+      iconWrap.innerHTML = `<i data-lucide="${iconName}" class="icon-md"></i>`;
+      if (window.lucide) lucide.createIcons();
+    }
+
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+      modal.classList.add('show');
+      if (closeBtn) closeBtn.focus();
+    });
+  };
+
+  window.__userModalConfigs = window.__userModalConfigs || {};
+  window.rebindUserCreateModalForms = function() {
+    Object.values(window.__userModalConfigs).forEach((savedCfg) => {
+      if (savedCfg && document.getElementById(savedCfg.formId)) {
+        window.bindUserCreateModalForm(savedCfg);
+      }
+    });
+  };
+
+  window.bindUserCreateModalForm = function(cfg) {
+    if (!cfg || !cfg.formId) return;
+    window.__userModalConfigs[cfg.formId] = cfg;
+
+    const form = document.getElementById(cfg.formId);
+    if (!form || form.dataset.userModalBound === '1') return;
+    form.dataset.userModalBound = '1';
+
+    const emailMsgDup = 'This email address is already associated with an existing account. Please enter a different email address.';
+    const mobileMsgDup = 'This phone number is already associated with an existing account. Please enter a different phone number.';
+
+    const getAlert = () => (cfg.alertId ? document.getElementById(cfg.alertId) : null);
+    const getAlertMsg = () => (cfg.messageId ? document.getElementById(cfg.messageId) : null);
+    const getField = (name) => form.querySelector(`[name="${name}"]`);
+
+    function setFieldError(el, hintText) {
+      if (!el) return;
+      el.classList.add('is-invalid');
+      el.style.borderColor = '#ef4444';
+      el.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.2)';
+      const group = el.closest('.form-group, .auth-input-group') || el.parentElement;
+      if (group && hintText) {
+        let hint = group.querySelector('.modal-field-hint');
+        if (!hint) {
+          hint = document.createElement('span');
+          hint.className = 'form-hint modal-field-hint';
+          hint.style.cssText = 'color: #ef4444; display: block; font-size: 0.8rem; margin-top: 0.3rem; font-weight: 500;';
+          group.appendChild(hint);
+        }
+        hint.textContent = hintText;
+        hint.style.display = 'block';
+      }
+    }
+
+    function clearFieldError(el) {
+      if (!el) return;
+      el.classList.remove('is-invalid');
+      el.style.borderColor = '';
+      el.style.boxShadow = '';
+      const group = el.closest('.form-group, .auth-input-group') || el.parentElement;
+      const hint = group ? group.querySelector('.modal-field-hint') : null;
+      if (hint) {
+        hint.style.display = 'none';
+        hint.textContent = '';
+      }
+    }
+
+    function clearAllErrors() {
+      const alertEl = getAlert();
+      if (alertEl) alertEl.style.display = 'none';
+      form.querySelectorAll('input, select, textarea').forEach(clearFieldError);
+      if (cfg.emailHintId) {
+        const eh = document.getElementById(cfg.emailHintId);
+        if (eh) { eh.style.display = 'none'; eh.textContent = ''; }
+      }
+      if (cfg.mobileHintId) {
+        const mh = document.getElementById(cfg.mobileHintId);
+        if (mh) { mh.style.display = 'none'; mh.textContent = ''; }
+      }
+    }
+
+    function resolvePopupTitle(field, backendTitle) {
+      if (backendTitle) return backendTitle;
+      if (field === 'both') return 'Account Details Already Exist!';
+      if (field === 'email') return 'Email Already Registered!';
+      if (field === 'mobile') return 'Phone Number Already Registered!';
+      return 'Validation Error';
+    }
+
+    function highlightAndFocusField(field, message) {
+      const emailEl = getField('email');
+      const mobileEl = getField('mobile');
+      let focusTarget = null;
+
+      if (field === 'both') {
+        setFieldError(emailEl, emailMsgDup);
+        setFieldError(mobileEl, mobileMsgDup);
+        focusTarget = emailEl;
+      } else if (field === 'dept_both') {
+        const nameEl = getField('name');
+        const codeEl = getField('code');
+        setFieldError(nameEl, 'Department name already exists.');
+        setFieldError(codeEl, 'Department code already exists.');
+        focusTarget = nameEl || codeEl;
+      } else if (field === 'email') {
+        setFieldError(emailEl, message);
+        focusTarget = emailEl;
+      } else if (field === 'mobile') {
+        setFieldError(mobileEl, message);
+        focusTarget = mobileEl;
+      } else if (field) {
+        const targetField = getField(field);
+        setFieldError(targetField, message);
+        focusTarget = targetField;
+      }
+      return focusTarget;
+    }
+
+    form.addEventListener('input', (e) => {
+      if (e.target) clearFieldError(e.target);
+    });
+    form.addEventListener('change', (e) => {
+      if (e.target) clearFieldError(e.target);
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (form.dataset.submitting === '1') return;
+      clearAllErrors();
+
+      if (typeof cfg.beforeSubmit === 'function') {
+        const clientErr = cfg.beforeSubmit(form);
+        if (clientErr && clientErr.message) {
+          const alertEl = getAlert();
+          const alertMsg = getAlertMsg();
+          if (alertEl && alertMsg) {
+            alertMsg.textContent = clientErr.message;
+            alertEl.style.display = 'flex';
+          }
+          const focusEl = highlightAndFocusField(clientErr.field, clientErr.message);
+          if (window.showPersistentAlertPopup) {
+            window.showPersistentAlertPopup({
+              title: clientErr.title || 'Validation Alert',
+              message: clientErr.message,
+              variant: 'danger',
+              closeText: 'Close',
+              onClose: () => { if (focusEl) focusEl.focus(); }
+            });
+          } else if (focusEl) {
+            focusEl.focus();
+          }
+          return;
+        }
+      }
+
+      form.dataset.submitting = '1';
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+      if (window.showPageLoader) window.showPageLoader('Saving...');
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 25000);
+      try {
+        const rawAction = form.getAttribute('action') || window.location.pathname;
+        const targetUrl = window.getApiUrl ? window.getApiUrl(rawAction) : rawAction;
+        const res = await fetch(targetUrl, {
+          method: 'POST',
+          body: new FormData(form),
+          credentials: 'include',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          },
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data && data.success) {
+          window.__sccmtPauseLiveSyncUntil = Date.now() + 8000;
+          if (window.hidePageLoader) window.hidePageLoader();
+
+          if (cfg.isRegistration) {
+            const redirectUrl = data.redirect || '/auth/login';
+            if (window.showPersistentAlertPopup) {
+              window.showPersistentAlertPopup({
+                title: 'Account Created Successfully',
+                message: data.message || 'Your account has been created. Please sign in to continue.',
+                variant: 'success',
+                closeText: 'Continue to Sign In',
+                onClose: () => { window.location.href = redirectUrl; }
+              });
+            } else {
+              window.location.href = redirectUrl;
+            }
+            return;
+          }
+
+          if (window.closeModal && cfg.modalId) window.closeModal(cfg.modalId);
+          form.reset();
+          if (typeof cfg.onAfterReset === 'function') {
+            try { cfg.onAfterReset(form); } catch (_) {}
+          }
+          if (window.refreshDashboardContent) {
+            await window.refreshDashboardContent();
+          }
+          if (window.showPersistentAlertPopup) {
+            window.showPersistentAlertPopup({
+              title: cfg.successTitle || 'Account Created Successfully',
+              message: data.message || 'Changes have been saved successfully.',
+              variant: 'success',
+              closeText: 'Close'
+            });
+          }
+          return;
+        }
+
+        const message = (data && data.message) ? data.message : 'Unable to save user details.';
+        const field = data ? data.field : null;
+        const title = resolvePopupTitle(field, data ? data.title : null);
+
+        const alertEl = getAlert();
+        const alertMsg = getAlertMsg();
+        if (alertEl && alertMsg) {
+          alertMsg.textContent = message;
+          alertEl.style.display = 'flex';
+          if (window.lucide) lucide.createIcons();
+        }
+
+        const focusTarget = highlightAndFocusField(field, message);
+
+        if (window.showPersistentAlertPopup) {
+          window.showPersistentAlertPopup({
+            title: title,
+            message: message,
+            variant: 'danger',
+            closeText: 'Close',
+            onClose: () => {
+              if (focusTarget) {
+                focusTarget.focus();
+                if (typeof focusTarget.select === 'function') focusTarget.select();
+              }
+            }
+          });
+        }
+      } catch (err) {
+        clearTimeout(timer);
+        const msg = (err && err.name === 'AbortError')
+          ? 'Server took too long to respond. Please try again.'
+          : 'Network error while communicating with server.';
+        const alertEl = getAlert();
+        const alertMsg = getAlertMsg();
+        if (alertEl && alertMsg) {
+          alertMsg.textContent = msg;
+          alertEl.style.display = 'flex';
+        }
+        if (window.showPersistentAlertPopup) {
+          window.showPersistentAlertPopup({
+            title: 'Request Error',
+            message: msg,
+            variant: 'danger',
+            closeText: 'Close'
+          });
+        }
+      } finally {
+        delete form.dataset.submitting;
+        if (window.hidePageLoader) window.hidePageLoader();
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -641,6 +1014,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       clearTimeout(timeoutId);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const existingErr = dashContent.querySelector('.scf-api-retry-banner');
+      if (existingErr) existingErr.remove();
       const html = await res.text();
       const doc = new DOMParser().parseFromString(html, 'text/html');
       const nextDash = doc.querySelector('.dashboard-content');
@@ -659,6 +1034,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (window.lucide) lucide.createIcons();
       if (window.formatLocalTimes) window.formatLocalTimes(dashContent);
+      if (window.rebindUserCreateModalForms) window.rebindUserCreateModalForms();
       dashContent.scrollTop = prevScrollTop;
       window.scrollTo(0, prevWinY);
       requestAnimationFrame(() => dashContent.classList.remove('is-swapping'));
@@ -667,6 +1043,20 @@ document.addEventListener('DOMContentLoaded', () => {
       clearTimeout(timeoutId);
       if (err && err.name === 'AbortError' && activeRefreshSuperseded) {
         return;
+      }
+      if (!dashContent.querySelector('.scf-api-retry-banner')) {
+        const banner = document.createElement('div');
+        banner.className = 'alert alert-danger scf-api-retry-banner';
+        banner.style.cssText = 'display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;';
+        banner.innerHTML = '<span>Unable to refresh data from the server. Please check your connection and try again.</span><button type="button" class="btn btn-secondary btn-sm">Retry</button>';
+        const retryBtn = banner.querySelector('button');
+        if (retryBtn) {
+          retryBtn.addEventListener('click', () => {
+            banner.remove();
+            window.refreshDashboardContent(fetchUrl).catch(() => {});
+          });
+        }
+        dashContent.insertBefore(banner, dashContent.firstChild);
       }
       throw err;
     } finally {
@@ -972,31 +1362,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 12. Modal Accessibility & Animation Controller
-  window.openModal = function(id) {
-    const modal = document.getElementById(id);
-    if (!modal) return;
-    modal.classList.add('modal-overlay');
-    modal.classList.add('show');
-    modal.style.display = 'flex';
-    if (window.lucide) {
-      lucide.createIcons();
+  // 12. Auto-bind all modal and registration forms so ALL forms share consistent validation, persistent center popups, and close-button-only dismissal
+  document.querySelectorAll('form[action*="/auth/register"]').forEach((regForm, idx) => {
+    if (!regForm.id) regForm.id = `scfRegisterForm${idx + 1}`;
+    regForm.dataset.customAjax = '1';
+    regForm.noValidate = true;
+    window.bindUserCreateModalForm({
+      formId: regForm.id,
+      isRegistration: true
+    });
+  });
+
+  [
+    {
+      formId: 'adminCreateDeptForm',
+      modalId: 'createDeptModal',
+      alertId: 'createDeptErrorAlert',
+      messageId: 'createDeptErrorMessage',
+      successTitle: 'Department Created Successfully'
+    },
+    {
+      formId: 'adminDispatchForm',
+      modalId: 'dispatchModal',
+      alertId: 'dispatchErrorAlert',
+      messageId: 'dispatchErrorMessage',
+      successTitle: 'Work Order Dispatched'
+    },
+    {
+      formId: 'adminAddWorkerForm',
+      modalId: 'addWorkerModal',
+      alertId: 'adminAddWorkerErrorAlert',
+      messageId: 'adminAddWorkerErrorMessage'
+    },
+    {
+      formId: 'addOfficerForm',
+      modalId: 'addOfficerModal',
+      alertId: 'addOfficerErrorAlert',
+      messageId: 'addOfficerErrorMessage'
     }
-  };
+  ].forEach((stdCfg) => {
+    if (document.getElementById(stdCfg.formId)) {
+      window.bindUserCreateModalForm(stdCfg);
+    }
+  });
 
-  window.closeModal = function(id) {
-    const modal = document.getElementById(id);
-    if (!modal) return;
-    modal.classList.remove('show');
-    setTimeout(() => {
-      modal.style.display = 'none';
-    }, 220);
-  };
+  // Safety rebind for standard admin/officer modal forms inside DOMContentLoaded
+  if (window.rebindUserCreateModalForms) {
+    window.rebindUserCreateModalForms();
+  }
 
-  // Close modals on Escape key or backdrop click
+  // Only close non-form informational modals via Escape/backdrop; NEVER close form modals or persistent alerts when clicking outside or pressing Escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      const persistentAlert = document.getElementById('scfPersistentAlertModal');
+      if (persistentAlert && persistentAlert.classList.contains('show')) {
+        return;
+      }
       document.querySelectorAll('.modal-overlay.show, [id$="Modal"]').forEach(m => {
+        if (m.id === 'scfPersistentAlertModal' || m.id === 'sccmtConfirmModal' || m.querySelector('form')) return;
         if (m.classList.contains('show') || m.style.display === 'block' || m.style.display === 'flex') {
           m.classList.remove('show');
           setTimeout(() => { m.style.display = 'none'; }, 220);
@@ -1005,8 +1428,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Never close form modals or persistent alerts when clicking outside (backdrop); only close explicit buttons
   document.querySelectorAll('[id$="Modal"]').forEach(modal => {
+    if (modal.id === 'scfPersistentAlertModal' || modal.id === 'sccmtConfirmModal' || modal.querySelector('form')) return;
     modal.addEventListener('click', (e) => {
+      const persistentAlert = document.getElementById('scfPersistentAlertModal');
+      if (persistentAlert && persistentAlert.classList.contains('show')) return;
       if (e.target === modal) {
         modal.classList.remove('show');
         setTimeout(() => { modal.style.display = 'none'; }, 220);
@@ -1065,6 +1492,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 14. Password Visibility Toggle
   window.togglePasswordVisibility = function(btn) {
+    if (!btn) return;
     const wrapper = btn.closest('.auth-input-wrapper, .password-input-wrapper, .form-group') || btn.parentElement;
     if (!wrapper) return;
     const input = wrapper.querySelector('input');
@@ -1072,17 +1500,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (input.type === 'password') {
       input.type = 'text';
-      btn.innerHTML = '<svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path><line x1="2" x2="22" y1="2" y2="22"></line></svg>';
+      btn.innerHTML = '<svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path><line x1="2" x2="22" y1="2" y2="22"></line></svg>';
       btn.setAttribute('aria-label', 'Hide password');
       btn.setAttribute('title', 'Hide password');
+      btn.setAttribute('aria-pressed', 'true');
     } else {
       input.type = 'password';
-      btn.innerHTML = '<svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+      btn.innerHTML = '<svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
       btn.setAttribute('aria-label', 'Show password');
       btn.setAttribute('title', 'Show password');
-    }
-    if (window.lucide) {
-      lucide.createIcons();
+      btn.setAttribute('aria-pressed', 'false');
     }
   };
 

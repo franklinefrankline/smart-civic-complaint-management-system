@@ -188,6 +188,76 @@
         </div>
       </div>
     </div>
+
+    <!-- Field Worker Evidence & Verification Photos -->
+    <div id="officerWorkerEvidenceCard" class="card" style="box-shadow: none; margin-top: 1.25rem; border-top: 3px solid var(--civic-teal);">
+      <div class="card-header" style="margin-bottom: 0.85rem; padding-bottom: 0.6rem;">
+        <div>
+          <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="camera" class="icon-sm" style="color: var(--civic-teal);"></i>
+            Field Worker Evidence Photos ({{ recent_worker_evidence|length if recent_worker_evidence is defined else 0 }})
+          </h3>
+          <span style="font-size: 0.78rem; color: var(--text-muted);">
+            Site pre-work, progress, and after-work verification photographs submitted by your department technicians.
+          </span>
+        </div>
+        <a href="{{ url_for('officer.verification') }}" style="font-size: 0.8rem; font-weight: 600;">Verification Queue &rarr;</a>
+      </div>
+
+      {% if recent_worker_evidence is defined and recent_worker_evidence %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem;">
+          {% for att in recent_worker_evidence %}
+            <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-subtle); display: flex; flex-direction: column;">
+              <div style="padding: 0.4rem 0.65rem; font-size: 0.72rem; font-weight: 700; display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); border-bottom: 1px solid var(--border-color);">
+                <span style="color: var(--civic-teal); text-transform: uppercase;">{{ att.display_type_label }}</span>
+                {% if att.complaint %}
+                  <a href="{{ url_for('officer.complaint_detail', complaint_id=att.complaint.id) }}" style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">
+                    {{ att.complaint.complaint_ref }}
+                  </a>
+                {% endif %}
+              </div>
+              {% if att.is_image %}
+                <a href="{{ att.public_url }}" target="_blank" title="Open full evidence photo">
+                  <img src="{{ att.public_url }}" alt="{{ att.display_type_label }}" loading="lazy" style="width: 100%; height: 140px; object-fit: cover; display: block;">
+                </a>
+              {% else %}
+                <div style="padding: 2rem 1rem; text-align: center;">
+                  <a href="{{ att.public_url }}" target="_blank" class="btn btn-secondary btn-sm">View Evidence File</a>
+                </div>
+              {% endif %}
+              <div style="padding: 0.65rem 0.75rem; font-size: 0.78rem; flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
+                {% if att.complaint %}
+                  <div style="font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    {{ att.complaint.title }}
+                  </div>
+                  <div>
+                    <span class="badge badge-{{ att.complaint.status.lower().replace(' ', '-') }}" style="font-size: 0.68rem;">
+                      {{ att.complaint.status }}
+                    </span>
+                  </div>
+                {% endif %}
+                <div style="color: var(--text-secondary); font-size: 0.75rem;">
+                  By {{ att.uploaded_by.full_name if att.uploaded_by else 'Field Technician' }}
+                </div>
+                {% if att.remarks %}
+                  <div style="color: var(--text-muted); font-size: 0.74rem; line-height: 1.35;">{{ att.remarks }}</div>
+                {% endif %}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 0.45rem;">
+                  <span style="font-size: 0.7rem; color: var(--text-muted);">{{ att.created_at | local_time('%d %b, %I:%M %p') }}</span>
+                  {% if att.complaint %}
+                    <a href="{{ url_for('officer.complaint_detail', complaint_id=att.complaint.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">Inspect</a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">
+          No field worker evidence photos submitted in your department yet.
+        </div>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

@@ -15,12 +15,28 @@ def generate_complaint_ref():
     return f"CMP-{now.strftime('%Y%m')}-{rand_str}"
 
 
-def allowed_file(filename):
-    """Validate allowed file extension against configuration"""
-    if '.' not in filename:
-        return False
-    ext = filename.rsplit('.', 1)[1].lower()
-    return ext in current_app.config['ALLOWED_EXTENSIONS']
+_MIME_BY_EXT = {
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'jfif': 'image/jpeg',
+    'webp': 'image/webp',
+    'gif': 'image/gif',
+    'bmp': 'image/bmp',
+    'avif': 'image/avif',
+    'heic': 'image/heic',
+    'heif': 'image/heif',
+    'pdf': 'application/pdf',
+}
+
+
+def allowed_file(filename, mimetype=None):
+    """Validate allowed file extension or image MIME type against configuration"""
+    if filename and '.' in filename:
+        ext = filename.rsplit('.', 1)[1].lower()
+        if ext in current_app.config['ALLOWED_EXTENSIONS']:
+            return True
+    return bool(mimetype and str(mimetype).lower().startswith('image/'))
 
 
 def save_uploaded_file(file_obj, subfolder='complaints'):
@@ -31,11 +47,19 @@ def save_uploaded_file(file_obj, subfolder='complaints'):
     if not file_obj or file_obj.filename == '':
         return None
 
-    if not allowed_file(file_obj.filename):
+    raw_mime = (getattr(file_obj, 'mimetype', None) or '').strip().lower()
+    if not allowed_file(file_obj.filename, raw_mime):
         return None
 
     orig_name = (secure_filename(file_obj.filename) or 'attachment')[:255]
-    ext = orig_name.rsplit('.', 1)[1].lower() if '.' in orig_name else 'jpg'
+    if '.' in orig_name:
+        ext = orig_name.rsplit('.', 1)[1].lower()
+    elif raw_mime.startswith('image/'):
+        ext = raw_mime.split('/', 1)[1].split('+', 1)[0] or 'jpg'
+        if ext == 'jpeg':
+            ext = 'jpg'
+    else:
+        ext = 'jpg'
     unique_filename = f"{uuid.uuid4().hex}_{int(datetime.utcnow().timestamp())}.{ext}"[:255]
 
     # Read binary bytes into memory for persistent DB storage
@@ -46,6 +70,8 @@ def save_uploaded_file(file_obj, subfolder='complaints'):
         pass
     file_bytes = stream.read()
     file_size = len(file_bytes)
+    if file_size == 0:
+        return None
 
     # Best-effort disk cache write (ephemeral on Render, persistent locally)
     try:
@@ -58,7 +84,11 @@ def save_uploaded_file(file_obj, subfolder='complaints'):
         pass
 
     relative_path = f"uploads/{subfolder}/{unique_filename}"[:255]
-    safe_mime = (file_obj.mimetype or 'application/octet-stream')[:100]
+    inferred_mime = _MIME_BY_EXT.get(ext)
+    if not raw_mime or raw_mime == 'application/octet-stream':
+        safe_mime = (inferred_mime or 'application/octet-stream')[:100]
+    else:
+        safe_mime = raw_mime[:100]
 
     return {
         'filename': unique_filename,

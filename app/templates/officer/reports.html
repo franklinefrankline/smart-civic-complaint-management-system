@@ -89,6 +89,12 @@
                   {{ c.resolved_at | local_time('%Y-%m-%d', '-') }}
                 </td>
               </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+                  No complaint records found for your department yet.
+                </td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>

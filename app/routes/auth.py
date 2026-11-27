@@ -1,9 +1,12 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, g
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, g, jsonify
+from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models.user import User
 from app.utils.helpers import validate_email, validate_mobile_number, validate_password_strength
+from app.utils.decorators import _is_api_or_ajax
 from app.services.audit_service import log_action
+from app.services.user_service import check_duplicate_user_contacts, resolve_duplicate_integrity_error, duplicate_title_for_field
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -85,6 +88,7 @@ def register():
         return redirect(url_for('public.index'))
         
     if request.method == 'POST':
+        is_ajax = _is_api_or_ajax()
         full_name = request.form.get('full_name', '').strip()
         email = request.form.get('email', '').strip()
         mobile = request.form.get('mobile', '').strip()
@@ -98,42 +102,51 @@ def register():
             'full_name': full_name, 'email': email, 'mobile': mobile,
             'address': address, 'city': city, 'ward_number': ward_number
         }
+
+        def _reg_error(err_msg, err_field=None, err_title='Registration Error'):
+            if is_ajax:
+                return jsonify({
+                    'success': False,
+                    'title': err_title,
+                    'message': err_msg,
+                    'field': err_field,
+                }), 400
+            if err_field not in ('email', 'mobile', 'both'):
+                flash(err_msg, "danger")
+            return render_template(
+                'public/register.html',
+                dup_popup_title=err_title if err_field in ('email', 'mobile', 'both') else None,
+                dup_popup_message=err_msg if err_field in ('email', 'mobile', 'both') else None,
+                dup_popup_field=err_field,
+                **form_data,
+            )
         
         # Validations
         if not full_name or len(full_name) < 2:
-            flash("Please provide a valid full name.", "danger")
-            return render_template('public/register.html', **form_data)
+            return _reg_error("Please provide a valid full name.", "full_name")
             
         valid_email, email_res = validate_email(email)
         if not valid_email:
-            flash(email_res, "danger")
-            return render_template('public/register.html', **form_data)
+            return _reg_error(email_res, "email")
         email = email_res
         
         valid_mob, mob_res = validate_mobile_number(mobile)
         if not valid_mob:
-            flash(mob_res, "danger")
-            return render_template('public/register.html', **form_data)
+            return _reg_error(mob_res, "mobile")
         mobile = mob_res
         
         if password != confirm_password:
-            flash("Passwords do not match.", "danger")
-            return render_template('public/register.html', **form_data)
+            return _reg_error("Passwords do not match.", "confirm_password")
             
         valid_pw, pw_msg = validate_password_strength(password)
         if not valid_pw:
-            flash(pw_msg, "danger")
-            return render_template('public/register.html', **form_data)
+            return _reg_error(pw_msg, "password")
             
-        # Uniqueness checks
-        if User.query.filter_by(email=email).first():
-            flash("An account with this email address already exists. Please log in.", "danger")
-            return render_template('public/register.html', **form_data)
-            
-        if User.query.filter_by(mobile_number=mobile).first():
-            flash("An account with this mobile number already exists. Please log in.", "danger")
-            return render_template('public/register.html', **form_data)
-            
+        # Uniqueness checks (normalized email & phone)
+        dup_msg, dup_field, email, mobile = check_duplicate_user_contacts(email, mobile)
+        if dup_msg:
+            return _reg_error(dup_msg, dup_field, duplicate_title_for_field(dup_field))
+
         new_user = User(
             role='citizen',
             full_name=full_name,
@@ -145,12 +158,19 @@ def register():
             is_active=True
         )
         new_user.set_password(password)
-        db.session.add(new_user)
-        db.session.commit()
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+        except IntegrityError as exc:
+            err_msg, err_field = resolve_duplicate_integrity_error(exc, email, mobile)
+            return _reg_error(err_msg, err_field, duplicate_title_for_field(err_field))
         
         log_action(new_user.id, 'CITIZEN_REGISTER', 'user', new_user.id)
         
-        flash("Registration successful! You may now sign in with your credentials.", "success")
+        msg = "Registration successful! You may now sign in with your credentials."
+        if is_ajax:
+            return jsonify({'success': True, 'message': msg, 'redirect_url': url_for('auth.login')}), 200
+        flash(msg, "success")
         return redirect(url_for('auth.login'))
         
     return render_template('public/register.html')

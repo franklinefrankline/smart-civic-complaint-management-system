@@ -1,19 +1,41 @@
 {% extends "base.html" %}
 
-{% block title %}Completed Tasks History | {{ t('app_name') }}{% endblock %}
+{% block title %}Task History | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
   {% include 'shared/_sidebar.html' %}
 
   <div class="dashboard-content">
-    <div style="margin-bottom: 2rem;">
-      <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
-        Completed Task History
-      </h1>
-      <p style="color: var(--text-muted); font-size: 0.92rem;">
-        Archive of field work orders successfully completed and verified.
-      </p>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
+          Complete Task History
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.92rem;">
+          All assigned, accepted, in-progress, returned, rejected, and completed field work orders.
+        </p>
+      </div>
+      <a href="{{ url_for('worker.tasks') }}" class="btn btn-secondary btn-sm">
+        <i data-lucide="list" class="icon-xs"></i> Active Task Queue
+      </a>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card" style="padding: 1.1rem 1.25rem; margin-bottom: 1.5rem;">
+      <form method="GET" action="{{ url_for('worker.history') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <input type="text" name="search" class="form-control" placeholder="Search complaint ref, title, or remarks..." value="{{ search_query or '' }}" style="flex: 2; min-width: 220px;">
+        <select name="status" class="form-control" style="flex: 1; min-width: 170px;">
+          <option value="">All Assignment States</option>
+          <option value="Assigned" {% if current_status == 'Assigned' %}selected{% endif %}>Assigned</option>
+          <option value="Accepted" {% if current_status == 'Accepted' %}selected{% endif %}>Accepted</option>
+          <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>In Progress</option>
+          <option value="Completed" {% if current_status == 'Completed' %}selected{% endif %}>Completed</option>
+          <option value="Returned" {% if current_status == 'Returned' %}selected{% endif %}>Returned / Rework</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="{{ url_for('worker.history') }}" class="btn btn-secondary btn-sm">Reset</a>
+      </form>
     </div>
 
     <div class="card">
@@ -22,45 +44,67 @@
           <thead>
             <tr>
               <th>Reference</th>
-              <th>Task Title</th>
+              <th>Task Title &amp; Remarks</th>
               <th>Department</th>
-              <th>Priority</th>
-              <th>Assigned Date</th>
-              <th>Completed Date</th>
+              <th>Assignment Status</th>
+              <th>Complaint Status</th>
+              <th>Timeline Dates</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {% for a in assignments %}
+              {% set latest_hist = remarks_map.get(a.complaint_id) if remarks_map is defined else none %}
               <tr>
                 <td>
                   <span style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">
                     {{ a.complaint.complaint_ref }}
                   </span>
                 </td>
-                <td style="font-weight: 600;">{{ a.complaint.title }}</td>
-                <td>{{ a.complaint.department.name if a.complaint.department else '-' }}</td>
+                <td style="max-width: 260px;">
+                  <div style="font-weight: 600;">{{ a.complaint.title }}</div>
+                  <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    {{ (latest_hist.remarks if latest_hist and latest_hist.remarks else a.instructions) or 'No remarks logged.' }}
+                  </div>
+                </td>
+                <td style="font-size: 0.85rem;">{{ a.complaint.department.name if a.complaint.department else '-' }}</td>
                 <td>
-                  <span class="badge badge-priority-{{ a.complaint.priority }}">
-                    {{ a.complaint.priority.upper() }}
+                  <span class="badge" style="background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color);">
+                    {{ a.status }}
                   </span>
                 </td>
-                <td style="font-size: 0.82rem; color: var(--text-muted);">
-                  {{ a.assigned_at | local_time('%Y-%m-%d') }}
+                <td>
+                  <span class="badge badge-{{ a.complaint.status.lower().replace(' ', '-') }}">
+                    {{ a.complaint.status }}
+                  </span>
                 </td>
-                <td style="font-size: 0.82rem; color: var(--text-muted);">
-                  {{ a.completed_at | local_time('%Y-%m-%d %H:%M', '-') }}
+                <td style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap;">
+                  <div>Assigned: {{ a.assigned_at | local_time('%d %b %Y') }}</div>
+                  {% if a.accepted_at %}<div>Accepted: {{ a.accepted_at | local_time('%d %b %Y') }}</div>{% endif %}
+                  {% if a.completed_at %}<div>Completed: {{ a.completed_at | local_time('%d %b %Y, %I:%M %p') }}</div>{% endif %}
                 </td>
                 <td>
                   <a href="{{ url_for('worker.task_detail', complaint_id=a.complaint.id) }}" class="btn btn-secondary btn-sm">
-                    View
+                    View Details
                   </a>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 3rem 1.25rem; color: var(--text-muted);">
+                  <div style="font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+                    No task history records found.
+                  </div>
+                  <p style="font-size: 0.85rem; margin: 0;">Assigned, accepted, returned, and completed work orders will appear here.</p>
                 </td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+      {% if pagination is defined %}
+        {% include 'shared/_pagination.html' %}
+      {% endif %}
     </div>
   </div>
 </div>

@@ -74,6 +74,12 @@
                   {{ log.details or '-' }}
                 </td>
               </tr>
+            {% else %}
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+                  No audit log entries match your current filter.
+                </td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>

@@ -127,7 +127,14 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(err => {
         console.error('Failed to load notifications:', err);
         if (!isBackgroundPoll && notifList) {
-          notifList.innerHTML = '<div style="padding: 1.25rem; text-align: center; color: var(--status-rejected); font-size: 0.82rem;">Unable to load notifications right now.</div>';
+          notifList.innerHTML = '<div style="padding: 1.25rem; text-align: center; color: var(--status-rejected); font-size: 0.82rem;"><div>Unable to load notifications right now.</div><button type="button" id="retryNotifBtn" class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;">Retry</button></div>';
+          const retryBtn = document.getElementById('retryNotifBtn');
+          if (retryBtn) {
+            retryBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              loadNotifications(false);
+            });
+          }
         }
       });
   }

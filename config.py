@@ -223,12 +223,13 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = _ENGINE_OPTS
 
-    # Upload settings: writable /tmp on Cloud/Linux, local directory on Windows
+    # Upload settings: writable /tmp on Cloud/Linux, absolute directory on Windows/local
     if IS_CLOUD:
-        UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/uploads')
+        _raw_upload_dir = os.environ.get('UPLOAD_FOLDER', '/tmp/uploads')
     else:
-        UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(BASE_DIR, 'uploads'))
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
+        _raw_upload_dir = os.environ.get('UPLOAD_FOLDER', os.path.join(BASE_DIR, 'uploads'))
+    UPLOAD_FOLDER = _raw_upload_dir if os.path.isabs(_raw_upload_dir) else os.path.abspath(os.path.join(BASE_DIR, _raw_upload_dir))
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'jfif', 'avif', 'heic', 'heif', 'pdf'}
     MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 10 * 1024 * 1024))  # 10 MB limit
 
     # CORS & API Base Configuration

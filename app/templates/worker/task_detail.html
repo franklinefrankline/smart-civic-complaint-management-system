@@ -81,8 +81,19 @@
         <div class="card" style="margin-bottom: 1.5rem; border-top: 4px solid var(--civic-blue);">
           <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem;">Field Execution Actions</h3>
 
-          <!-- Step 1: Start Work & Upload Before Photo -->
+          <!-- Step 1: Accept Task or Start Work & Upload Before Photo -->
           {% if complaint.status in ['Assigned', 'Assigned to Worker'] %}
+            {% if assignment.status == 'Assigned' %}
+              <form method="POST" action="{{ url_for('worker.task_detail', complaint_id=complaint.id) }}" style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                <input type="hidden" name="action" value="accept_task">
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                  Confirm receipt of this assigned work order to move it into your In Progress queue.
+                </div>
+                <button type="submit" class="btn btn-success btn-sm">
+                  <i data-lucide="check" class="icon-xs"></i> Accept Task
+                </button>
+              </form>
+            {% endif %}
             <form method="POST" action="{{ url_for('worker.task_detail', complaint_id=complaint.id) }}" enctype="multipart/form-data" style="margin-bottom: 1.5rem;">
               <input type="hidden" name="action" value="start_work">
               
@@ -104,15 +115,20 @@
 
           <!-- Step 2: Progress Notes & Completion -->
           {% if complaint.status in ['In Progress', 'Work Started', 'Rework Required'] %}
-            <!-- Progress Notes Subform -->
-            <form method="POST" action="{{ url_for('worker.task_detail', complaint_id=complaint.id) }}" style="margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
+            <!-- Progress Notes & Evidence Subform -->
+            <form method="POST" action="{{ url_for('worker.task_detail', complaint_id=complaint.id) }}" enctype="multipart/form-data" style="margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
               <input type="hidden" name="action" value="update_progress">
               <div class="form-group">
+                <label class="form-label">Add Site Evidence Photo (Optional)</label>
+                <input type="file" name="evidence_image" class="form-control" accept="image/*">
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Evidence photos uploaded here are immediately visible to Admin and Department Officer.</small>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">Post Progress Remarks</label>
-                <div style="display: flex; gap: 0.5rem;">
-                  <input type="text" name="progress_notes" class="form-control" placeholder="e.g. Gasket replaced, pressurized testing underway..." required>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                  <input type="text" name="progress_notes" class="form-control" placeholder="e.g. Gasket replaced, pressurized testing underway..." style="flex: 1; min-width: 220px;">
                   <button type="submit" class="btn btn-secondary btn-sm" style="white-space: nowrap;">
-                    <i data-lucide="message-square" class="icon-xs"></i> Post Note
+                    <i data-lucide="camera" class="icon-xs"></i> Post Progress / Evidence
                   </button>
                 </div>
               </div>
@@ -154,18 +170,23 @@
 
         <!-- Evidence Gallery -->
         <div class="card">
-          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Work Photos & Evidence</h3>
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Work Photos & Evidence ({{ attachments|length if attachments else 0 }})</h3>
           {% if attachments %}
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 1rem;">
               {% for att in attachments %}
-                <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden;">
-                  <div style="padding: 0.35rem 0.6rem; font-size: 0.72rem; font-weight: bold; background: var(--bg-subtle);">
-                    {{ att.attachment_type.upper() }}
+                <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-subtle);">
+                  <div style="padding: 0.35rem 0.6rem; font-size: 0.72rem; font-weight: bold; background: var(--bg-surface); border-bottom: 1px solid var(--border-color);">
+                    {{ att.display_type_label.upper() }}
                   </div>
-                  {% if att.mime_type and 'image' in att.mime_type %}
-                    <a href="/{{ att.file_path }}" target="_blank">
-                      <img src="/{{ att.file_path }}" alt="Proof" style="width: 100%; height: 110px; object-fit: cover;">
+                  {% if att.is_image %}
+                    <a href="{{ att.public_url }}" target="_blank" title="Open full evidence photo">
+                      <img src="{{ att.public_url }}" alt="{{ att.display_type_label }}" loading="lazy" style="width: 100%; height: 120px; object-fit: cover; display: block;">
                     </a>
+                  {% else %}
+                    <div style="padding: 1.5rem; text-align: center;"><a href="{{ att.public_url }}" target="_blank">View File</a></div>
+                  {% endif %}
+                  {% if att.remarks %}
+                    <div style="padding: 0.4rem 0.6rem; font-size: 0.74rem; color: var(--text-muted); line-height: 1.35;">{{ att.remarks }}</div>
                   {% endif %}
                 </div>
               {% endfor %}

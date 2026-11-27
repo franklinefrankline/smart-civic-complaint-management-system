@@ -71,27 +71,91 @@ def tasks():
         .options(joinedload(Complaint.category), joinedload(Complaint.department))
     )
 
-    status = request.args.get('status')
+    status = (request.args.get('status') or '').strip()
+    priority = (request.args.get('priority') or '').strip()
+    view_title = 'Field Task Queue'
+    view_subtitle = 'All work orders assigned to you by municipal department officers.'
+    view_mode = 'all'
+
     if status:
         if status in ASSIGNED_TO_WORKER_STATUSES:
             query = query.filter(Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES))
-        elif status in ('In Progress', 'Work Started'):
+            view_title = 'Assigned Tasks'
+            view_subtitle = 'New field work orders awaiting acceptance or start of site work.'
+            view_mode = 'assigned'
+        elif status in ('In Progress', 'Work Started', 'Rework Required'):
             query = query.filter(Complaint.status.in_(ACTIVE_WORK_STATUSES))
+            view_title = 'In Progress Tasks'
+            view_subtitle = 'Accepted and active field work orders where progress updates and evidence are tracked.'
+            view_mode = 'in_progress'
+        elif status in ('Completed', 'Work Completed'):
+            query = query.filter(Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES + ['Resolved']))
+            view_title = 'Completed Tasks'
+            view_subtitle = 'Completed field work orders pending verification or approved as resolved.'
+            view_mode = 'completed'
         elif status in COMPLETED_PENDING_VERIF_STATUSES:
             query = query.filter(Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES))
+            view_title = 'Pending Verification Tasks'
+            view_subtitle = 'Submitted completion evidence awaiting department officer verification.'
+            view_mode = 'completed'
         else:
             query = query.filter_by(status=status)
+            if status == 'Resolved':
+                view_title = 'Verified & Completed Tasks'
+                view_subtitle = 'Field work orders inspected and approved by department authorities.'
+                view_mode = 'completed'
+
+    if priority:
+        query = query.filter_by(priority=priority)
 
     search = request.args.get('search', '').strip()
     if search:
         query = query.filter(
             (Complaint.complaint_ref.ilike(f'%{search}%')) |
-            (Complaint.title.ilike(f'%{search}%'))
+            (Complaint.title.ilike(f'%{search}%')) |
+            (Complaint.description.ilike(f'%{search}%')) |
+            (Complaint.address.ilike(f'%{search}%')) |
+            (Complaint.ward_number.ilike(f'%{search}%'))
         )
 
     page = max(1, request.args.get('page', 1, type=int))
-    pagination = query.order_by(Complaint.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
-    return render_template('worker/tasks.html', tasks=pagination.items, pagination=pagination, current_status=status, search_query=search)
+    pagination = query.order_by(Complaint.updated_at.desc(), Complaint.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
+    tasks_list = pagination.items
+    complaint_ids = [c.id for c in tasks_list]
+
+    assignments_map = {}
+    remarks_map = {}
+    if complaint_ids:
+        for a in (
+            ComplaintAssignment.query.filter(
+                ComplaintAssignment.assigned_to_user_id == worker_user_id,
+                ComplaintAssignment.complaint_id.in_(complaint_ids),
+            )
+            .order_by(ComplaintAssignment.id.desc())
+            .all()
+        ):
+            assignments_map.setdefault(a.complaint_id, a)
+
+        for h in (
+            ComplaintStatusHistory.query.filter(ComplaintStatusHistory.complaint_id.in_(complaint_ids))
+            .order_by(ComplaintStatusHistory.id.desc())
+            .all()
+        ):
+            remarks_map.setdefault(h.complaint_id, h)
+
+    return render_template(
+        'worker/tasks.html',
+        tasks=tasks_list,
+        pagination=pagination,
+        current_status=status,
+        current_priority=priority,
+        search_query=search,
+        view_title=view_title,
+        view_subtitle=view_subtitle,
+        view_mode=view_mode,
+        assignments_map=assignments_map,
+        remarks_map=remarks_map,
+    )
 
 @worker_bp.route('/tasks/<int:complaint_id>', methods=['GET', 'POST'], strict_slashes=False)
 @worker_bp.route('/task/<int:complaint_id>', methods=['GET', 'POST'], strict_slashes=False)
@@ -118,7 +182,57 @@ def task_detail(complaint_id):
         success_msg = None
 
         try:
-            if action == 'start_work':
+            if action == 'accept_task':
+                if complaint.status not in ASSIGNED_TO_WORKER_STATUSES:
+                    msg = f"Task is already in status '{complaint.status}'."
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': msg}), 400
+                    flash(msg, "info")
+                    return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
+                old_status = complaint.status
+                assignment.status = 'Accepted'
+                assignment.accepted_at = datetime.utcnow()
+                complaint.status = 'In Progress'
+                complaint.updated_at = datetime.utcnow()
+                accept_remarks = remarks or f"Task accepted by field technician {g.user.full_name}."
+                db.session.add(ComplaintStatusHistory(
+                    complaint_id=complaint.id,
+                    changed_by_user_id=g.user.id,
+                    previous_status=old_status,
+                    new_status='In Progress',
+                    remarks=accept_remarks
+                ))
+                create_notification(
+                    user_id=complaint.citizen_id,
+                    complaint_id=complaint.id,
+                    title=f"Work Accepted: {complaint.complaint_ref}",
+                    message=f"Field technician {g.user.full_name} accepted work order {complaint.complaint_ref}.",
+                    link=f"/citizen/complaints/{complaint.id}",
+                    notification_type='status_changed',
+                    commit=False,
+                )
+                if complaint.assigned_officer_id:
+                    create_notification(
+                        complaint.assigned_officer_id,
+                        f"Task Accepted: {complaint.complaint_ref}",
+                        f"Field technician {g.user.full_name} accepted {complaint.complaint_ref}.",
+                        link=f"/officer/complaints/{complaint.id}",
+                        notification_type='status_changed',
+                        complaint_id=complaint.id,
+                        commit=False,
+                    )
+                log_action(
+                    user_id=g.user.id,
+                    action='ACCEPT_TASK',
+                    entity_type='complaint',
+                    entity_id=complaint.id,
+                    details={'from': old_status, 'to': 'In Progress'},
+                    commit=False,
+                )
+                db.session.commit()
+                success_msg = f"Task {complaint.complaint_ref} accepted and moved to In Progress."
+
+            elif action == 'start_work':
                 # Worker starts field work in one atomic transaction
                 old_status = complaint.status
                 complaint.status = 'In Progress'
@@ -136,19 +250,25 @@ def task_detail(complaint_id):
                 before_img = request.files.get('before_image')
                 if before_img and before_img.filename != '':
                     saved = save_uploaded_file(before_img, 'proofs')
-                    if saved:
-                        db.session.add(ComplaintAttachment(
-                            complaint_id=complaint.id,
-                            uploaded_by_user_id=g.user.id,
-                            attachment_type='before_work',
-                            filename=saved['filename'],
-                            original_name=saved['original_name'],
-                            file_path=saved['file_path'],
-                            file_size=saved['file_size'],
-                            mime_type=saved['mime_type'],
-                            file_data=saved.get('file_data'),
-                            remarks='Pre-work site condition'
-                        ))
+                    if not saved:
+                        db.session.rollback()
+                        msg = "Unsupported or empty pre-work photo. Please upload a valid image (PNG, JPG, WEBP, HEIC)."
+                        if is_ajax:
+                            return jsonify({'success': False, 'message': msg}), 400
+                        flash(msg, "danger")
+                        return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
+                    db.session.add(ComplaintAttachment(
+                        complaint_id=complaint.id,
+                        uploaded_by_user_id=g.user.id,
+                        attachment_type='before_work',
+                        filename=saved['filename'],
+                        original_name=saved['original_name'],
+                        file_path=saved['file_path'],
+                        file_size=saved['file_size'],
+                        mime_type=saved['mime_type'],
+                        file_data=saved.get('file_data'),
+                        remarks='Pre-work site condition'
+                    ))
 
                 start_remarks = remarks or "Field technician started site work."
                 create_notification(
@@ -201,32 +321,76 @@ def task_detail(complaint_id):
 
             elif action == 'update_progress':
                 progress_notes = request.form.get('progress_notes', '').strip()
-                if not progress_notes:
+                evidence_img = request.files.get('evidence_image')
+                has_evidence = bool(evidence_img and evidence_img.filename != '')
+                if not progress_notes and not has_evidence:
                     if is_ajax:
-                        return jsonify({'success': False, 'message': "Please provide progress details."}), 400
-                    flash("Please provide progress details.", "danger")
+                        return jsonify({'success': False, 'message': "Please provide progress details or upload an evidence photo."}), 400
+                    flash("Please provide progress details or upload an evidence photo.", "danger")
                     return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
+
+                note_text = progress_notes or "Uploaded site inspection evidence photo."
+                if has_evidence:
+                    saved = save_uploaded_file(evidence_img, 'proofs')
+                    if not saved:
+                        msg = "Unsupported or empty evidence photo. Please upload a valid image (PNG, JPG, WEBP, HEIC)."
+                        if is_ajax:
+                            return jsonify({'success': False, 'message': msg}), 400
+                        flash(msg, "danger")
+                        return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
+                    db.session.add(ComplaintAttachment(
+                        complaint_id=complaint.id,
+                        uploaded_by_user_id=g.user.id,
+                        attachment_type='verification',
+                        filename=saved['filename'],
+                        original_name=saved['original_name'],
+                        file_path=saved['file_path'],
+                        file_size=saved['file_size'],
+                        mime_type=saved['mime_type'],
+                        file_data=saved.get('file_data'),
+                        remarks=note_text
+                    ))
+
                 hist = ComplaintStatusHistory(
                     complaint_id=complaint.id,
                     changed_by_user_id=g.user.id,
                     previous_status=complaint.status,
                     new_status=complaint.status,
-                    remarks=f"Progress Update: {progress_notes}"
+                    remarks=f"Progress Update: {note_text}"
                 )
                 complaint.updated_at = datetime.utcnow()
                 db.session.add(hist)
+                if has_evidence:
+                    notify_admins(
+                        title=f"Site Evidence Added: {complaint.complaint_ref}",
+                        message=f"Field worker {g.user.full_name} uploaded site evidence for {complaint.complaint_ref}: {note_text}",
+                        link=f"/admin/complaints/{complaint.id}",
+                        notification_type='status_changed',
+                        complaint_id=complaint.id,
+                        commit=False,
+                    )
                 if complaint.assigned_officer_id:
                     create_notification(
                         complaint.assigned_officer_id,
                         f"Task Progress: {complaint.complaint_ref}",
-                        f"Field worker {g.user.full_name} posted progress: {progress_notes}",
+                        f"Field worker {g.user.full_name} posted progress: {note_text}",
+                        link=f"/officer/complaints/{complaint.id}",
+                        notification_type='status_changed',
+                        complaint_id=complaint.id,
+                        commit=False,
+                    )
+                elif has_evidence and complaint.department_id:
+                    notify_department_officers(
+                        complaint.department_id,
+                        f"Site Evidence Added: {complaint.complaint_ref}",
+                        f"Field worker {g.user.full_name} uploaded site evidence: {note_text}",
                         link=f"/officer/complaints/{complaint.id}",
                         notification_type='status_changed',
                         complaint_id=complaint.id,
                         commit=False,
                     )
                 db.session.commit()
-                success_msg = "Progress update recorded successfully."
+                success_msg = "Progress and evidence uploaded successfully." if has_evidence else "Progress update recorded successfully."
 
             elif action == 'submit_completion':
                 if not remarks:
@@ -247,19 +411,24 @@ def task_detail(complaint_id):
                         return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
                 else:
                     saved = save_uploaded_file(after_img, 'proofs')
-                    if saved:
-                        db.session.add(ComplaintAttachment(
-                            complaint_id=complaint.id,
-                            uploaded_by_user_id=g.user.id,
-                            attachment_type='after_work',
-                            filename=saved['filename'],
-                            original_name=saved['original_name'],
-                            file_path=saved['file_path'],
-                            file_size=saved['file_size'],
-                            mime_type=saved['mime_type'],
-                            file_data=saved.get('file_data'),
-                            remarks='Completed work site photo'
-                        ))
+                    if not saved:
+                        msg = "Unsupported or empty completion photo. Please upload a valid image (PNG, JPG, WEBP, HEIC)."
+                        if is_ajax:
+                            return jsonify({'success': False, 'message': msg}), 400
+                        flash(msg, "danger")
+                        return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
+                    db.session.add(ComplaintAttachment(
+                        complaint_id=complaint.id,
+                        uploaded_by_user_id=g.user.id,
+                        attachment_type='after_work',
+                        filename=saved['filename'],
+                        original_name=saved['original_name'],
+                        file_path=saved['file_path'],
+                        file_size=saved['file_size'],
+                        mime_type=saved['mime_type'],
+                        file_data=saved.get('file_data'),
+                        remarks='Completed work site photo'
+                    ))
 
                 old_status = complaint.status
                 comp_remarks = f"Work completed: {remarks}. Awaiting officer verification."
@@ -345,7 +514,11 @@ def task_detail(complaint_id):
         return redirect(url_for('worker.task_detail', complaint_id=complaint.id))
 
     history = complaint.status_history.all()
-    attachments = complaint.attachments.all()
+    attachments = (
+        complaint.attachments.options(joinedload(ComplaintAttachment.uploaded_by))
+        .order_by(ComplaintAttachment.created_at.desc())
+        .all()
+    )
     stages = get_complaint_9_stage_timeline(complaint, history=history)
     return render_template(
         'worker/task_detail.html',
@@ -359,12 +532,51 @@ def task_detail(complaint_id):
 @worker_bp.route('/history')
 def history():
     worker_user_id = g.user.id
-    assignments = ComplaintAssignment.query.filter_by(
-        assigned_to_user_id=worker_user_id,
-        status='Completed'
-    ).order_by(ComplaintAssignment.completed_at.desc()).all()
-    
-    return render_template('worker/history.html', assignments=assignments)
+    status_filter = (request.args.get('status') or '').strip()
+    search = (request.args.get('search') or '').strip()
+
+    query = (
+        ComplaintAssignment.query
+        .join(Complaint, ComplaintAssignment.complaint_id == Complaint.id)
+        .filter(ComplaintAssignment.assigned_to_user_id == worker_user_id)
+        .options(
+            joinedload(ComplaintAssignment.complaint).joinedload(Complaint.department),
+            joinedload(ComplaintAssignment.complaint).joinedload(Complaint.category),
+        )
+    )
+
+    if status_filter:
+        query = query.filter(ComplaintAssignment.status == status_filter)
+
+    if search:
+        query = query.filter(
+            (Complaint.complaint_ref.ilike(f'%{search}%')) |
+            (Complaint.title.ilike(f'%{search}%')) |
+            (ComplaintAssignment.instructions.ilike(f'%{search}%'))
+        )
+
+    page = max(1, request.args.get('page', 1, type=int))
+    pagination = query.order_by(ComplaintAssignment.assigned_at.desc()).paginate(page=page, per_page=25, error_out=False)
+    assignments = pagination.items
+
+    remarks_map = {}
+    complaint_ids = [a.complaint_id for a in assignments]
+    if complaint_ids:
+        for h in (
+            ComplaintStatusHistory.query.filter(ComplaintStatusHistory.complaint_id.in_(complaint_ids))
+            .order_by(ComplaintStatusHistory.id.desc())
+            .all()
+        ):
+            remarks_map.setdefault(h.complaint_id, h)
+
+    return render_template(
+        'worker/history.html',
+        assignments=assignments,
+        pagination=pagination,
+        remarks_map=remarks_map,
+        current_status=status_filter,
+        search_query=search,
+    )
 
 @worker_bp.route('/notifications')
 def notifications():

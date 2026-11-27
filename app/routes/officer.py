@@ -3,22 +3,32 @@ import csv
 import time
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, Response, jsonify, current_app
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from app import db
 from app.models.complaint import Complaint
-from app.models.workflow import Worker, ComplaintAssignment
+from app.models.workflow import Worker, ComplaintAssignment, ComplaintStatusHistory
 from app.models.user import User
+from app.models.attachment import ComplaintAttachment
 from app.services.complaint_service import (
     transition_complaint_status,
     assign_complaint_to_worker,
     officer_verify_work,
     get_complaint_9_stage_timeline,
     get_complaint_aggregate_counts,
+    ASSIGNED_TO_WORKER_STATUSES,
     COMPLETED_PENDING_VERIF_STATUSES,
     IN_PROGRESS_STATUSES,
 )
+from app.services.notification_service import notify_admins
 from app.services.sla_service import check_and_escalate_overdue_complaints
 from app.services.audit_service import log_action
+from app.services.user_service import (
+    check_duplicate_user_contacts,
+    validate_contact_and_duplicates,
+    resolve_duplicate_integrity_error,
+    duplicate_title_for_field,
+)
 from app.utils.decorators import login_required, role_required, _is_api_or_ajax
 from app.utils.helpers import validate_email, validate_mobile_number
 
@@ -99,6 +109,8 @@ def _render_officer_queue(
     if allow_status_filter and status:
         if status == 'Escalated':
             query = query.filter(_escalated_or_overdue_expr())
+        elif status in ASSIGNED_TO_WORKER_STATUSES:
+            query = query.filter(Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES))
         elif status in COMPLETED_PENDING_VERIF_STATUSES:
             query = query.filter(Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES))
         else:
@@ -146,10 +158,23 @@ def dashboard():
             .all()
         )
         dept_workers = Worker.query.filter_by(department_id=dept_id).options(joinedload(Worker.user)).all()
+        recent_worker_evidence = (
+            ComplaintAttachment.query
+            .join(Complaint, ComplaintAttachment.complaint_id == Complaint.id)
+            .filter(
+                dept_filter,
+                ComplaintAttachment.attachment_type.in_(['before_work', 'after_work', 'verification'])
+            )
+            .options(joinedload(ComplaintAttachment.complaint), joinedload(ComplaintAttachment.uploaded_by))
+            .order_by(ComplaintAttachment.created_at.desc())
+            .limit(12)
+            .all()
+        )
     else:
         counts = get_complaint_aggregate_counts(Complaint.id == -1)
         recent_complaints = []
         dept_workers = []
+        recent_worker_evidence = []
 
     stats = {
         'total': counts['total'],
@@ -167,7 +192,8 @@ def dashboard():
         stats=stats,
         recent_complaints=recent_complaints,
         workers=dept_workers,
-        department=g.user.department
+        department=g.user.department,
+        recent_worker_evidence=recent_worker_evidence,
     )
 
 @officer_bp.route('/complaints', strict_slashes=False)
@@ -265,7 +291,11 @@ def complaint_detail(complaint_id):
         return redirect(url_for('officer.complaint_detail', complaint_id=complaint.id))
 
     history = complaint.status_history.all()
-    attachments = complaint.attachments.all()
+    attachments = (
+        complaint.attachments.options(joinedload(ComplaintAttachment.uploaded_by))
+        .order_by(ComplaintAttachment.created_at.desc())
+        .all()
+    )
     workers = Worker.query.filter_by(department_id=dept_id, is_available=True).options(joinedload(Worker.user)).all()
     stages = get_complaint_9_stage_timeline(complaint, history=history)
         
@@ -355,79 +385,74 @@ def workers():
 
                 if not full_name:
                     err_msg, err_field = "Full Name is required.", "full_name"
-                elif not email:
-                    err_msg, err_field = "Email Address is required.", "email"
                 else:
-                    ok_email, email_res = validate_email(email)
-                    if not ok_email:
-                        err_msg, err_field = email_res, "email"
-                    else:
-                        clean_email = email_res
-
-                if not err_msg:
-                    if not mobile_raw:
-                        err_msg, err_field = "Phone Number is required.", "mobile"
-                    else:
-                        ok_mobile, mobile_res = validate_mobile_number(mobile_raw)
-                        if not ok_mobile:
-                            err_msg, err_field = mobile_res, "mobile"
-                        else:
-                            clean_mobile = mobile_res
+                    err_msg, err_field, clean_email, clean_mobile = validate_contact_and_duplicates(email, mobile_raw)
 
                 if not err_msg and not employee_id:
                     err_msg, err_field = "Employee ID is required.", "employee_id"
                 if not err_msg and len(password) < 6:
                     err_msg, err_field = "Password must be at least 6 characters long.", "password"
-
-                if not err_msg:
-                    if User.query.filter_by(email=clean_email).first():
-                        err_msg, err_field = "A user with this email address already exists.", "email"
-                    elif User.query.filter_by(mobile_number=clean_mobile).first():
-                        err_msg, err_field = "A user with this phone number already exists.", "mobile"
-                    elif Worker.query.filter_by(employee_id=employee_id).first():
-                        err_msg, err_field = "This Employee ID is already assigned to another worker.", "employee_id"
+                if not err_msg and Worker.query.filter_by(employee_id=employee_id).first():
+                    err_msg, err_field = "This Employee ID is already assigned to another worker.", "employee_id"
 
                 if err_msg:
                     if is_ajax:
-                        return jsonify({'success': False, 'message': err_msg, 'field': err_field}), 400
+                        return jsonify({
+                            'success': False,
+                            'title': duplicate_title_for_field(err_field),
+                            'message': err_msg,
+                            'field': err_field,
+                        }), 400
                     flash(err_msg, "danger")
                     return redirect(url_for('officer.workers'))
 
-                new_user = User(
-                    full_name=full_name,
-                    email=clean_email,
-                    mobile_number=clean_mobile,
-                    role='worker',
-                    department_id=dept_id,
-                    is_active=is_active,
-                    is_password_reset_required=require_reset,
-                    password_changed_at=None if require_reset else datetime.utcnow(),
-                )
-                new_user.set_password(password)
-                db.session.add(new_user)
-                db.session.flush()
+                try:
+                    new_user = User(
+                        full_name=full_name,
+                        email=clean_email,
+                        mobile_number=clean_mobile,
+                        role='worker',
+                        department_id=dept_id,
+                        is_active=is_active,
+                        is_password_reset_required=require_reset,
+                        password_changed_at=None if require_reset else datetime.utcnow(),
+                    )
+                    new_user.set_password(password)
+                    db.session.add(new_user)
+                    db.session.flush()
 
-                new_worker = Worker(
-                    user_id=new_user.id,
-                    department_id=dept_id,
-                    employee_id=employee_id,
-                    designation=designation,
-                    is_available=is_active,
-                    active_task_count=0,
-                    completed_task_count=0,
-                )
-                db.session.add(new_worker)
-                db.session.flush()
+                    new_worker = Worker(
+                        user_id=new_user.id,
+                        department_id=dept_id,
+                        employee_id=employee_id,
+                        designation=designation,
+                        is_available=is_active,
+                        active_task_count=0,
+                        completed_task_count=0,
+                    )
+                    db.session.add(new_worker)
+                    db.session.flush()
 
-                log_action(
-                    g.user.id,
-                    'OFFICER_CREATE_WORKER',
-                    'worker',
-                    new_worker.id,
-                    details={'email': clean_email, 'employee_id': employee_id, 'dept_id': dept_id, 'is_active': is_active},
-                    commit=False,
-                )
-                db.session.commit()
+                    log_action(
+                        g.user.id,
+                        'OFFICER_CREATE_WORKER',
+                        'worker',
+                        new_worker.id,
+                        details={'email': clean_email, 'employee_id': employee_id, 'dept_id': dept_id, 'is_active': is_active},
+                        commit=False,
+                    )
+                    db.session.commit()
+                except IntegrityError as exc:
+                    err_msg, err_field = resolve_duplicate_integrity_error(exc, clean_email, clean_mobile)
+                    if is_ajax:
+                        return jsonify({
+                            'success': False,
+                            'title': duplicate_title_for_field(err_field),
+                            'message': err_msg,
+                            'field': err_field,
+                        }), 400
+                    flash(err_msg, "danger")
+                    return redirect(url_for('officer.workers'))
 
                 msg = f"Field worker '{full_name}' ({employee_id}) created in {g.user.department.name if g.user.department else 'your department'}."
                 if is_ajax:
@@ -462,61 +487,62 @@ def workers():
                 if not full_name:
                     err_msg, err_field = "Full Name is required.", "full_name"
                 else:
-                    ok_email, email_res = validate_email(email)
-                    if not ok_email:
-                        err_msg, err_field = email_res, "email"
-                    else:
-                        clean_email = email_res
-
-                if not err_msg:
-                    ok_mobile, mobile_res = validate_mobile_number(mobile_raw)
-                    if not ok_mobile:
-                        err_msg, err_field = mobile_res, "mobile"
-                    else:
-                        clean_mobile = mobile_res
+                    err_msg, err_field, clean_email, clean_mobile = validate_contact_and_duplicates(
+                        email, mobile_raw, exclude_user_id=worker.user_id
+                    )
 
                 if not err_msg and not employee_id:
                     err_msg, err_field = "Employee ID is required.", "employee_id"
                 if not err_msg and new_password and len(new_password) < 6:
                     err_msg, err_field = "New password must be at least 6 characters.", "password"
-
-                if not err_msg:
-                    dup_email = User.query.filter(User.email == clean_email, User.id != worker.user_id).first()
-                    dup_mobile = User.query.filter(User.mobile_number == clean_mobile, User.id != worker.user_id).first()
-                    dup_emp = Worker.query.filter(Worker.employee_id == employee_id, Worker.id != worker.id).first()
-                    if dup_email:
-                        err_msg, err_field = "Another user already uses this email address.", "email"
-                    elif dup_mobile:
-                        err_msg, err_field = "Another user already uses this phone number.", "mobile"
-                    elif dup_emp:
-                        err_msg, err_field = "Another worker already uses this Employee ID.", "employee_id"
+                if not err_msg and Worker.query.filter(Worker.employee_id == employee_id, Worker.id != worker.id).first():
+                    err_msg, err_field = "Another worker already uses this Employee ID.", "employee_id"
 
                 if err_msg:
                     if is_ajax:
-                        return jsonify({'success': False, 'message': err_msg, 'field': err_field}), 400
+                        return jsonify({
+                            'success': False,
+                            'title': duplicate_title_for_field(err_field),
+                            'message': err_msg,
+                            'field': err_field,
+                        }), 400
                     flash(err_msg, "danger")
                     return redirect(url_for('officer.workers'))
 
-                worker.user.full_name = full_name
-                worker.user.email = clean_email
-                worker.user.mobile_number = clean_mobile
-                worker.user.is_active = is_active
-                worker.employee_id = employee_id
-                worker.designation = designation
-                worker.is_available = is_available
-                if new_password:
-                    worker.user.set_password(new_password)
-                    worker.user.password_changed_at = datetime.utcnow()
+                try:
+                    worker.user.full_name = full_name
+                    worker.user.email = clean_email
+                    worker.user.mobile_number = clean_mobile
+                    worker.user.is_active = is_active
+                    worker.employee_id = employee_id
+                    worker.designation = designation
+                    worker.is_available = is_available
+                    if new_password:
+                        worker.user.set_password(new_password)
+                        worker.user.password_changed_at = datetime.utcnow()
 
-                log_action(
-                    g.user.id,
-                    'OFFICER_UPDATE_WORKER',
-                    'worker',
-                    worker.id,
-                    details={'email': clean_email, 'employee_id': employee_id, 'is_active': is_active, 'is_available': is_available},
-                    commit=False,
-                )
-                db.session.commit()
+                    log_action(
+                        g.user.id,
+                        'OFFICER_UPDATE_WORKER',
+                        'worker',
+                        worker.id,
+                        details={'email': clean_email, 'employee_id': employee_id, 'is_active': is_active, 'is_available': is_available},
+                        commit=False,
+                    )
+                    db.session.commit()
+                except IntegrityError as exc:
+                    err_msg, err_field = resolve_duplicate_integrity_error(
+                        exc, clean_email, clean_mobile, exclude_user_id=worker.user_id
+                    )
+                    if is_ajax:
+                        return jsonify({
+                            'success': False,
+                            'title': duplicate_title_for_field(err_field),
+                            'message': err_msg,
+                            'field': err_field,
+                        }), 400
+                    flash(err_msg, "danger")
+                    return redirect(url_for('officer.workers'))
 
                 msg = f"Worker '{full_name}' updated successfully."
                 if is_ajax:
@@ -598,11 +624,23 @@ def workers():
                     flash(err[0], "danger")
                     return redirect(url_for('officer.workers'))
 
-                complaint = Complaint.query.filter_by(id=complaint_id, department_id=dept_id).first()
-                if not complaint:
-                    msg = "Complaint not found in your department queue."
+                if not worker.user.is_active:
+                    msg = "Cannot assign tasks to an inactive field worker account."
                     if is_ajax:
-                        return jsonify({'success': False, 'message': msg}), 404
+                        return jsonify({'success': False, 'message': msg}), 400
+                    flash(msg, "danger")
+                    return redirect(url_for('officer.workers'))
+
+                complaint = Complaint.query.filter_by(id=complaint_id, department_id=dept_id).first() if complaint_id else None
+                if not complaint:
+                    msg = "Please select a department complaint to dispatch." if not complaint_id else "Complaint not found in your department queue."
+                    if is_ajax:
+                        return jsonify({
+                            'success': False,
+                            'title': 'Complaint Selection Required' if not complaint_id else 'Complaint Not Found',
+                            'message': msg,
+                            'field': 'complaint_id',
+                        }), 400 if not complaint_id else 404
                     flash(msg, "danger")
                     return redirect(url_for('officer.workers'))
 
@@ -716,34 +754,362 @@ def incoming():
     )
 
 
-@officer_bp.route('/verification')
-def verification():
-    return _render_officer_queue(
-        Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES),
-        page_title='Work Verification Queue',
-        page_subtitle='Completed field work submitted by technicians awaiting your verification and resolution approval.',
-        default_status='Verification Pending',
-        allow_status_filter=False,
-        order_clauses=(Complaint.updated_at.desc(),),
-        filter_action=url_for('officer.verification'),
-        reset_url=url_for('officer.verification'),
-        empty_message='No completed tasks are currently awaiting work verification.',
+@officer_bp.route('/assignments', methods=['GET', 'POST'])
+def assignments():
+    dept_id = g.user.department_id
+    is_ajax = _is_api_or_ajax()
+    if not dept_id:
+        if request.method == 'POST' and is_ajax:
+            return jsonify({'success': False, 'message': "No municipal department assigned to your officer account."}), 403
+        flash("No municipal department assigned to your officer account.", "warning")
+        return redirect(url_for('officer.dashboard'))
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+        try:
+            if action == 'assign_complaint':
+                worker_id = int(request.form.get('worker_id') or 0)
+                complaint_id = int(request.form.get('complaint_id') or 0)
+                instructions = (request.form.get('instructions') or '').strip()
+
+                worker, err = _get_department_worker_for_officer(worker_id, dept_id)
+                if err:
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': err[0]}), err[1]
+                    flash(err[0], "danger")
+                    return redirect(url_for('officer.assignments'))
+
+                if not worker.user.is_active:
+                    msg = "Cannot assign tasks to an inactive field worker account."
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': msg}), 400
+                    flash(msg, "danger")
+                    return redirect(url_for('officer.assignments'))
+
+                if not worker.is_available:
+                    msg = "Selected worker is currently Off-Duty / Unavailable."
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': msg}), 400
+                    flash(msg, "danger")
+                    return redirect(url_for('officer.assignments'))
+
+                complaint = Complaint.query.filter_by(id=complaint_id, department_id=dept_id).first()
+                if not complaint:
+                    msg = "Complaint not found in your authorized department queue."
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': msg}), 404
+                    flash(msg, "danger")
+                    return redirect(url_for('officer.assignments'))
+
+                assign_complaint_to_worker(complaint, worker.user_id, g.user, instructions=instructions)
+                msg = f"Complaint {complaint.complaint_ref} assigned to {worker.user.full_name}."
+                if is_ajax:
+                    return jsonify({'success': True, 'message': msg, 'reload_sections': True})
+                flash(msg, "success")
+        except Exception as e:
+            db.session.rollback()
+            if is_ajax:
+                return jsonify({'success': False, 'message': f"Assignment failed: {str(e)}"}), 400
+            flash(f"Assignment failed: {str(e)}", "danger")
+        return redirect(url_for('officer.assignments'))
+
+    all_dept_workers = (
+        Worker.query.join(Worker.user)
+        .filter(Worker.department_id == dept_id, User.role == 'worker')
+        .options(joinedload(Worker.user), joinedload(Worker.department))
+        .order_by(User.full_name.asc())
+        .all()
+    )
+    eligible_workers = [w for w in all_dept_workers if w.user and w.user.is_active and w.is_available]
+
+    worker_tasks_map = {}
+    worker_user_ids = [w.user_id for w in all_dept_workers]
+    if worker_user_ids:
+        active_assigned = (
+            Complaint.query.filter(
+                Complaint.department_id == dept_id,
+                Complaint.assigned_worker_id.in_(worker_user_ids),
+                Complaint.status.notin_(['Resolved', 'Rejected']),
+            )
+            .order_by(Complaint.updated_at.desc())
+            .all()
+        )
+        for tc in active_assigned:
+            worker_tasks_map.setdefault(tc.assigned_worker_id, []).append(tc)
+
+    assignable_complaints = (
+        Complaint.query.filter(
+            Complaint.department_id == dept_id,
+            Complaint.status.in_(['Submitted', 'Assigned to Department', 'Officer Accepted', 'Accepted', 'Reopened']),
+        )
+        .order_by(Complaint.created_at.desc())
+        .limit(50)
+        .all()
+    )
+
+    search = request.args.get('search', '').strip()
+    status_filter = request.args.get('status', '').strip()
+
+    assigned_query = (
+        Complaint.query.filter(
+            _officer_dept_scope_filter(dept_id),
+            Complaint.assigned_worker_id.isnot(None),
+        )
+        .options(joinedload(Complaint.assigned_worker), joinedload(Complaint.category), joinedload(Complaint.citizen))
+    )
+    if status_filter:
+        if status_filter in ASSIGNED_TO_WORKER_STATUSES:
+            assigned_query = assigned_query.filter(Complaint.status.in_(ASSIGNED_TO_WORKER_STATUSES))
+        elif status_filter in COMPLETED_PENDING_VERIF_STATUSES:
+            assigned_query = assigned_query.filter(Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES))
+        else:
+            assigned_query = assigned_query.filter(Complaint.status == status_filter)
+    if search:
+        assigned_query = assigned_query.filter(
+            (Complaint.complaint_ref.ilike(f'%{search}%')) |
+            (Complaint.title.ilike(f'%{search}%')) |
+            (Complaint.description.ilike(f'%{search}%'))
+        )
+
+    page = max(1, request.args.get('page', 1, type=int))
+    pagination = assigned_query.order_by(Complaint.updated_at.desc()).paginate(page=page, per_page=25, error_out=False)
+
+    return render_template(
+        'officer/assignments.html',
+        department=g.user.department,
+        workers=all_dept_workers,
+        eligible_workers=eligible_workers,
+        worker_tasks_map=worker_tasks_map,
+        assignable_complaints=assignable_complaints,
+        assigned_complaints=pagination.items,
+        pagination=pagination,
+        search_query=search,
+        current_status=status_filter,
     )
 
 
-@officer_bp.route('/escalations')
+@officer_bp.route('/verification', methods=['GET', 'POST'])
+def verification():
+    dept_id = g.user.department_id
+    is_ajax = _is_api_or_ajax()
+    if request.method == 'POST':
+        action = request.form.get('action')
+        complaint_id = request.form.get('complaint_id', type=int)
+        remarks = (request.form.get('remarks') or '').strip()
+        rework_reason = (request.form.get('rework_reason') or '').strip()
+
+        complaint = Complaint.query.filter_by(id=complaint_id, department_id=dept_id).filter(
+            (Complaint.assigned_officer_id == g.user.id) | (Complaint.assigned_officer_id.is_(None))
+        ).first()
+        if not complaint:
+            msg = "Complaint not found in your authorized department verification queue."
+            if is_ajax:
+                return jsonify({'success': False, 'message': msg}), 404
+            flash(msg, "warning")
+            return redirect(url_for('officer.verification'))
+
+        try:
+            if action == 'verify_resolve':
+                officer_verify_work(complaint, g.user, action='approve', remarks=remarks)
+                msg = f"Complaint {complaint.complaint_ref} verified and resolved!"
+            elif action == 'return_rework':
+                if not rework_reason:
+                    msg = "A reason is required when returning work for rework."
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': msg}), 400
+                    flash(msg, "danger")
+                    return redirect(url_for('officer.verification'))
+                officer_verify_work(complaint, g.user, action='rework', remarks=remarks, rework_reason=rework_reason)
+                msg = f"Complaint {complaint.complaint_ref} returned to worker for rework."
+            else:
+                msg = "Invalid verification action."
+                if is_ajax:
+                    return jsonify({'success': False, 'message': msg}), 400
+                flash(msg, "danger")
+                return redirect(url_for('officer.verification'))
+
+            if is_ajax:
+                return jsonify({'success': True, 'message': msg, 'status': complaint.status, 'reload_sections': True})
+            flash(msg, "success" if action == 'verify_resolve' else "warning")
+        except Exception as e:
+            db.session.rollback()
+            if is_ajax:
+                return jsonify({'success': False, 'message': f"Verification action failed: {str(e)}"}), 400
+            flash(f"Verification action failed: {str(e)}", "danger")
+        return redirect(url_for('officer.verification'))
+
+    if dept_id:
+        query = (
+            Complaint.query.filter(
+                _officer_dept_scope_filter(dept_id),
+                Complaint.status.in_(COMPLETED_PENDING_VERIF_STATUSES),
+            )
+            .options(joinedload(Complaint.category), joinedload(Complaint.citizen), joinedload(Complaint.assigned_worker))
+        )
+    else:
+        query = Complaint.query.filter_by(id=-1)
+
+    search = request.args.get('search', '').strip()
+    priority = request.args.get('priority', '').strip()
+    if search:
+        query = query.filter(
+            (Complaint.complaint_ref.ilike(f'%{search}%')) |
+            (Complaint.title.ilike(f'%{search}%')) |
+            (Complaint.description.ilike(f'%{search}%'))
+        )
+    if priority:
+        query = query.filter_by(priority=priority)
+
+    page = max(1, request.args.get('page', 1, type=int))
+    pagination = query.order_by(Complaint.updated_at.desc()).paginate(page=page, per_page=25, error_out=False)
+    complaints_list = pagination.items
+    complaint_ids = [c.id for c in complaints_list]
+
+    attachments_map = {}
+    remarks_map = {}
+    if complaint_ids:
+        for att in (
+            ComplaintAttachment.query.filter(
+                ComplaintAttachment.complaint_id.in_(complaint_ids),
+                ComplaintAttachment.attachment_type.in_(['before_work', 'after_work', 'verification']),
+            )
+            .order_by(ComplaintAttachment.created_at.desc())
+            .all()
+        ):
+            attachments_map.setdefault(att.complaint_id, []).append(att)
+
+        for h in (
+            ComplaintStatusHistory.query.filter(ComplaintStatusHistory.complaint_id.in_(complaint_ids))
+            .order_by(ComplaintStatusHistory.id.desc())
+            .all()
+        ):
+            remarks_map.setdefault(h.complaint_id, h)
+
+    return render_template(
+        'officer/verification.html',
+        complaints=complaints_list,
+        pagination=pagination,
+        attachments_map=attachments_map,
+        remarks_map=remarks_map,
+        search_query=search,
+        current_priority=priority,
+    )
+
+
+@officer_bp.route('/escalations', methods=['GET', 'POST'])
 def escalations():
+    dept_id = g.user.department_id
+    is_ajax = _is_api_or_ajax()
+    if request.method == 'POST':
+        action = request.form.get('action')
+        complaint_id = request.form.get('complaint_id', type=int)
+        remarks = (request.form.get('remarks') or '').strip() or "Escalated by Department Officer for urgent intervention."
+
+        complaint = Complaint.query.filter_by(id=complaint_id, department_id=dept_id).filter(
+            (Complaint.assigned_officer_id == g.user.id) | (Complaint.assigned_officer_id.is_(None))
+        ).first()
+        if not complaint:
+            msg = "Complaint not found in your authorized department escalation queue."
+            if is_ajax:
+                return jsonify({'success': False, 'message': msg}), 404
+            flash(msg, "warning")
+            return redirect(url_for('officer.escalations'))
+
+        try:
+            if action == 'escalate_complaint':
+                old_status = complaint.status
+                complaint.is_escalated = True
+                complaint.escalated_at = datetime.utcnow()
+                complaint.escalation_reason = remarks
+                if complaint.status not in ('Resolved', 'Rejected', 'Escalated'):
+                    complaint.status = 'Escalated'
+                complaint.updated_at = datetime.utcnow()
+
+                db.session.add(ComplaintStatusHistory(
+                    complaint_id=complaint.id,
+                    changed_by_user_id=g.user.id,
+                    previous_status=old_status,
+                    new_status=complaint.status,
+                    remarks=f"Escalated by Officer {g.user.full_name}: {remarks}"
+                ))
+                notify_admins(
+                    title=f"Department Escalation: {complaint.complaint_ref}",
+                    message=f"Officer {g.user.full_name} escalated {complaint.complaint_ref}: {remarks}",
+                    link=f"/admin/complaints/{complaint.id}",
+                    notification_type='escalated',
+                    complaint_id=complaint.id,
+                    commit=False,
+                )
+                log_action(
+                    user_id=g.user.id,
+                    action='OFFICER_ESCALATE',
+                    entity_type='complaint',
+                    entity_id=complaint.id,
+                    details={'remarks': remarks},
+                    commit=False,
+                )
+                db.session.commit()
+                msg = f"Complaint {complaint.complaint_ref} escalated and history recorded."
+                if is_ajax:
+                    return jsonify({'success': True, 'message': msg, 'status': complaint.status, 'reload_sections': True})
+                flash(msg, "warning")
+        except Exception as e:
+            db.session.rollback()
+            if is_ajax:
+                return jsonify({'success': False, 'message': f"Escalation failed: {str(e)}"}), 400
+            flash(f"Escalation failed: {str(e)}", "danger")
+        return redirect(url_for('officer.escalations'))
+
     _sync_overdue_escalations(force=True)
-    return _render_officer_queue(
-        _escalated_or_overdue_expr(),
-        page_title='Escalated Department Complaints',
-        page_subtitle='SLA-overdue and administratively escalated complaints requiring immediate supervisor action.',
-        default_status='Escalated',
-        allow_status_filter=False,
-        order_clauses=(Complaint.escalated_at.asc(), Complaint.created_at.asc()),
-        filter_action=url_for('officer.escalations'),
-        reset_url=url_for('officer.escalations'),
-        empty_message='No escalated or overdue complaints in your department right now.',
+    if dept_id:
+        query = (
+            Complaint.query.filter(
+                _officer_dept_scope_filter(dept_id),
+                _escalated_or_overdue_expr(),
+            )
+            .options(
+                joinedload(Complaint.department),
+                joinedload(Complaint.category),
+                joinedload(Complaint.assigned_officer),
+                joinedload(Complaint.assigned_worker),
+                joinedload(Complaint.citizen),
+            )
+        )
+    else:
+        query = Complaint.query.filter_by(id=-1)
+
+    search = request.args.get('search', '').strip()
+    priority = request.args.get('priority', '').strip()
+    if search:
+        query = query.filter(
+            (Complaint.complaint_ref.ilike(f'%{search}%')) |
+            (Complaint.title.ilike(f'%{search}%')) |
+            (Complaint.description.ilike(f'%{search}%'))
+        )
+    if priority:
+        query = query.filter_by(priority=priority)
+
+    page = max(1, request.args.get('page', 1, type=int))
+    pagination = query.order_by(Complaint.escalated_at.asc(), Complaint.created_at.asc()).paginate(page=page, per_page=25, error_out=False)
+    complaints_list = pagination.items
+    complaint_ids = [c.id for c in complaints_list]
+
+    remarks_map = {}
+    if complaint_ids:
+        for h in (
+            ComplaintStatusHistory.query.filter(ComplaintStatusHistory.complaint_id.in_(complaint_ids))
+            .order_by(ComplaintStatusHistory.id.desc())
+            .all()
+        ):
+            remarks_map.setdefault(h.complaint_id, h)
+
+    return render_template(
+        'officer/escalations.html',
+        complaints=complaints_list,
+        pagination=pagination,
+        remarks_map=remarks_map,
+        search_query=search,
+        current_priority=priority,
     )
 
 @officer_bp.route('/notifications')
