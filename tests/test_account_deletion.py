@@ -159,16 +159,79 @@ class AccountDeletionTestCase(unittest.TestCase):
         self.assertEqual(Worker.query.filter_by(user_id=worker_id).count(), 0)
 
     def test_admin_delete_officer_account(self):
-        """Admin can permanently delete an officer account"""
+        """Admin can permanently delete an officer account even with assigned complaints, assignments, and FK enforcement"""
+        from sqlalchemy import text
+        from app.models.attachment import ComplaintAttachment
+        from app.models.contact import ContactMessage
+
+        db.session.execute(text('PRAGMA foreign_keys = ON'))
+
+        c = Complaint(
+            complaint_ref='CMP-TEST-OFFDEL',
+            citizen_id=self.citizen.id,
+            department_id=self.dept.id,
+            category_id=self.cat.id,
+            title='Complaint Assigned To Officer',
+            description='FK constraint deletion regression test',
+            status='Assigned',
+            assigned_officer_id=self.officer.id,
+            assigned_worker_id=self.worker_user.id,
+        )
+        db.session.add(c)
+        db.session.flush()
+
+        assign = ComplaintAssignment(
+            complaint_id=c.id,
+            assigned_by_user_id=self.officer.id,
+            assigned_to_user_id=self.worker_user.id,
+            status='Assigned',
+            instructions='Check site',
+        )
+        hist = ComplaintStatusHistory(
+            complaint_id=c.id,
+            changed_by_user_id=self.officer.id,
+            previous_status='Submitted',
+            new_status='Assigned',
+            remarks='Assigned by officer',
+        )
+        att = ComplaintAttachment(
+            complaint_id=c.id,
+            uploaded_by_user_id=self.worker_user.id,
+            filename='proof_del.png',
+            original_name='proof_del.png',
+            file_path='uploads/proofs/proof_del.png',
+            file_size=128,
+            mime_type='image/png',
+            attachment_type='after_proof',
+        )
+        cm = ContactMessage(name='Officer Mike', contact='officer.del@test.gov', message='Hi', user_id=self.officer.id)
+        db.session.add_all([assign, hist, att, cm])
+        db.session.commit()
+
         officer_id = self.officer.id
+        worker_id = self.worker_user.id
         self.login_admin()
+
         res = self.client.post('/admin/users', data={
             'action': 'delete_user',
             'user_id': officer_id
-        }, follow_redirects=True)
+        }, headers={'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'})
         self.assertEqual(res.status_code, 200)
-        self.assertIn(b'permanently deleted', res.data)
+        self.assertTrue(res.get_json()['success'])
         self.assertIsNone(User.query.get(officer_id))
+
+        res_w = self.client.post('/admin/users', data={
+            'action': 'delete_user',
+            'user_id': worker_id
+        }, headers={'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'})
+        self.assertEqual(res_w.status_code, 200)
+        self.assertTrue(res_w.get_json()['success'])
+        self.assertIsNone(User.query.get(worker_id))
+
+        c_after = Complaint.query.get(c.id)
+        self.assertIsNotNone(c_after)
+        self.assertIsNone(c_after.assigned_officer_id)
+        self.assertIsNone(c_after.assigned_worker_id)
 
     def test_ui_renders_delete_action_options(self):
         """UI pages for users, citizens, officers, and workers contain Delete buttons"""

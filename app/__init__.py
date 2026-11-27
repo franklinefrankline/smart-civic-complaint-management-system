@@ -405,8 +405,13 @@ def create_app(config_name=None):
     @app.errorhandler(500)
     def server_error(error):
         db.session.rollback()
+        app.logger.exception("Unhandled 500 error: %s", error)
         if _wants_json_response():
-            return jsonify({'success': False, 'error': 'Internal server error occurred. Please try again.'}), 500
+            return jsonify({
+                'success': False,
+                'error': 'Internal server error occurred. Please try again.',
+                'message': 'Internal server error occurred. Please try again.',
+            }), 500
         return render_template('public/error.html', code=500, title="System Error", message="An unexpected error occurred. Our technical team has been notified."), 500
 
     # Health check endpoints for Render & Uptime probes

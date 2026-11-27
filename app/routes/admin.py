@@ -474,27 +474,42 @@ def users():
                 user_name = u.full_name
                 user_email = u.email
 
-                Notification.query.filter_by(user_id=u.id).delete()
-                if u.is_worker or u.worker_profile:
-                    ComplaintAssignment.query.filter_by(assigned_to_user_id=u.id).delete()
-                ComplaintAssignment.query.filter_by(assigned_by_user_id=u.id).delete()
-                ComplaintStatusHistory.query.filter_by(changed_by_user_id=u.id).update({'changed_by_user_id': None})
+                try:
+                    Notification.query.filter_by(user_id=u.id).delete(synchronize_session=False)
+                    ComplaintAssignment.query.filter_by(assigned_to_user_id=u.id).delete(synchronize_session=False)
+                    ComplaintAssignment.query.filter_by(assigned_by_user_id=u.id).delete(synchronize_session=False)
+                    Complaint.query.filter_by(assigned_officer_id=u.id).update({'assigned_officer_id': None}, synchronize_session=False)
+                    Complaint.query.filter_by(assigned_worker_id=u.id).update({'assigned_worker_id': None}, synchronize_session=False)
+                    ComplaintStatusHistory.query.filter_by(changed_by_user_id=u.id).update({'changed_by_user_id': None}, synchronize_session=False)
 
-                user_complaints = Complaint.query.filter_by(citizen_id=u.id).all()
-                for c in user_complaints:
-                    Feedback.query.filter_by(complaint_id=c.id).delete()
-                    ComplaintAttachment.query.filter_by(complaint_id=c.id).delete()
-                    ComplaintStatusHistory.query.filter_by(complaint_id=c.id).delete()
-                    ComplaintAssignment.query.filter_by(complaint_id=c.id).delete()
-                    db.session.delete(c)
+                    user_complaints = Complaint.query.filter_by(citizen_id=u.id).all()
+                    for c in user_complaints:
+                        Notification.query.filter_by(complaint_id=c.id).delete(synchronize_session=False)
+                        Feedback.query.filter_by(complaint_id=c.id).delete(synchronize_session=False)
+                        ComplaintAttachment.query.filter_by(complaint_id=c.id).delete(synchronize_session=False)
+                        ComplaintStatusHistory.query.filter_by(complaint_id=c.id).delete(synchronize_session=False)
+                        ComplaintAssignment.query.filter_by(complaint_id=c.id).delete(synchronize_session=False)
+                        Complaint.query.filter_by(id=c.id).delete(synchronize_session=False)
 
-                Feedback.query.filter_by(citizen_id=u.id).delete()
-                ComplaintAttachment.query.filter_by(uploaded_by_user_id=u.id).delete()
-                AuditLog.query.filter_by(user_id=u.id).update({'user_id': None})
+                    Feedback.query.filter_by(citizen_id=u.id).delete(synchronize_session=False)
+                    ComplaintAttachment.query.filter_by(uploaded_by_user_id=u.id).delete(synchronize_session=False)
+                    ContactMessage.query.filter_by(user_id=u.id).update({'user_id': None}, synchronize_session=False)
+                    AuditLog.query.filter_by(user_id=u.id).update({'user_id': None}, synchronize_session=False)
+                    Worker.query.filter_by(user_id=u.id).delete(synchronize_session=False)
 
-                db.session.delete(u)
-                log_action(g.user.id, 'DELETE_USER', 'user', uid, details={'name': user_name, 'email': user_email}, commit=False)
-                db.session.commit()
+                    db.session.flush()
+                    db.session.expire_all()
+                    User.query.filter_by(id=uid).delete(synchronize_session=False)
+                    log_action(g.user.id, 'DELETE_USER', 'user', uid, details={'name': user_name, 'email': user_email}, commit=False)
+                    db.session.commit()
+                except Exception as exc:
+                    db.session.rollback()
+                    err_msg = f"Unable to delete account for {user_name} due to linked system records."
+                    if is_ajax:
+                        return jsonify({'success': False, 'message': err_msg}), 400
+                    flash(err_msg, "danger")
+                    redirect_to = request.referrer or url_for('admin.users')
+                    return redirect(redirect_to)
 
                 msg = f"Account for {user_name} ({user_email}) has been permanently deleted."
                 if is_ajax:
@@ -596,15 +611,24 @@ def departments():
             dept_id = request.form.get('department_id', type=int)
             d = Department.query.get(dept_id)
             if d:
-                if d.complaints.count() > 0 or d.categories.count() > 0:
-                    msg = "Cannot delete department because active complaints or categories are associated with it."
+                if d.complaints.count() > 0 or d.categories.count() > 0 or Worker.query.filter_by(department_id=d.id).count() > 0:
+                    msg = "Cannot delete department because active complaints, categories, or field workers are associated with it."
                     if is_ajax:
                         return jsonify({'success': False, 'message': msg}), 400
                     flash(msg, "warning")
                 else:
-                    db.session.delete(d)
-                    log_action(g.user.id, 'DELETE_DEPARTMENT', 'department', dept_id, commit=False)
-                    db.session.commit()
+                    try:
+                        User.query.filter_by(department_id=d.id).update({'department_id': None}, synchronize_session=False)
+                        db.session.delete(d)
+                        log_action(g.user.id, 'DELETE_DEPARTMENT', 'department', dept_id, commit=False)
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+                        msg = "Cannot delete department because linked records still reference it."
+                        if is_ajax:
+                            return jsonify({'success': False, 'message': msg}), 400
+                        flash(msg, "danger")
+                        return redirect(url_for('admin.departments'))
                     if is_ajax:
                         return jsonify({'success': True, 'message': "Department deleted safely.", 'reload_sections': True})
                     flash("Department deleted safely.", "success")

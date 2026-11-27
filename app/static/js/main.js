@@ -807,7 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           const data = await res.json();
           if (!res.ok || data.success === false) {
-            throw new Error(data.message || `Action failed (${res.status})`);
+            throw new Error(data.message || data.error || `Action failed (${res.status})`);
           }
 
           actionSucceeded = true;
