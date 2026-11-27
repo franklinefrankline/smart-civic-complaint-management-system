@@ -17,9 +17,9 @@
         </p>
       </div>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <a href="{{ url_for('worker.tasks') }}" class="btn btn-secondary btn-sm">All Tasks</a>
+        <a href="{{ url_for('worker.tasks') }}" class="btn btn-secondary btn-sm">{{ tr('All Tasks') }}</a>
         <a href="{{ url_for('worker.history') }}" class="btn btn-secondary btn-sm">
-          <i data-lucide="history" class="icon-xs"></i> Task History
+          <i data-lucide="history" class="icon-xs"></i> {{ tr('Task History') }}
         </a>
       </div>
     </div>
@@ -27,24 +27,24 @@
     <!-- Filter Bar -->
     <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
       <form method="GET" action="{{ url_for('worker.tasks') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-        <input type="text" name="search" class="form-control" placeholder="Search reference, title, or location..." value="{{ search_query or '' }}" style="flex: 2; min-width: 220px;">
+        <input type="text" name="search" class="form-control" placeholder="{{ tr('Search reference, title, or location...') }}" value="{{ search_query or '' }}" style="flex: 2; min-width: 220px;">
         <select name="status" class="form-control" style="flex: 1; min-width: 170px;">
-          <option value="">All Statuses</option>
-          <option value="Assigned" {% if current_status in ['Assigned', 'Assigned to Worker'] %}selected{% endif %}>Assigned Tasks</option>
-          <option value="In Progress" {% if current_status in ['In Progress', 'Work Started', 'Rework Required'] %}selected{% endif %}>In Progress / Rework</option>
-          <option value="Work Completed" {% if current_status in ['Work Completed', 'Completed'] %}selected{% endif %}>Completed &amp; Verified</option>
-          <option value="Verification Pending" {% if current_status == 'Verification Pending' %}selected{% endif %}>Pending Verification Only</option>
-          <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>Verified / Resolved</option>
+          <option value="">{{ tr('All Statuses') }}</option>
+          <option value="Assigned" {% if current_status in ['Assigned', 'Assigned to Worker'] %}selected{% endif %}>{{ tr('Assigned Tasks') }}</option>
+          <option value="In Progress" {% if current_status in ['In Progress', 'Work Started', 'Rework Required'] %}selected{% endif %}>{{ tr('In Progress / Rework') }}</option>
+          <option value="Work Completed" {% if current_status in ['Work Completed', 'Completed'] %}selected{% endif %}>{{ tr('Completed & Verified') }}</option>
+          <option value="Verification Pending" {% if current_status == 'Verification Pending' %}selected{% endif %}>{{ tr('Pending Verification Only') }}</option>
+          <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>{{ tr('Verified / Resolved') }}</option>
         </select>
         <select name="priority" class="form-control" style="flex: 0.8; min-width: 130px;">
-          <option value="">All Priorities</option>
-          <option value="urgent" {% if current_priority == 'urgent' %}selected{% endif %}>Urgent</option>
-          <option value="high" {% if current_priority == 'high' %}selected{% endif %}>High</option>
-          <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>Medium</option>
-          <option value="low" {% if current_priority == 'low' %}selected{% endif %}>Low</option>
+          <option value="">{{ tr('All Priorities') }}</option>
+          <option value="urgent" {% if current_priority == 'urgent' %}selected{% endif %}>{{ tr('Urgent') }}</option>
+          <option value="high" {% if current_priority == 'high' %}selected{% endif %}>{{ tr('High') }}</option>
+          <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>{{ tr('Medium') }}</option>
+          <option value="low" {% if current_priority == 'low' %}selected{% endif %}>{{ tr('Low') }}</option>
         </select>
-        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-        <a href="{{ url_for('worker.tasks') }}" class="btn btn-secondary btn-sm">Reset</a>
+        <button type="submit" class="btn btn-primary btn-sm">{{ tr('Filter') }}</button>
+        <a href="{{ url_for('worker.tasks') }}" class="btn btn-secondary btn-sm">{{ tr('Reset') }}</a>
       </form>
     </div>
 
@@ -54,14 +54,14 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Reference</th>
-              <th>Task Title</th>
-              <th>Department</th>
-              <th>Location</th>
-              <th>Priority</th>
-              <th>{% if view_mode == 'completed' %}Completion / Updated{% else %}Assigned Date{% endif %}</th>
-              <th>Status{% if view_mode == 'in_progress' %} &amp; Progress{% endif %}</th>
-              <th>Action</th>
+              <th>{{ tr('Reference') }}</th>
+              <th>{{ tr('Task Title') }}</th>
+              <th>{{ tr('Department') }}</th>
+              <th>{{ tr('Location') }}</th>
+              <th>{{ tr('Priority') }}</th>
+              <th>{% if view_mode == 'completed' %}Completion / Updated{% else %}{{ tr('Assigned Date') }}{% endif %}</th>
+              <th>{{ tr('Status') }}{% if view_mode == 'in_progress' %} &amp; Progress{% endif %}</th>
+              <th>{{ tr('Action') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -78,7 +78,7 @@
                   <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.title }}</div>
                   {% if view_mode == 'completed' %}
                     <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem;">
-                      {% if c.status == 'Resolved' %}Verified &amp; Resolved{% else %}Awaiting Officer Verification{% endif %}
+                      {% if c.status == 'Resolved' %}{{ tr('Verified & Resolved') }}{% else %}{{ tr('Awaiting Officer Verification') }}{% endif %}
                     </div>
                   {% elif latest_hist and latest_hist.remarks %}
                     <div style="font-size: 0.74rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.15rem;">
@@ -94,7 +94,7 @@
                 </td>
                 <td>
                   <span class="badge badge-priority-{{ c.priority }}">
-                    {{ c.priority.upper() }}
+                    {{ td(c.priority) }}
                   </span>
                 </td>
                 <td style="font-size: 0.82rem; color: var(--text-muted); white-space: nowrap;">
@@ -106,7 +106,7 @@
                 </td>
                 <td>
                   <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">
-                    {{ c.status }}
+                    {{ td(c.status) }}
                   </span>
                 </td>
                 <td>
@@ -115,12 +115,12 @@
                       <form method="POST" action="{{ url_for('worker.task_detail', complaint_id=c.id) }}" style="margin: 0; display: inline;">
                         <input type="hidden" name="action" value="accept_task">
                         <button type="submit" class="btn btn-success btn-sm" style="white-space: nowrap;">
-                          <i data-lucide="check" class="icon-xs"></i> Accept Task
+                          <i data-lucide="check" class="icon-xs"></i> {{ tr('Accept Task') }}
                         </button>
                       </form>
                     {% endif %}
                     <a href="{{ url_for('worker.task_detail', complaint_id=c.id) }}" class="btn btn-primary btn-sm" style="white-space: nowrap;">
-                      View Details
+                      {{ tr('View Details') }}
                     </a>
                   </div>
                 </td>
@@ -132,17 +132,17 @@
                     <i data-lucide="inbox" style="width: 24px; height: 24px; color: var(--civic-blue);"></i>
                   </div>
                   <div style="font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
-                    No tasks available at the moment.
+                    {{ tr('No tasks available at the moment.') }}
                   </div>
                   <p style="font-size: 0.85rem; max-width: 420px; margin: 0 auto 1rem auto;">
                     {% if search_query or current_status or current_priority %}
-                      No work orders match the active filters. Try clearing your filters or viewing all assigned work orders.
+                      {{ tr('No work orders match the active filters. Try clearing your filters or viewing all assigned work orders.') }}
                     {% else %}
-                      You have no work orders in this queue right now.
+                      {{ tr('You have no work orders in this queue right now.') }}
                     {% endif %}
                   </p>
                   {% if search_query or current_status or current_priority %}
-                    <a href="{{ url_for('worker.tasks') }}" class="btn btn-secondary btn-sm">View All Tasks</a>
+                    <a href="{{ url_for('worker.tasks') }}" class="btn btn-secondary btn-sm">{{ tr('View All Tasks') }}</a>
                   {% endif %}
                 </td>
               </tr>

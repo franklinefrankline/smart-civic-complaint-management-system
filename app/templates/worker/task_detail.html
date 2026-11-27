@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Task {{ complaint.complaint_ref }} | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Task') }} {{ complaint.complaint_ref }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -15,10 +15,10 @@
             {{ complaint.complaint_ref }}
           </span>
           <span class="badge badge-{{ complaint.status.lower().replace(' ', '-') }}">
-            {{ complaint.status }}
+            {{ td(complaint.status) }}
           </span>
           <span class="badge badge-priority-{{ complaint.priority }}">
-            {{ complaint.priority.upper() }}
+            {{ td(complaint.priority) }}
           </span>
         </div>
         <h1 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary);">
@@ -30,7 +30,7 @@
       </div>
 
       <a href="{{ url_for('worker.tasks') }}" class="btn btn-secondary btn-sm">
-        &larr; Back to Tasks
+        &larr; {{ tr('Back to Tasks') }}
       </a>
     </div>
 
@@ -38,7 +38,7 @@
     {% if assignment.instructions %}
       <div class="alert alert-info" style="margin-bottom: 1.5rem;">
         <div>
-          <strong><i data-lucide="clipboard-list" class="icon-sm"></i> Supervisor Instructions:</strong><br>
+          <strong><i data-lucide="clipboard-list" class="icon-sm"></i> {{ tr('Supervisor Instructions:') }}</strong><br>
           {{ assignment.instructions }}
         </div>
       </div>
@@ -49,7 +49,7 @@
       <div class="alert alert-warning" style="margin-bottom: 1.5rem; border-left: 4px solid #f59e0b; background: rgba(245, 158, 11, 0.12); color: #b45309;">
         <div>
           <strong style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.95rem; margin-bottom: 0.25rem;">
-            <i data-lucide="alert-triangle" class="icon-sm"></i> Correction / Rework Required by Supervisor:
+            <i data-lucide="alert-triangle" class="icon-sm"></i> {{ tr('Correction / Rework Required by Supervisor:') }}
           </strong>
           <span>{{ complaint.verification_remarks or 'Supervisor requested additional repairs or photographic evidence. Please update and resubmit.' }}</span>
         </div>
@@ -60,18 +60,18 @@
       <div>
         <!-- Task Details -->
         <div class="card" style="margin-bottom: 1.5rem;">
-          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">Citizen Grievance Description</h3>
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">{{ tr('Citizen Grievance Description') }}</h3>
           <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; white-space: pre-line;">
             {{ complaint.description }}
           </p>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.88rem;">
             <div>
-              <span style="color: var(--text-muted);">Category:</span><br>
-              <strong>{{ complaint.category.name }}</strong>
+              <span style="color: var(--text-muted);">{{ tr('Category:') }}</span><br>
+              <strong>{{ td(complaint.category.name) }}</strong>
             </div>
             <div>
-              <span style="color: var(--text-muted);">Site Location:</span><br>
+              <span style="color: var(--text-muted);">{{ tr('Site Location:') }}</span><br>
               <strong>{{ complaint.address or 'Address not given' }} ({{ complaint.ward_number or 'Ward' }})</strong>
             </div>
           </div>
@@ -79,7 +79,7 @@
 
         <!-- Worker Execution Action Form -->
         <div class="card" style="margin-bottom: 1.5rem; border-top: 4px solid var(--civic-blue);">
-          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem;">Field Execution Actions</h3>
+          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem;">{{ tr('Field Execution Actions') }}</h3>
 
           <!-- Step 1: Accept Task or Start Work & Upload Before Photo -->
           {% if complaint.status in ['Assigned', 'Assigned to Worker'] %}
@@ -87,10 +87,10 @@
               <form method="POST" action="{{ url_for('worker.task_detail', complaint_id=complaint.id) }}" style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                 <input type="hidden" name="action" value="accept_task">
                 <div style="font-size: 0.85rem; color: var(--text-secondary);">
-                  Confirm receipt of this assigned work order to move it into your In Progress queue.
+                  {{ tr('Confirm receipt of this assigned work order to move it into your In Progress queue.') }}
                 </div>
                 <button type="submit" class="btn btn-success btn-sm">
-                  <i data-lucide="check" class="icon-xs"></i> Accept Task
+                  <i data-lucide="check" class="icon-xs"></i> {{ tr('Accept Task') }}
                 </button>
               </form>
             {% endif %}
@@ -98,17 +98,17 @@
               <input type="hidden" name="action" value="start_work">
               
               <div class="form-group">
-                <label class="form-label">Pre-Work Site Condition Photo (Optional Before Image)</label>
+                <label class="form-label">{{ tr('Pre-Work Site Condition Photo (Optional Before Image)') }}</label>
                 <input type="file" name="before_image" class="form-control" accept="image/*">
               </div>
 
               <div class="form-group">
-                <label class="form-label">On-Site Arrival Remarks</label>
-                <input type="text" name="remarks" class="form-control" placeholder="e.g. Arrived on site, identified pipeline rupture, tools deployed.">
+                <label class="form-label">{{ tr('On-Site Arrival Remarks') }}</label>
+                <input type="text" name="remarks" class="form-control" placeholder="{{ tr('e.g. Arrived on site, identified pipeline rupture, tools deployed.') }}">
               </div>
 
               <button type="submit" class="btn btn-primary">
-                <i data-lucide="play" class="icon-sm"></i> Start Work (Mark In Progress)
+                <i data-lucide="play" class="icon-sm"></i> {{ tr('Start Work (Mark In Progress)') }}
               </button>
             </form>
           {% endif %}
@@ -119,16 +119,16 @@
             <form method="POST" action="{{ url_for('worker.task_detail', complaint_id=complaint.id) }}" enctype="multipart/form-data" style="margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
               <input type="hidden" name="action" value="update_progress">
               <div class="form-group">
-                <label class="form-label">Add Site Evidence Photo (Optional)</label>
+                <label class="form-label">{{ tr('Add Site Evidence Photo (Optional)') }}</label>
                 <input type="file" name="evidence_image" class="form-control" accept="image/*">
-                <small style="color: var(--text-muted); font-size: 0.75rem;">Evidence photos uploaded here are immediately visible to Admin and Department Officer.</small>
+                <small style="color: var(--text-muted); font-size: 0.75rem;">{{ tr('Evidence photos uploaded here are immediately visible to Admin and Department Officer.') }}</small>
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label">Post Progress Remarks</label>
+                <label class="form-label">{{ tr('Post Progress Remarks') }}</label>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                  <input type="text" name="progress_notes" class="form-control" placeholder="e.g. Gasket replaced, pressurized testing underway..." style="flex: 1; min-width: 220px;">
+                  <input type="text" name="progress_notes" class="form-control" placeholder="{{ tr('e.g. Gasket replaced, pressurized testing underway...') }}" style="flex: 1; min-width: 220px;">
                   <button type="submit" class="btn btn-secondary btn-sm" style="white-space: nowrap;">
-                    <i data-lucide="camera" class="icon-xs"></i> Post Progress / Evidence
+                    <i data-lucide="camera" class="icon-xs"></i> {{ tr('Post Progress / Evidence') }}
                   </button>
                 </div>
               </div>
@@ -139,31 +139,31 @@
               <input type="hidden" name="action" value="submit_completion">
 
               <div class="form-group">
-                <label class="form-label">Completed Work Photo (After-Work Proof) <span style="color: red;">*</span></label>
+                <label class="form-label">{{ tr('Completed Work Photo (After-Work Proof)') }} <span style="color: red;">*</span></label>
                 <input type="file" name="after_image" class="form-control" accept="image/*" required>
-                <small style="color: var(--text-muted); font-size: 0.75rem;">Upload photo of the executed repairs for supervisor verification.</small>
+                <small style="color: var(--text-muted); font-size: 0.75rem;">{{ tr('Upload photo of the executed repairs for supervisor verification.') }}</small>
               </div>
 
               <div class="form-group">
-                <label class="form-label">Work Execution Details <span style="color: red;">*</span></label>
-                <textarea name="remarks" class="form-control" rows="3" required placeholder="Describe what parts were replaced, repairs done, and tests completed." minlength="10"></textarea>
+                <label class="form-label">{{ tr('Work Execution Details') }} <span style="color: red;">*</span></label>
+                <textarea name="remarks" class="form-control" rows="3" required placeholder="{{ tr('Describe what parts were replaced, repairs done, and tests completed.') }}" minlength="10"></textarea>
               </div>
 
               <button type="submit" class="btn btn-success">
-                <i data-lucide="check-circle-2" class="icon-sm"></i> Submit Work for Officer Verification
+                <i data-lucide="check-circle-2" class="icon-sm"></i> {{ tr('Submit Work for Officer Verification') }}
               </button>
             </form>
           {% endif %}
 
           {% if complaint.status in ['Work Completed', 'Verification Pending'] %}
             <div style="background: #e0f2fe; color: #075985; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.9rem;">
-              Work completed and submitted. Your department officer will inspect the evidence and approve final resolution.
+              {{ tr('Work completed and submitted. Your department officer will inspect the evidence and approve final resolution.') }}
             </div>
           {% endif %}
 
           {% if complaint.status == 'Resolved' %}
             <div style="background: #dcfce7; color: #166534; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.9rem;">
-              This complaint is verified and resolved.
+              {{ tr('This complaint is verified and resolved.') }}
             </div>
           {% endif %}
         </div>
@@ -176,14 +176,14 @@
               {% for att in attachments %}
                 <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-subtle);">
                   <div style="padding: 0.35rem 0.6rem; font-size: 0.72rem; font-weight: bold; background: var(--bg-surface); border-bottom: 1px solid var(--border-color);">
-                    {{ att.display_type_label.upper() }}
+                    {{ td(att.display_type_label) }}
                   </div>
                   {% if att.is_image %}
-                    <a href="{{ att.public_url }}" target="_blank" title="Open full evidence photo">
+                    <a href="{{ att.public_url }}" target="_blank" title="{{ tr('Open full evidence photo') }}">
                       <img src="{{ att.public_url }}" alt="{{ att.display_type_label }}" loading="lazy" style="width: 100%; height: 120px; object-fit: cover; display: block;">
                     </a>
                   {% else %}
-                    <div style="padding: 1.5rem; text-align: center;"><a href="{{ att.public_url }}" target="_blank">View File</a></div>
+                    <div style="padding: 1.5rem; text-align: center;"><a href="{{ att.public_url }}" target="_blank">{{ tr('View File') }}</a></div>
                   {% endif %}
                   {% if att.remarks %}
                     <div style="padding: 0.4rem 0.6rem; font-size: 0.74rem; color: var(--text-muted); line-height: 1.35;">{{ att.remarks }}</div>
@@ -192,7 +192,7 @@
               {% endfor %}
             </div>
           {% else %}
-            <p style="color: var(--text-muted); font-size: 0.88rem;">No photos attached yet.</p>
+            <p style="color: var(--text-muted); font-size: 0.88rem;">{{ tr('No photos attached yet.') }}</p>
           {% endif %}
         </div>
       </div>
@@ -202,7 +202,7 @@
         <!-- 9-Stage Redressal Lifecycle Timeline -->
         <div class="card" style="margin-bottom: 1.5rem; border-top: 4px solid var(--civic-blue);">
           <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary);">
-            <i data-lucide="git-commit" class="icon-sm" style="color: var(--civic-blue);"></i> 9-Stage Redressal Lifecycle
+            <i data-lucide="git-commit" class="icon-sm" style="color: var(--civic-blue);"></i> {{ tr('9-Stage Redressal Lifecycle') }}
           </h4>
           <div class="timeline stagger-in">
             {% for s in stages %}
@@ -211,7 +211,7 @@
                 <div class="timeline-content">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
                     <strong style="color: {% if s.is_completed %}var(--text-primary){% else %}var(--text-muted){% endif %}; font-size: 0.88rem;">
-                      {{ s.step }}. {{ s.title }}
+                      {{ s.step }}. {{ tr(s.title) }}
                       {% if s.is_completed %}<i data-lucide="check" class="icon-xs" style="color: #16a34a; margin-left: 0.25rem;"></i>{% endif %}
                     </strong>
                     {% if s.timestamp %}
@@ -219,7 +219,7 @@
                     {% endif %}
                   </div>
                   <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.3; margin: 0;">
-                    {{ s.remarks }}
+                    {{ tr(s.remarks) }}
                   </p>
                 </div>
               </div>
@@ -230,59 +230,59 @@
         <!-- Incident Location Information Card (No Map) -->
         <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem; box-shadow: none;">
           <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-            Site Address & Execution Target
+            {{ tr('Site Address & Execution Target') }}
           </h4>
           <div style="display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.85rem;">
             <div>
-              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Street Address</span>
-              <strong style="color: var(--text-primary);">{{ complaint.street_name or complaint.address or 'Standard Municipal Zone' }}</strong>
+              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('Street Address') }}</span>
+              <strong style="color: var(--text-primary);">{{ tr(complaint.street_name or complaint.address or 'Standard Municipal Zone') }}</strong>
             </div>
             <div>
-              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Area / Locality</span>
-              <span>{{ complaint.locality or 'Central Zone' }}</span>
+              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('Area / Locality') }}</span>
+              <span>{{ tr(complaint.locality or 'Central Zone') }}</span>
             </div>
             {% if complaint.landmark %}
               <div>
-                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Landmark</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('Landmark') }}</span>
                 <span>Near {{ complaint.landmark }}</span>
               </div>
             {% endif %}
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.25rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
               <div>
-                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Ward</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('Ward') }}</span>
                 <span class="badge" style="background: var(--bg-subtle); color: var(--civic-blue); font-weight: 700;">{{ complaint.ward_number or 'Ward 4' }}</span>
               </div>
               <div>
-                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">PIN Code</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('PIN Code') }}</span>
                 <span style="font-family: monospace; font-weight: 600;">{{ complaint.pincode or '600001' }}</span>
               </div>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
               <div>
-                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">City / District</span>
-                <span>{{ complaint.city or 'Chennai' }}, {{ complaint.district or 'Chennai' }}</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('City / District') }}</span>
+                <span>{{ td(complaint.city or 'Chennai') }}, {{ td(complaint.district or 'Chennai') }}</span>
               </div>
               <div>
-                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">State</span>
-                <span>{{ complaint.state or 'Tamil Nadu' }}</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('State') }}</span>
+                <span>{{ td(complaint.state or 'Tamil Nadu') }}</span>
               </div>
             </div>
           </div>
         </div>
 
         <div class="card">
-          <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">Task Status History</h4>
+          <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">{{ tr('Task Status History') }}</h4>
           <div class="timeline stagger-in">
             {% for hist in history %}
               <div class="timeline-item">
                 <div class="timeline-marker"></div>
                 <div class="timeline-content">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
-                    <strong style="color: var(--civic-blue); font-size: 0.88rem;">{{ hist.new_status }}</strong>
+                    <strong style="color: var(--civic-blue); font-size: 0.88rem;">{{ td(hist.new_status) }}</strong>
                     <span class="timeline-time">{{ hist.created_at | local_time('%d %b %Y, %I:%M %p') }}</span>
                   </div>
                   <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.3;">
-                    {{ hist.remarks or 'Status updated.' }}
+                    {{ tr(hist.remarks or 'Status updated.') }}
                   </p>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Field Worker Console | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Field Worker Console') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -17,7 +17,7 @@
           {% endif %}
         </div>
         <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
-          Assigned Work Orders & Task Queue
+          {{ tr('Assigned Work Orders & Task Queue') }}
         </h1>
         <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">
           Welcome, {{ current_user.full_name }}. Review assigned civic work orders, upload before/after photos, and submit completion reports.
@@ -26,10 +26,10 @@
 
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
         <a href="{{ url_for('worker.tasks') }}" class="btn btn-primary btn-sm">
-          <i data-lucide="list" class="icon-sm"></i> View All Tasks
+          <i data-lucide="list" class="icon-sm"></i> {{ tr('View All Tasks') }}
         </a>
         <a href="{{ url_for('worker.history') }}" class="btn btn-secondary btn-sm">
-          <i data-lucide="history" class="icon-sm"></i> Task History
+          <i data-lucide="history" class="icon-sm"></i> {{ tr('Task History') }}
         </a>
       </div>
     </div>
@@ -39,28 +39,28 @@
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.total }}</span>
-          <span class="stat-label">Assigned Work Orders</span>
+          <span class="stat-label">{{ tr('Assigned Work Orders') }}</span>
         </div>
         <div class="stat-icon"><i data-lucide="clipboard-list"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #2563eb;">{{ stats.new_tasks }}</span>
-          <span class="stat-label">New Direct Tasks</span>
+          <span class="stat-label">{{ tr('New Direct Tasks') }}</span>
         </div>
         <div class="stat-icon" style="color: #2563eb;"><i data-lucide="inbox"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #d97706;">{{ stats.in_progress }}</span>
-          <span class="stat-label">In Progress On-Site</span>
+          <span class="stat-label">{{ tr('In Progress On-Site') }}</span>
         </div>
         <div class="stat-icon" style="color: #d97706;"><i data-lucide="wrench"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #16a34a;">{{ stats.completed }}</span>
-          <span class="stat-label">Completed / Verified</span>
+          <span class="stat-label">{{ tr('Completed / Verified') }}</span>
         </div>
         <div class="stat-icon" style="color: #16a34a;"><i data-lucide="check-circle-2"></i></div>
       </div>
@@ -69,7 +69,7 @@
     <!-- Active Tasks Queue Table -->
     <div class="card" style="box-shadow: none; margin-bottom: 1.5rem;">
       <div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
-        <h3 style="font-size: 0.95rem; font-weight: 700;">Active Work Orders Requiring Execution</h3>
+        <h3 style="font-size: 0.95rem; font-weight: 700;">{{ tr('Active Work Orders Requiring Execution') }}</h3>
         <a href="{{ url_for('worker.tasks') }}" style="font-size: 0.8rem; font-weight: 600;">View Full List &rarr;</a>
       </div>
 
@@ -78,13 +78,13 @@
           <table class="table">
             <thead>
               <tr>
-                <th>Reference</th>
-                <th>Task Title</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Site Address & Ward</th>
-                <th>Target Due Date</th>
-                <th>Action</th>
+                <th>{{ tr('Reference') }}</th>
+                <th>{{ tr('Task Title') }}</th>
+                <th>{{ tr('Priority') }}</th>
+                <th>{{ tr('Status') }}</th>
+                <th>{{ tr('Site Address & Ward') }}</th>
+                <th>{{ tr('Target Due Date') }}</th>
+                <th>{{ tr('Action') }}</th>
               </tr>
             </thead>
             <tbody class="stagger-in">
@@ -100,12 +100,12 @@
                   </td>
                   <td>
                     <span class="badge badge-priority-{{ c.priority }}">
-                      {{ c.priority.upper() }}
+                      {{ td(c.priority) }}
                     </span>
                   </td>
                   <td>
                     <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">
-                      {{ c.status }}
+                      {{ td(c.status) }}
                     </span>
                   </td>
                   <td style="font-size: 0.82rem; color: var(--text-secondary); max-width: 250px;">
@@ -116,7 +116,7 @@
                   </td>
                   <td>
                     <a href="{{ url_for('worker.task_detail', complaint_id=c.id) }}" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;">
-                      Open Work Order
+                      {{ tr('Open Work Order') }}
                     </a>
                   </td>
                 </tr>
@@ -126,8 +126,8 @@
         </div>
       {% else %}
         <div style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
-          <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem;">No Active Field Tasks Pending</div>
-          <p style="font-size: 0.85rem;">You are currently up to date on all assigned municipal maintenance work orders.</p>
+          <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem;">{{ tr('No Active Field Tasks Pending') }}</div>
+          <p style="font-size: 0.85rem;">{{ tr('You are currently up to date on all assigned municipal maintenance work orders.') }}</p>
         </div>
       {% endif %}
     </div>

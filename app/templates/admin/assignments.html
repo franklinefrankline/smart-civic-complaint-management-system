@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Work Order Assignments | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Work Order Assignments') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -10,22 +10,22 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
       <div>
         <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-blue); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-          Dispatch Operations
+          {{ tr('Dispatch Operations') }}
         </div>
         <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
-          Work Order Assignments
+          {{ tr('Work Order Assignments') }}
         </h1>
         <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">
-          Central monitoring of field technician work orders across all municipal divisions.
+          {{ tr('Central monitoring of field technician work orders across all municipal divisions.') }}
         </p>
       </div>
 
       <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
         <button type="button" onclick="openModal('dispatchModal')" class="btn btn-primary btn-sm">
-          <i data-lucide="send" class="icon-sm"></i> Dispatch Work Order
+          <i data-lucide="send" class="icon-sm"></i> {{ tr('Dispatch Work Order') }}
         </button>
         <a href="{{ url_for('admin.workers') }}" class="btn btn-secondary btn-sm">
-          <i data-lucide="hard-hat" class="icon-sm"></i> Worker Roster
+          <i data-lucide="hard-hat" class="icon-sm"></i> {{ tr('Worker Roster') }}
         </a>
       </div>
     </div>
@@ -34,13 +34,13 @@
     <div class="card" style="padding: 1rem; margin-bottom: 1.5rem; box-shadow: none;">
       <form method="GET" action="{{ url_for('admin.assignments') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
         <select name="status" class="form-control" style="flex: 1; min-width: 160px;">
-          <option value="">All Assignment Statuses</option>
-          <option value="Assigned" {% if current_status == 'Assigned' %}selected{% endif %}>Assigned</option>
-          <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>In Progress</option>
-          <option value="Completed" {% if current_status == 'Completed' %}selected{% endif %}>Completed</option>
+          <option value="">{{ tr('All Assignment Statuses') }}</option>
+          <option value="Assigned" {% if current_status == 'Assigned' %}selected{% endif %}>{{ tr('Assigned') }}</option>
+          <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>{{ tr('In Progress') }}</option>
+          <option value="Completed" {% if current_status == 'Completed' %}selected{% endif %}>{{ tr('Completed') }}</option>
         </select>
-        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-        <a href="{{ url_for('admin.assignments') }}" class="btn btn-secondary btn-sm">Reset</a>
+        <button type="submit" class="btn btn-primary btn-sm">{{ tr('Filter') }}</button>
+        <a href="{{ url_for('admin.assignments') }}" class="btn btn-secondary btn-sm">{{ tr('Reset') }}</a>
       </form>
     </div>
 
@@ -50,14 +50,14 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Complaint Ref</th>
-              <th>Task Title</th>
-              <th>Department</th>
-              <th>Assigned Technician</th>
-              <th>Assigned By</th>
-              <th>Dispatch Date</th>
-              <th>Status</th>
-              <th>Action</th>
+              <th>{{ tr('Complaint Ref') }}</th>
+              <th>{{ tr('Task Title') }}</th>
+              <th>{{ tr('Department') }}</th>
+              <th>{{ tr('Assigned Technician') }}</th>
+              <th>{{ tr('Assigned By') }}</th>
+              <th>{{ tr('Dispatch Date') }}</th>
+              <th>{{ tr('Status') }}</th>
+              <th>{{ tr('Action') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -88,7 +88,7 @@
                 </td>
                 <td>
                   <a href="{{ url_for('admin.complaint_detail', complaint_id=a.complaint.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
-                    Inspect
+                    {{ tr('Inspect') }}
                   </a>
                 </td>
               </tr>
@@ -99,12 +99,12 @@
                     <div style="width: 52px; height: 52px; border-radius: 50%; background: rgba(59, 130, 246, 0.12); display: flex; align-items: center; justify-content: center; color: var(--civic-blue);">
                       <i data-lucide="clipboard-list" style="width: 26px; height: 26px;"></i>
                     </div>
-                    <h4 style="margin: 0; font-size: 1.1rem; color: var(--text-primary); font-weight: 700;">No Technician Work Orders Assigned</h4>
+                    <h4 style="margin: 0; font-size: 1.1rem; color: var(--text-primary); font-weight: 700;">{{ tr('No Technician Work Orders Assigned') }}</h4>
                     <p style="margin: 0; font-size: 0.88rem; color: var(--text-muted); max-width: 420px; line-height: 1.5;">
-                      Dispatch field technicians to address reported civic issues, inspect sites, and resolve grievances.
+                      {{ tr('Dispatch field technicians to address reported civic issues, inspect sites, and resolve grievances.') }}
                     </p>
                     <button type="button" onclick="openModal('dispatchModal')" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">
-                      <i data-lucide="send" class="icon-sm"></i> Dispatch First Work Order
+                      <i data-lucide="send" class="icon-sm"></i> {{ tr('Dispatch First Work Order') }}
                     </button>
                   </div>
                 </td>
@@ -121,7 +121,7 @@
 <div id="dispatchModal" class="modal-overlay">
   <div class="modal-dialog card" style="max-width: 550px; margin: auto; padding: 2rem; position: relative;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-      <h3 style="font-size: 1.25rem; font-weight: 700;">Dispatch Work Order</h3>
+      <h3 style="font-size: 1.25rem; font-weight: 700;">{{ tr('Dispatch Work Order') }}</h3>
       <button type="button" onclick="closeModal('dispatchModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
     </div>
 
@@ -134,34 +134,34 @@
       <input type="hidden" name="action" value="assign_worker">
 
       <div class="form-group">
-        <label class="form-label required">Select Grievance / Complaint</label>
+        <label class="form-label required">{{ tr('Select Grievance / Complaint') }}</label>
         <select name="complaint_id" class="form-control" required>
-          <option value="">-- Select Active Grievance to Assign --</option>
+          <option value="">{{ tr('-- Select Active Grievance to Assign --') }}</option>
           {% for c in assignable_complaints %}
-            <option value="{{ c.id }}">{{ c.complaint_ref }} - {{ c.title }} ({{ c.department.name if c.department else 'General' }}) [Status: {{ c.status }}]</option>
+            <option value="{{ c.id }}">{{ c.complaint_ref }} - {{ c.title }} ({{ c.department.name if c.department else 'General' }}) [Status: {{ td(c.status) }}]</option>
           {% endfor %}
         </select>
       </div>
 
       <div class="form-group">
-        <label class="form-label required">Assign to Field Technician</label>
+        <label class="form-label required">{{ tr('Assign to Field Technician') }}</label>
         <select name="worker_user_id" class="form-control" required>
-          <option value="">-- Select Available Technician --</option>
+          <option value="">{{ tr('-- Select Available Technician --') }}</option>
           {% for w in workers %}
-            <option value="{{ w.user.id }}">{{ w.user.full_name }} ({{ w.department.name }}) - {{ w.active_task_count }} active tasks</option>
+            <option value="{{ w.user.id }}">{{ w.user.full_name }} ({{ w.department.name }}) - {{ w.active_task_count }} {{ tr('active tasks') }}</option>
           {% endfor %}
         </select>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Work Order Instructions / Scope</label>
-        <textarea name="instructions" class="form-control" rows="3" placeholder="Provide specific inspection notes, address landmarks, or repair instructions for the field worker..."></textarea>
+        <label class="form-label">{{ tr('Work Order Instructions / Scope') }}</label>
+        <textarea name="instructions" class="form-control" rows="3" placeholder="{{ tr('Provide specific inspection notes, address landmarks, or repair instructions for the field worker...') }}"></textarea>
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
-        <button type="button" onclick="closeModal('dispatchModal')" class="btn btn-secondary">Cancel</button>
+        <button type="button" onclick="closeModal('dispatchModal')" class="btn btn-secondary">{{ tr('Cancel') }}</button>
         <button type="submit" class="btn btn-primary">
-          <i data-lucide="send" class="icon-sm"></i> Confirm Dispatch
+          <i data-lucide="send" class="icon-sm"></i> {{ tr('Confirm Dispatch') }}
         </button>
       </div>
     </form>

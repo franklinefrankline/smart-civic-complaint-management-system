@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Worker Assignments | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Worker Assignments') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -10,75 +10,75 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
       <div>
         <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-teal); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-          {{ department.name if department else 'Department Operations' }}
+          {{ td(department.name) if department else tr('Department Operations') }}
         </div>
         <h1 style="font-size: 1.65rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em;">
-          Worker Assignments
+          {{ tr('Worker Assignments') }}
         </h1>
         <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.2rem;">
-          Assign pending department grievances to active technicians and monitor active field tasks.
+          {{ tr('Assign pending department grievances to active technicians and monitor active field tasks.') }}
         </p>
       </div>
       <a href="{{ url_for('officer.workers') }}" class="btn btn-secondary btn-sm">
-        <i data-lucide="hard-hat" class="icon-sm"></i> Manage Workers
+        <i data-lucide="hard-hat" class="icon-sm"></i> {{ tr('Manage Workers') }}
       </a>
     </div>
 
     <!-- Assign Complaint to Eligible Worker -->
     <div class="card" style="margin-bottom: 1.5rem; border-top: 3px solid var(--civic-blue);">
       <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.85rem;">
-        <i data-lucide="send" class="icon-sm" style="color: var(--civic-blue);"></i> Assign Complaint to Department Worker
+        <i data-lucide="send" class="icon-sm" style="color: var(--civic-blue);"></i> {{ tr('Assign Complaint to Department Worker') }}
       </h3>
       {% if assignable_complaints and eligible_workers %}
         <form method="POST" action="{{ url_for('officer.assignments') }}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.75rem; align-items: end;">
           <input type="hidden" name="action" value="assign_complaint">
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label required">Complaint Queue</label>
+            <label class="form-label required">{{ tr('Complaint Queue') }}</label>
             <select name="complaint_id" class="form-control" required>
-              <option value="">-- Select Complaint --</option>
+              <option value="">{{ tr('-- Select Complaint --') }}</option>
               {% for c in assignable_complaints %}
-                <option value="{{ c.id }}">{{ c.complaint_ref }} &mdash; {{ c.title }} ({{ c.priority.upper() }})</option>
+                <option value="{{ c.id }}">{{ c.complaint_ref }} &mdash; {{ c.title }} ({{ td(c.priority) }})</option>
               {% endfor %}
             </select>
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label required">Eligible Worker</label>
             <select name="worker_id" class="form-control" required>
-              <option value="">-- Select Active Technician --</option>
+              <option value="">{{ tr('-- Select Active Technician --') }}</option>
               {% for w in eligible_workers %}
                 <option value="{{ w.id }}">{{ w.user.full_name }} ({{ w.designation }}, Active: {{ w.active_task_count or 0 }})</option>
               {% endfor %}
             </select>
           </div>
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Work Instructions</label>
-            <input type="text" name="instructions" class="form-control" placeholder="Optional inspection or repair notes...">
+            <label class="form-label">{{ tr('Work Instructions') }}</label>
+            <input type="text" name="instructions" class="form-control" placeholder="{{ tr('Optional inspection or repair notes...') }}">
           </div>
           <button type="submit" class="btn btn-primary btn-sm" style="height: 40px;">
-            <i data-lucide="user-check" class="icon-xs"></i> Assign Worker
+            <i data-lucide="user-check" class="icon-xs"></i> {{ tr('Assign Worker') }}
           </button>
         </form>
       {% elif not assignable_complaints %}
-        <p style="font-size: 0.86rem; color: var(--text-muted); margin: 0;">No unassigned department complaints are waiting for dispatch right now.</p>
+        <p style="font-size: 0.86rem; color: var(--text-muted); margin: 0;">{{ tr('No unassigned department complaints are waiting for dispatch right now.') }}</p>
       {% else %}
-        <p style="font-size: 0.86rem; color: var(--text-muted); margin: 0;">No active, available workers in your department right now.</p>
+        <p style="font-size: 0.86rem; color: var(--text-muted); margin: 0;">{{ tr('No active, available workers in your department right now.') }}</p>
       {% endif %}
     </div>
 
     <!-- Department Workers & Workload -->
     <div class="card" style="margin-bottom: 1.5rem;">
       <div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
-        <h3 style="font-size: 1rem; font-weight: 700;">Authorized Department Workers ({{ workers|length }})</h3>
+        <h3 style="font-size: 1rem; font-weight: 700;">{{ tr('Authorized Department Workers') }} ({{ workers|length }})</h3>
       </div>
       <div class="table-responsive">
         <table class="table">
           <thead>
             <tr>
-              <th>Worker Name</th>
-              <th>Assigned Tasks</th>
-              <th>Availability</th>
-              <th>Current Task Status</th>
-              <th>Account Status</th>
+              <th>{{ tr('Worker Name') }}</th>
+              <th>{{ tr('Assigned Tasks') }}</th>
+              <th>{{ tr('Availability') }}</th>
+              <th>{{ tr('Current Task Status') }}</th>
+              <th>{{ tr('Account Status') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -87,17 +87,17 @@
               <tr>
                 <td>
                   <strong>{{ w.user.full_name }}</strong>
-                  <div style="font-size: 0.76rem; color: var(--text-muted);">{{ w.designation or 'Field Technician' }}{% if w.employee_id %} &bull; {{ w.employee_id }}{% endif %}</div>
+                  <div style="font-size: 0.76rem; color: var(--text-muted);">{{ td(w.designation or 'Field Technician') }}{% if w.employee_id %} &bull; {{ w.employee_id }}{% endif %}</div>
                 </td>
                 <td>
-                  <span class="badge" style="background: var(--bg-subtle); color: var(--civic-blue);">{{ w.active_task_count or 0 }} Active</span>
-                  <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.2rem;">{{ w.completed_task_count or 0 }} Completed</div>
+                  <span class="badge" style="background: var(--bg-subtle); color: var(--civic-blue);">{{ w.active_task_count or 0 }} {{ tr('Active') }}</span>
+                  <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.2rem;">{{ w.completed_task_count or 0 }} {{ tr('Completed') }}</div>
                 </td>
                 <td>
                   {% if w.is_available and w.user.is_active %}
-                    <span class="badge badge-resolved">Available</span>
+                    <span class="badge badge-resolved">{{ tr('Available') }}</span>
                   {% else %}
-                    <span class="badge badge-rejected">Unavailable / Busy</span>
+                    <span class="badge badge-rejected">{{ tr('Unavailable / Busy') }}</span>
                   {% endif %}
                 </td>
                 <td style="font-size: 0.8rem;">
@@ -105,24 +105,24 @@
                     {% for t in w_tasks[:3] %}
                       <div style="margin-bottom: 0.2rem;">
                         <a href="{{ url_for('officer.complaint_detail', complaint_id=t.id) }}" style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">{{ t.complaint_ref }}</a>
-                        <span class="badge badge-{{ t.status.lower().replace(' ', '-') }}" style="font-size: 0.68rem;">{{ t.status }}</span>
+                        <span class="badge badge-{{ t.status.lower().replace(' ', '-') }}" style="font-size: 0.68rem;">{{ td(t.status) }}</span>
                       </div>
                     {% endfor %}
                   {% else %}
-                    <span style="color: var(--text-muted);">No active tasks</span>
+                    <span style="color: var(--text-muted);">{{ tr('No active tasks') }}</span>
                   {% endif %}
                 </td>
                 <td>
                   {% if w.user.is_active %}
-                    <span class="badge badge-resolved">Active</span>
+                    <span class="badge badge-resolved">{{ tr('Active') }}</span>
                   {% else %}
-                    <span class="badge badge-rejected">Inactive</span>
+                    <span class="badge badge-rejected">{{ tr('Inactive') }}</span>
                   {% endif %}
                 </td>
               </tr>
             {% else %}
               <tr>
-                <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">No workers registered in your department yet.</td>
+                <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">{{ tr('No workers registered in your department yet.') }}</td>
               </tr>
             {% endfor %}
           </tbody>
@@ -133,32 +133,32 @@
     <!-- Active Assigned Tasks List -->
     <div class="card">
       <div class="card-header" style="margin-bottom: 0.85rem; padding-bottom: 0.5rem;">
-        <h3 style="font-size: 1rem; font-weight: 700;">Department Assigned Work Orders</h3>
+        <h3 style="font-size: 1rem; font-weight: 700;">{{ tr('Department Assigned Work Orders') }}</h3>
       </div>
       <form method="GET" action="{{ url_for('officer.assignments') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
-        <input type="text" name="search" class="form-control" placeholder="Search complaint ref, title, or worker..." value="{{ search_query or '' }}" style="flex: 2; min-width: 200px;">
+        <input type="text" name="search" class="form-control" placeholder="{{ tr('Search complaint ref, title, or worker...') }}" value="{{ search_query or '' }}" style="flex: 2; min-width: 200px;">
         <select name="status" class="form-control" style="flex: 1; min-width: 160px;">
-          <option value="">All Assigned States</option>
-          <option value="Assigned to Worker" {% if current_status in ['Assigned', 'Assigned to Worker'] %}selected{% endif %}>Assigned</option>
-          <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>In Progress</option>
-          <option value="Verification Pending" {% if current_status in ['Work Completed', 'Verification Pending'] %}selected{% endif %}>Verification Pending</option>
-          <option value="Rework Required" {% if current_status == 'Rework Required' %}selected{% endif %}>Rework Required</option>
-          <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>Resolved</option>
+          <option value="">{{ tr('All Assigned States') }}</option>
+          <option value="Assigned to Worker" {% if current_status in ['Assigned', 'Assigned to Worker'] %}selected{% endif %}>{{ tr('Assigned') }}</option>
+          <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>{{ tr('In Progress') }}</option>
+          <option value="Verification Pending" {% if current_status in ['Work Completed', 'Verification Pending'] %}selected{% endif %}>{{ tr('Verification Pending') }}</option>
+          <option value="Rework Required" {% if current_status == 'Rework Required' %}selected{% endif %}>{{ tr('Rework Required') }}</option>
+          <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>{{ tr('Resolved') }}</option>
         </select>
-        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-        <a href="{{ url_for('officer.assignments') }}" class="btn btn-secondary btn-sm">Reset</a>
+        <button type="submit" class="btn btn-primary btn-sm">{{ tr('Filter') }}</button>
+        <a href="{{ url_for('officer.assignments') }}" class="btn btn-secondary btn-sm">{{ tr('Reset') }}</a>
       </form>
 
       <div class="table-responsive">
         <table class="table">
           <thead>
             <tr>
-              <th>Reference</th>
-              <th>Complaint Title</th>
-              <th>Assigned Worker</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Action</th>
+              <th>{{ tr('Reference') }}</th>
+              <th>{{ tr('Complaint Title') }}</th>
+              <th>{{ tr('Assigned Worker') }}</th>
+              <th>{{ tr('Priority') }}</th>
+              <th>{{ tr('Status') }}</th>
+              <th>{{ tr('Action') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -167,16 +167,16 @@
                 <td><span style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">{{ c.complaint_ref }}</span></td>
                 <td style="font-weight: 600;">{{ c.title }}</td>
                 <td>{{ c.assigned_worker.full_name if c.assigned_worker else 'Unassigned' }}</td>
-                <td><span class="badge badge-priority-{{ c.priority }}">{{ c.priority.upper() }}</span></td>
-                <td><span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">{{ c.status }}</span></td>
+                <td><span class="badge badge-priority-{{ c.priority }}">{{ td(c.priority) }}</span></td>
+                <td><span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">{{ td(c.status) }}</span></td>
                 <td>
-                  <a href="{{ url_for('officer.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm">Manage</a>
+                  <a href="{{ url_for('officer.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm">{{ tr('Manage') }}</a>
                 </td>
               </tr>
             {% else %}
               <tr>
                 <td colspan="6" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
-                  No assigned work orders found matching your criteria.
+                  {{ tr('No assigned work orders found matching your criteria.') }}
                 </td>
               </tr>
             {% endfor %}

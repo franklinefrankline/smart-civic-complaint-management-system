@@ -134,3 +134,23 @@ def get_translation(key, lang='en', default=None):
     if entry:
         return entry.get(lang) or entry.get('en') or (default if default is not None else key)
     return default if default is not None else key
+
+
+_ENGLISH_TO_KEY = {
+    entry['en'].strip().lower(): key
+    for key, entry in TRANSLATIONS.items()
+    if isinstance(entry, dict) and entry.get('en')
+}
+
+
+def translate_text(text, lang='en'):
+    """Translate literal UI/dynamic text via English lookup, preserving text when unmapped."""
+    if text is None:
+        return ''
+    text_str = str(text)
+    if lang not in ['en', 'ta', 'hi'] or lang == 'en':
+        return text_str
+    key = _ENGLISH_TO_KEY.get(text_str.strip().lower())
+    if key:
+        return TRANSLATIONS[key].get(lang) or text_str
+    return text_str

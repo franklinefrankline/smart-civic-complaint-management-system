@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}System Audit Logs | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('System Audit Logs') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -10,10 +10,10 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
       <div>
         <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
-          System Audit Trail & Security Logs
+          {{ tr('System Audit Trail & Security Logs') }}
         </h1>
         <p style="color: var(--text-muted); font-size: 0.92rem;">
-          Tamper-evident record of user authentication, complaint state transitions, worker assignments, and supervisory interventions.
+          {{ tr('Tamper-evident record of user authentication, complaint state transitions, worker assignments, and supervisory interventions.') }}
         </p>
       </div>
     </div>
@@ -22,16 +22,16 @@
     <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
       <form method="GET" action="{{ url_for('admin.audit_logs') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
         <select name="action" class="form-control" style="flex: 1; min-width: 180px;">
-          <option value="">All Audit Actions</option>
+          <option value="">{{ tr('All Audit Actions') }}</option>
           <option value="USER_LOGIN" {% if current_action == 'USER_LOGIN' %}selected{% endif %}>User Login</option>
-          <option value="CREATE_COMPLAINT" {% if current_action == 'CREATE_COMPLAINT' %}selected{% endif %}>Create Complaint</option>
-          <option value="UPDATE_STATUS" {% if current_action == 'UPDATE_STATUS' %}selected{% endif %}>Update Status</option>
-          <option value="ASSIGN_WORKER" {% if current_action == 'ASSIGN_WORKER' %}selected{% endif %}>Assign Worker</option>
-          <option value="SUBMIT_FEEDBACK" {% if current_action == 'SUBMIT_FEEDBACK' %}selected{% endif %}>Submit Feedback</option>
-          <option value="AUTO_ESCALATE_OVERDUE" {% if current_action == 'AUTO_ESCALATE_OVERDUE' %}selected{% endif %}>Auto Escalate Overdue</option>
+          <option value="CREATE_COMPLAINT" {% if current_action == 'CREATE_COMPLAINT' %}selected{% endif %}>{{ tr('Create Complaint') }}</option>
+          <option value="UPDATE_STATUS" {% if current_action == 'UPDATE_STATUS' %}selected{% endif %}>{{ tr('Update Status') }}</option>
+          <option value="ASSIGN_WORKER" {% if current_action == 'ASSIGN_WORKER' %}selected{% endif %}>{{ tr('Assign Worker') }}</option>
+          <option value="SUBMIT_FEEDBACK" {% if current_action == 'SUBMIT_FEEDBACK' %}selected{% endif %}>{{ tr('Submit Feedback') }}</option>
+          <option value="AUTO_ESCALATE_OVERDUE" {% if current_action == 'AUTO_ESCALATE_OVERDUE' %}selected{% endif %}>{{ tr('Auto Escalate Overdue') }}</option>
         </select>
-        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-        <a href="{{ url_for('admin.audit_logs') }}" class="btn btn-secondary btn-sm">Reset</a>
+        <button type="submit" class="btn btn-primary btn-sm">{{ tr('Filter') }}</button>
+        <a href="{{ url_for('admin.audit_logs') }}" class="btn btn-secondary btn-sm">{{ tr('Reset') }}</a>
       </form>
     </div>
 
@@ -41,12 +41,12 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Timestamp</th>
-              <th>Action</th>
-              <th>User</th>
-              <th>Target Entity</th>
-              <th>IP Address</th>
-              <th>Details</th>
+              <th>{{ tr('Timestamp') }}</th>
+              <th>{{ tr('Action') }}</th>
+              <th>{{ tr('User') }}</th>
+              <th>{{ tr('Target Entity') }}</th>
+              <th>{{ tr('IP Address') }}</th>
+              <th>{{ tr('Details') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -57,7 +57,7 @@
                 </td>
                 <td>
                   <span class="badge" style="background: var(--bg-subtle); color: var(--civic-blue); font-weight: 700;">
-                    {{ log.action }}
+                    {{ tr(log.action) }}
                   </span>
                 </td>
                 <td style="font-size: 0.85rem;">
@@ -77,7 +77,7 @@
             {% else %}
               <tr>
                 <td colspan="6" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
-                  No audit log entries match your current filter.
+                  {{ tr('No audit log entries match your current filter.') }}
                 </td>
               </tr>
             {% endfor %}

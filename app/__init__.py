@@ -306,6 +306,19 @@ def create_app(config_name=None):
             response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept'
             response.headers['Vary'] = 'Origin'
 
+        # Prevent HTTP 304 / stale CDN or browser caching on all dynamic HTML and API routes
+        if not request.path.startswith(('/static/', '/uploads/', '/proofs/')):
+            response.headers.pop('ETag', None)
+            response.headers.pop('Last-Modified', None)
+            if 'text/event-stream' in (response.mimetype or ''):
+                response.headers['Cache-Control'] = 'no-store, no-cache, no-transform'
+            else:
+                response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            response.headers['CDN-Cache-Control'] = 'no-store'
+            response.headers['Vercel-CDN-Cache-Control'] = 'no-store'
+
         # Fast built-in Gzip compression for HTML/JSON payloads to cut Vercel <-> Render latency
         if (
             not response.direct_passthrough
@@ -330,11 +343,14 @@ def create_app(config_name=None):
     # Context processor for templates
     @app.context_processor
     def inject_global_data():
-        from app.utils.translations import get_translation
+        from app.utils.translations import get_translation, translate_text
         current_lang = session.get('lang', 'en')
 
         def t(key, default=None):
             return get_translation(key, current_lang, default)
+
+        def tr(text):
+            return translate_text(text, current_lang)
 
         is_partial_swap = (
             request.headers.get('X-Async-Partial') == '1'
@@ -345,6 +361,9 @@ def create_app(config_name=None):
                 current_user=getattr(g, 'user', None) if is_partial_swap else None,
                 current_lang=current_lang,
                 t=t,
+                tr=tr,
+                td=tr,
+                dt=tr,
                 unread_notifications_count=0,
                 api_base_url=app.config.get('API_BASE_URL', ''),
                 available_languages=[
@@ -394,10 +413,16 @@ def create_app(config_name=None):
         def t(key, default=None):
             return get_translation(key, current_lang, default)
 
+        def tr(text):
+            return translate_text(text, current_lang)
+
         return dict(
             current_user=user,
             current_lang=current_lang,
             t=t,
+            tr=tr,
+            td=tr,
+            dt=tr,
             unread_notifications_count=unread_notifications_count,
             api_base_url=app.config.get('API_BASE_URL', ''),
             available_languages=[

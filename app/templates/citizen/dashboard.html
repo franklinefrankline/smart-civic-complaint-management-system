@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Citizen Dashboard | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Citizen Dashboard') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -11,10 +11,10 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
       <div>
         <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-blue); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-          Citizen Grievance Redressal Portal
+          {{ tr('Citizen Grievance Redressal Portal') }}
         </div>
         <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
-          My Grievance Dashboard
+          {{ tr('My Grievance Dashboard') }}
         </h1>
         <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">
           Welcome back, {{ current_user.full_name }}. Monitor the real-time status of your filed complaints, track municipal resolution, and provide feedback.
@@ -23,10 +23,10 @@
 
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
         <a href="{{ url_for('citizen.new_complaint') }}" class="btn btn-primary btn-sm">
-          <i data-lucide="file-plus" class="icon-sm"></i> Register New Complaint
+          <i data-lucide="file-plus" class="icon-sm"></i> {{ tr('Register New Complaint') }}
         </a>
         <a href="{{ url_for('citizen.complaints') }}" class="btn btn-secondary btn-sm">
-          <i data-lucide="list" class="icon-sm"></i> View All Complaints
+          <i data-lucide="list" class="icon-sm"></i> {{ tr('View All Complaints') }}
         </a>
       </div>
     </div>
@@ -36,28 +36,28 @@
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.total }}</span>
-          <span class="stat-label">Total Filed</span>
+          <span class="stat-label">{{ tr('Total Filed') }}</span>
         </div>
         <div class="stat-icon"><i data-lucide="folder"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #d97706;">{{ stats.pending }}</span>
-          <span class="stat-label">Under Review</span>
+          <span class="stat-label">{{ tr('Under Review') }}</span>
         </div>
         <div class="stat-icon" style="color: #d97706;"><i data-lucide="clock"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #7c3aed;">{{ stats.in_progress }}</span>
-          <span class="stat-label">In Progress</span>
+          <span class="stat-label">{{ tr('In Progress') }}</span>
         </div>
         <div class="stat-icon" style="color: #7c3aed;"><i data-lucide="wrench"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #16a34a;">{{ stats.resolved }}</span>
-          <span class="stat-label">Resolved</span>
+          <span class="stat-label">{{ tr('Resolved') }}</span>
         </div>
         <div class="stat-icon" style="color: #16a34a;"><i data-lucide="check-circle-2"></i></div>
       </div>
@@ -66,8 +66,8 @@
     <!-- Recent Complaints Table -->
     <div class="card" style="box-shadow: none;">
       <div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
-        <h3 style="font-size: 0.95rem; font-weight: 700;">Recent Complaint Submissions</h3>
-        <a href="{{ url_for('citizen.complaints') }}" style="font-size: 0.8rem; font-weight: 600;">View All Complaints &rarr;</a>
+        <h3 style="font-size: 0.95rem; font-weight: 700;">{{ tr('Recent Complaint Submissions') }}</h3>
+        <a href="{{ url_for('citizen.complaints') }}" style="font-size: 0.8rem; font-weight: 600;">{{ tr('View All Complaints') }} &rarr;</a>
       </div>
 
       {% if recent_complaints %}
@@ -75,13 +75,13 @@
           <table class="table">
             <thead>
               <tr>
-                <th>Reference ID</th>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Submission Date</th>
-                <th>Action</th>
+                <th>{{ tr('Reference ID') }}</th>
+                <th>{{ tr('Title') }}</th>
+                <th>{{ tr('Category') }}</th>
+                <th>{{ tr('Priority') }}</th>
+                <th>{{ tr('Status') }}</th>
+                <th>{{ tr('Submission Date') }}</th>
+                <th>{{ tr('Action') }}</th>
               </tr>
             </thead>
             <tbody class="stagger-in">
@@ -98,12 +98,12 @@
                   <td style="font-size: 0.85rem;">{{ c.category.name if c.category else 'General' }}</td>
                   <td>
                     <span class="badge badge-priority-{{ c.priority }}">
-                      {{ c.priority.upper() }}
+                      {{ td(c.priority) }}
                     </span>
                   </td>
                   <td>
                     <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">
-                      {{ c.status }}
+                      {{ td(c.status) }}
                     </span>
                   </td>
                   <td style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">
@@ -111,7 +111,7 @@
                   </td>
                   <td>
                     <a href="{{ url_for('citizen.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.55rem; font-size: 0.75rem;">
-                      Track Details
+                      {{ tr('Track Details') }}
                     </a>
                   </td>
                 </tr>
@@ -121,12 +121,12 @@
         </div>
       {% else %}
         <div style="text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);">
-          <div style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">No Grievances Filed Yet</div>
+          <div style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">{{ tr('No Grievances Filed Yet') }}</div>
           <p style="font-size: 0.88rem; max-width: 480px; margin: 0 auto 1.5rem auto;">
-            You have not registered any civic complaints. If you notice municipal issues such as water leaks, road potholes, or street lighting outages, submit a report.
+            {{ tr('You have not registered any civic complaints. If you notice municipal issues such as water leaks, road potholes, or street lighting outages, submit a report.') }}
           </p>
           <a href="{{ url_for('citizen.new_complaint') }}" class="btn btn-primary btn-sm">
-            <i data-lucide="file-plus" class="icon-sm"></i> File First Complaint
+            <i data-lucide="file-plus" class="icon-sm"></i> {{ tr('File First Complaint') }}
           </a>
         </div>
       {% endif %}

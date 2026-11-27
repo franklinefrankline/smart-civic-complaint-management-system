@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Department Officer Console | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Department Officer Console') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -16,7 +16,7 @@
           {{ department.name if department else 'Municipal Department' }}
         </div>
         <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
-          Departmental Queue & Task Dispatch
+          {{ tr('Departmental Queue & Task Dispatch') }}
         </h1>
         <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">
           Triage incoming citizen grievances, assign field technicians, inspect completed work, and approve final
@@ -26,16 +26,16 @@
 
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
         <a href="{{ url_for('officer.workers') }}" class="btn btn-secondary btn-sm">
-          <i data-lucide="hard-hat" class="icon-sm"></i> Manage Workers
+          <i data-lucide="hard-hat" class="icon-sm"></i> {{ tr('Manage Workers') }}
         </a>
         <a href="{{ url_for('officer.incoming') }}" class="btn btn-secondary btn-sm">
-          <i data-lucide="inbox" class="icon-sm"></i> Incoming Review
+          <i data-lucide="inbox" class="icon-sm"></i> {{ tr('Incoming Review') }}
         </a>
         <a href="{{ url_for('officer.verification') }}" class="btn btn-secondary btn-sm">
-          <i data-lucide="check-square" class="icon-sm"></i> Verification Queue
+          <i data-lucide="check-square" class="icon-sm"></i> {{ tr('Verification Queue') }}
         </a>
         <a href="{{ url_for('officer.complaints') }}" class="btn btn-primary btn-sm">
-          <i data-lucide="list" class="icon-sm"></i> All Complaints
+          <i data-lucide="list" class="icon-sm"></i> {{ tr('All Complaints') }}
         </a>
       </div>
     </div>
@@ -45,49 +45,49 @@
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.total }}</span>
-          <span class="stat-label">Total Dept Tickets</span>
+          <span class="stat-label">{{ tr('Total Dept Tickets') }}</span>
         </div>
         <div class="stat-icon"><i data-lucide="folder"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #2563eb;">{{ stats.new }}</span>
-          <span class="stat-label">New Incoming</span>
+          <span class="stat-label">{{ tr('New Incoming') }}</span>
         </div>
         <div class="stat-icon" style="color: #2563eb;"><i data-lucide="inbox"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #7c3aed;">{{ stats.assigned }}</span>
-          <span class="stat-label">Assigned to Workers</span>
+          <span class="stat-label">{{ tr('Assigned to Workers') }}</span>
         </div>
         <div class="stat-icon" style="color: #7c3aed;"><i data-lucide="hard-hat"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #d97706;">{{ stats.in_progress }}</span>
-          <span class="stat-label">In Progress</span>
+          <span class="stat-label">{{ tr('In Progress') }}</span>
         </div>
         <div class="stat-icon" style="color: #d97706;"><i data-lucide="wrench"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #ea580c;">{{ stats.completed }}</span>
-          <span class="stat-label">Pending Verification</span>
+          <span class="stat-label">{{ tr('Pending Verification') }}</span>
         </div>
         <div class="stat-icon" style="color: #ea580c;"><i data-lucide="check-square"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #16a34a;">{{ stats.resolved }}</span>
-          <span class="stat-label">Resolved</span>
+          <span class="stat-label">{{ tr('Resolved') }}</span>
         </div>
         <div class="stat-icon" style="color: #16a34a;"><i data-lucide="check-circle-2"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #dc2626;">{{ stats.overdue }}</span>
-          <span class="stat-label">Overdue Alerts</span>
+          <span class="stat-label">{{ tr('Overdue Alerts') }}</span>
         </div>
         <div class="stat-icon" style="color: #dc2626;"><i data-lucide="alert-octagon"></i></div>
       </div>
@@ -98,7 +98,7 @@
       <!-- Active Complaints Queue -->
       <div class="card" style="box-shadow: none;">
         <div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
-          <h3 style="font-size: 0.95rem; font-weight: 700;">Incoming & Pending Complaints</h3>
+          <h3 style="font-size: 0.95rem; font-weight: 700;">{{ tr('Incoming & Pending Complaints') }}</h3>
           <a href="{{ url_for('officer.complaints') }}" style="font-size: 0.8rem; font-weight: 600;">Full Department
             Queue &rarr;</a>
         </div>
@@ -107,11 +107,11 @@
           <table class="table">
             <thead>
               <tr>
-                <th>Reference</th>
-                <th>Title</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th>{{ tr('Reference') }}</th>
+                <th>{{ tr('Title') }}</th>
+                <th>{{ tr('Priority') }}</th>
+                <th>{{ tr('Status') }}</th>
+                <th>{{ tr('Action') }}</th>
               </tr>
             </thead>
             <tbody class="stagger-in">
@@ -128,25 +128,24 @@
                 </td>
                 <td>
                   <span class="badge badge-priority-{{ c.priority }}">
-                    {{ c.priority.upper() }}
+                    {{ td(c.priority) }}
                   </span>
                 </td>
                 <td>
                   <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">
-                    {{ c.status }}
+                    {{ td(c.status) }}
                   </span>
                 </td>
                 <td>
                   <a href="{{ url_for('officer.complaint_detail', complaint_id=c.id) }}"
                     class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
-                    Review / Assign
+                    {{ tr('Review / Assign') }}
                   </a>
                 </td>
               </tr>
               {% else %}
               <tr>
-                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No pending
-                  complaints in your department queue.</td>
+                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">{{ tr('No pending complaints in your department queue.') }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -157,8 +156,8 @@
       <!-- Department Field Technicians Roster -->
       <div class="card" style="box-shadow: none;">
         <div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
-          <h3 style="font-size: 0.95rem; font-weight: 700;">Field Technicians Status</h3>
-          <a href="{{ url_for('officer.workers') }}" style="font-size: 0.8rem; font-weight: 600;">Manage Workers &rarr;</a>
+          <h3 style="font-size: 0.95rem; font-weight: 700;">{{ tr('Field Technicians Status') }}</h3>
+          <a href="{{ url_for('officer.workers') }}" style="font-size: 0.8rem; font-weight: 600;">{{ tr('Manage Workers') }} &rarr;</a>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 0.6rem;">
@@ -174,16 +173,15 @@
             <div style="text-align: right;">
               <span class="badge"
                 style="background: {% if w.active_task_count > 3 %}#fef2f2; color: #b91c1c; border-color: #fecaca;{% else %}#eff6ff; color: #1d4ed8; border-color: #bfdbfe;{% endif %}">
-                {{ w.active_task_count }} active
+                {{ w.active_task_count }} {{ tr('active') }}
               </span>
               <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">
-                {{ w.completed_task_count }} completed
+                {{ w.completed_task_count }} {{ tr('completed') }}
               </div>
             </div>
           </div>
           {% else %}
-          <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">No technicians
-            assigned to this department.</div>
+          <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">{{ tr('No technicians assigned to this department.') }}</div>
           {% endfor %}
         </div>
       </div>
@@ -195,13 +193,13 @@
         <div>
           <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
             <i data-lucide="camera" class="icon-sm" style="color: var(--civic-teal);"></i>
-            Field Worker Evidence Photos ({{ recent_worker_evidence|length if recent_worker_evidence is defined else 0 }})
+            {{ tr('Field Worker Evidence Photos') }} ({{ recent_worker_evidence|length if recent_worker_evidence is defined else 0 }})
           </h3>
           <span style="font-size: 0.78rem; color: var(--text-muted);">
-            Site pre-work, progress, and after-work verification photographs submitted by your department technicians.
+            {{ tr('Site pre-work, progress, and after-work verification photographs submitted by your department technicians.') }}
           </span>
         </div>
-        <a href="{{ url_for('officer.verification') }}" style="font-size: 0.8rem; font-weight: 600;">Verification Queue &rarr;</a>
+        <a href="{{ url_for('officer.verification') }}" style="font-size: 0.8rem; font-weight: 600;">{{ tr('Verification Queue') }} &rarr;</a>
       </div>
 
       {% if recent_worker_evidence is defined and recent_worker_evidence %}
@@ -209,7 +207,7 @@
           {% for att in recent_worker_evidence %}
             <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-subtle); display: flex; flex-direction: column;">
               <div style="padding: 0.4rem 0.65rem; font-size: 0.72rem; font-weight: 700; display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); border-bottom: 1px solid var(--border-color);">
-                <span style="color: var(--civic-teal); text-transform: uppercase;">{{ att.display_type_label }}</span>
+                <span style="color: var(--civic-teal); text-transform: uppercase;">{{ td(att.display_type_label) }}</span>
                 {% if att.complaint %}
                   <a href="{{ url_for('officer.complaint_detail', complaint_id=att.complaint.id) }}" style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">
                     {{ att.complaint.complaint_ref }}
@@ -217,12 +215,12 @@
                 {% endif %}
               </div>
               {% if att.is_image %}
-                <a href="{{ att.public_url }}" target="_blank" title="Open full evidence photo">
+                <a href="{{ att.public_url }}" target="_blank" title="{{ tr('Open full evidence photo') }}">
                   <img src="{{ att.public_url }}" alt="{{ att.display_type_label }}" loading="lazy" style="width: 100%; height: 140px; object-fit: cover; display: block;">
                 </a>
               {% else %}
                 <div style="padding: 2rem 1rem; text-align: center;">
-                  <a href="{{ att.public_url }}" target="_blank" class="btn btn-secondary btn-sm">View Evidence File</a>
+                  <a href="{{ att.public_url }}" target="_blank" class="btn btn-secondary btn-sm">{{ tr('View Evidence File') }}</a>
                 </div>
               {% endif %}
               <div style="padding: 0.65rem 0.75rem; font-size: 0.78rem; flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
@@ -237,7 +235,7 @@
                   </div>
                 {% endif %}
                 <div style="color: var(--text-secondary); font-size: 0.75rem;">
-                  By {{ att.uploaded_by.full_name if att.uploaded_by else 'Field Technician' }}
+                  {{ tr('By') }} {{ att.uploaded_by.full_name if att.uploaded_by else 'Field Technician' }}
                 </div>
                 {% if att.remarks %}
                   <div style="color: var(--text-muted); font-size: 0.74rem; line-height: 1.35;">{{ att.remarks }}</div>
@@ -245,7 +243,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 0.45rem;">
                   <span style="font-size: 0.7rem; color: var(--text-muted);">{{ att.created_at | local_time('%d %b, %I:%M %p') }}</span>
                   {% if att.complaint %}
-                    <a href="{{ url_for('officer.complaint_detail', complaint_id=att.complaint.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">Inspect</a>
+                    <a href="{{ url_for('officer.complaint_detail', complaint_id=att.complaint.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">{{ tr('Inspect') }}</a>
                   {% endif %}
                 </div>
               </div>
@@ -254,7 +252,7 @@
         </div>
       {% else %}
         <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">
-          No field worker evidence photos submitted in your department yet.
+          {{ tr('No field worker evidence photos submitted in your department yet.') }}
         </div>
       {% endif %}
     </div>

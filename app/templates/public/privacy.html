@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Privacy Policy | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Privacy Policy') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="policy-page">
@@ -8,13 +8,13 @@
   <div class="policy-header">
     <div class="policy-badge">
       <i data-lucide="shield-check" class="icon-sm"></i>
-      Civic Governance & Data Protection
+      {{ tr('Civic Governance & Data Protection') }}
     </div>
-    <h1 class="policy-title">Privacy Policy</h1>
+    <h1 class="policy-title">{{ tr('Privacy Policy') }}</h1>
     <div class="policy-meta">
-      <span><i data-lucide="calendar" class="icon-sm"></i> Effective Date: January 1, 2026</span>
-      <span><i data-lucide="file-text" class="icon-sm"></i> Document Version: 2.4</span>
-      <span><i data-lucide="map-pin" class="icon-sm"></i> Jurisdiction: Republic of India</span>
+      <span><i data-lucide="calendar" class="icon-sm"></i> {{ tr('Effective Date: January 1, 2026') }}</span>
+      <span><i data-lucide="file-text" class="icon-sm"></i> {{ tr('Document Version: 2.4') }}</span>
+      <span><i data-lucide="map-pin" class="icon-sm"></i> {{ tr('Jurisdiction: Republic of India') }}</span>
     </div>
   </div>
 
@@ -22,21 +22,21 @@
   <div class="policy-layout">
     <!-- Sidebar Table of Contents -->
     <aside class="policy-toc">
-      <div class="policy-toc-title">Table of Contents</div>
+      <div class="policy-toc-title">{{ tr('Table of Contents') }}</div>
       <ul class="policy-toc-links">
-        <li><a href="#introduction" class="policy-toc-link">1. Introduction</a></li>
-        <li><a href="#information-we-collect" class="policy-toc-link">2. Information We Collect</a></li>
-        <li><a href="#personal-information" class="policy-toc-link">3. Personal Information</a></li>
-        <li><a href="#account-information" class="policy-toc-link">4. Account Information</a></li>
-        <li><a href="#how-we-use-information" class="policy-toc-link">5. How We Use Information</a></li>
-        <li><a href="#data-storage-security" class="policy-toc-link">6. Data Storage and Security</a></li>
-        <li><a href="#information-sharing" class="policy-toc-link">7. Information Sharing</a></li>
-        <li><a href="#data-retention" class="policy-toc-link">8. Data Retention</a></li>
-        <li><a href="#user-rights" class="policy-toc-link">9. User Rights</a></li>
-        <li><a href="#access-correction-deletion" class="policy-toc-link">10. Access, Correction & Deletion</a></li>
-        <li><a href="#childrens-privacy" class="policy-toc-link">11. Children's Privacy</a></li>
-        <li><a href="#policy-updates" class="policy-toc-link">12. Policy Updates</a></li>
-        <li><a href="#contact-information" class="policy-toc-link">13. Contact Information</a></li>
+        <li><a href="#introduction" class="policy-toc-link">{{ tr('1. Introduction') }}</a></li>
+        <li><a href="#information-we-collect" class="policy-toc-link">{{ tr('2. Information We Collect') }}</a></li>
+        <li><a href="#personal-information" class="policy-toc-link">{{ tr('3. Personal Information') }}</a></li>
+        <li><a href="#account-information" class="policy-toc-link">{{ tr('4. Account Information') }}</a></li>
+        <li><a href="#how-we-use-information" class="policy-toc-link">{{ tr('5. How We Use Information') }}</a></li>
+        <li><a href="#data-storage-security" class="policy-toc-link">{{ tr('6. Data Storage and Security') }}</a></li>
+        <li><a href="#information-sharing" class="policy-toc-link">{{ tr('7. Information Sharing') }}</a></li>
+        <li><a href="#data-retention" class="policy-toc-link">{{ tr('8. Data Retention') }}</a></li>
+        <li><a href="#user-rights" class="policy-toc-link">{{ tr('9. User Rights') }}</a></li>
+        <li><a href="#access-correction-deletion" class="policy-toc-link">{{ tr('10. Access, Correction & Deletion') }}</a></li>
+        <li><a href="#childrens-privacy" class="policy-toc-link">{{ tr('11. Children\'s Privacy') }}</a></li>
+        <li><a href="#policy-updates" class="policy-toc-link">{{ tr('12. Policy Updates') }}</a></li>
+        <li><a href="#contact-information" class="policy-toc-link">{{ tr('13. Contact Information') }}</a></li>
       </ul>
     </aside>
 
@@ -47,17 +47,17 @@
       <section id="introduction" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="info" class="icon-sm" style="color: var(--civic-blue);"></i>
-          1. Introduction
+          {{ tr('1. Introduction') }}
         </h2>
         <div class="policy-card">
           <p>
-            The <strong>Smart Civic Complaint Management and Tracking System</strong> operates as a digital public administration platform designed to facilitate transparent, accountable, and time-bound civic grievance redressal for citizens and municipal stakeholders.
+            The <strong>{{ tr('Smart Civic Complaint Management and Tracking System') }}</strong> operates as a digital public administration platform designed to facilitate transparent, accountable, and time-bound civic grievance redressal for citizens and municipal stakeholders.
           </p>
           <p>
-            We are committed to maintaining the confidentiality, integrity, and lawful processing of all personal information entrusted to us. This Privacy Policy details our practices concerning the collection, storage, utilization, transfer, and safeguarding of information provided by users when accessing our portal, lodging civic grievances, or communicating with municipal departments.
+            {{ tr('We are committed to maintaining the confidentiality, integrity, and lawful processing of all personal information entrusted to us. This Privacy Policy details our practices concerning the collection, storage, utilization, transfer, and safeguarding of information provided by users when accessing our portal, lodging civic grievances, or communicating with municipal departments.') }}
           </p>
           <p>
-            This policy is formulated in accordance with applicable Indian laws, statutory rules, and administrative standards governing electronic communications and information security, including the Information Technology Act, 2000 and the Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011.
+            {{ tr('This policy is formulated in accordance with applicable Indian laws, statutory rules, and administrative standards governing electronic communications and information security, including the Information Technology Act, 2000 and the Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011.') }}
           </p>
         </div>
       </section>
@@ -66,16 +66,16 @@
       <section id="information-we-collect" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="layers" class="icon-sm" style="color: var(--civic-blue);"></i>
-          2. Information We Collect
+          {{ tr('2. Information We Collect') }}
         </h2>
         <div class="policy-card">
           <p>
-            To deliver responsive civic services and verify the authenticity of complaints, we collect information across three primary channels:
+            {{ tr('To deliver responsive civic services and verify the authenticity of complaints, we collect information across three primary channels:') }}
           </p>
           <ul>
-            <li><strong>Direct Citizen Submissions:</strong> Data provided during account registration, grievance registration, or feedback submission.</li>
-            <li><strong>Civic Incident Details:</strong> Grievance descriptions, affected municipal ward/zone, geographical coordinates, physical landmarks, and supporting media files.</li>
-            <li><strong>Automated System Telemetry:</strong> Technical logs, session state, browser identifiers, IP addresses, and HTTP request headers necessary for server security and operational monitoring.</li>
+            <li><strong>{{ tr('Direct Citizen Submissions:') }}</strong> {{ tr('Data provided during account registration, grievance registration, or feedback submission.') }}</li>
+            <li><strong>{{ tr('Civic Incident Details:') }}</strong> {{ tr('Grievance descriptions, affected municipal ward/zone, geographical coordinates, physical landmarks, and supporting media files.') }}</li>
+            <li><strong>{{ tr('Automated System Telemetry:') }}</strong> {{ tr('Technical logs, session state, browser identifiers, IP addresses, and HTTP request headers necessary for server security and operational monitoring.') }}</li>
           </ul>
         </div>
       </section>
@@ -84,17 +84,17 @@
       <section id="personal-information" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="user-check" class="icon-sm" style="color: var(--civic-blue);"></i>
-          3. Personal Information
+          {{ tr('3. Personal Information') }}
         </h2>
         <div class="policy-card">
           <p>
-            When registering as a citizen on this portal, we collect the following personal identifiers:
+            {{ tr('When registering as a citizen on this portal, we collect the following personal identifiers:') }}
           </p>
           <ul>
-            <li><strong>Full Legal Name:</strong> Used for authenticating grievance submissions and official correspondence.</li>
-            <li><strong>Mobile Number (10 Digits):</strong> Essential for real-time SMS status alerts, automated verification, and tracking without password dependencies.</li>
-            <li><strong>Work or Personal Email Address:</strong> Used for account verification, password resets, escalation notices, and formal dispatch summaries.</li>
-            <li><strong>Residential Ward / Zone Location:</strong> Necessary for automatically dispatching civic tickets to the competent municipal engineering division.</li>
+            <li><strong>{{ tr('Full Legal Name:') }}</strong> {{ tr('Used for authenticating grievance submissions and official correspondence.') }}</li>
+            <li><strong>{{ tr('Mobile Number (10 Digits):') }}</strong> {{ tr('Essential for real-time SMS status alerts, automated verification, and tracking without password dependencies.') }}</li>
+            <li><strong>{{ tr('Work or Personal Email Address:') }}</strong> Used for account verification, password resets, escalation notices, and formal dispatch summaries.</li>
+            <li><strong>{{ tr('Residential Ward / Zone Location:') }}</strong> {{ tr('Necessary for automatically dispatching civic tickets to the competent municipal engineering division.') }}</li>
           </ul>
           <p>
             Citizens are advised not to submit sensitive financial credentials, government identity cards, or unnecessary private details within complaint descriptions or photo attachments.
@@ -106,20 +106,20 @@
       <section id="account-information" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="key" class="icon-sm" style="color: var(--civic-blue);"></i>
-          4. Account Information
+          {{ tr('4. Account Information') }}
         </h2>
         <div class="policy-card">
           <p>
-            The platform maintains distinct role-based access privileges for four user categories:
+            {{ tr('The platform maintains distinct role-based access privileges for four user categories:') }}
           </p>
           <ul>
-            <li><strong>Citizen Accounts:</strong> Managed via personal email/mobile credentials for complaint registration, tracking, and satisfaction feedback.</li>
-            <li><strong>Department Officers:</strong> Official administrative credentials tied to designated municipal departments (e.g. Roads, Water Supply, Sanitation).</li>
-            <li><strong>Field Workers:</strong> Assigned service credentials allowing field status updates, before-and-after photo uploads, and task completion logs.</li>
-            <li><strong>System Administrators:</strong> Privileged credentials for audit log oversight, category configurations, user management, and escalation monitoring.</li>
+            <li><strong>{{ tr('Citizen Accounts:') }}</strong> {{ tr('Managed via personal email/mobile credentials for complaint registration, tracking, and satisfaction feedback.') }}</li>
+            <li><strong>{{ tr('Department Officers:') }}</strong> {{ tr('Official administrative credentials tied to designated municipal departments (e.g. Roads, Water Supply, Sanitation).') }}</li>
+            <li><strong>{{ tr('Field Workers:') }}</strong> {{ tr('Assigned service credentials allowing field status updates, before-and-after photo uploads, and task completion logs.') }}</li>
+            <li><strong>{{ tr('System Administrators:') }}</strong> {{ tr('Privileged credentials for audit log oversight, category configurations, user management, and escalation monitoring.') }}</li>
           </ul>
           <p>
-            All authentication secrets are protected through one-way cryptographic salted hashing (PBKDF2 with SHA-256) and are never stored in plaintext.
+            {{ tr('All authentication secrets are protected through one-way cryptographic salted hashing (PBKDF2 with SHA-256) and are never stored in plaintext.') }}
           </p>
         </div>
       </section>
@@ -128,16 +128,16 @@
       <section id="how-we-use-information" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="cpu" class="icon-sm" style="color: var(--civic-blue);"></i>
-          5. How We Use Information
+          {{ tr('5. How We Use Information') }}
         </h2>
         <div class="policy-card">
-          <p>We process collected data strictly for legitimate public administration and civic redressal purposes:</p>
+          <p>{{ tr('We process collected data strictly for legitimate public administration and civic redressal purposes:') }}</p>
           <ul>
-            <li><strong>Grievance Intake & Routing:</strong> Assigning submitted complaints to appropriate zonal engineers and field repair crews.</li>
-            <li><strong>Service Level Agreement (SLA) Tracking:</strong> Calculating resolution due dates and executing automated supervisory escalations for delayed repairs.</li>
-            <li><strong>Citizen Communication:</strong> Transmitting ticket status notifications, inspection remarks, and closure confirmation notices.</li>
-            <li><strong>Evidence Verification:</strong> Validating field work completion via comparison of pre-repair and post-repair photographic evidence.</li>
-            <li><strong>Municipal Quality Analytics:</strong> Generating anonymous aggregate performance indices across municipal zones to enhance civic infrastructure.</li>
+            <li><strong>{{ tr('Grievance Intake & Routing:') }}</strong> {{ tr('Assigning submitted complaints to appropriate zonal engineers and field repair crews.') }}</li>
+            <li><strong>{{ tr('Service Level Agreement (SLA) Tracking:') }}</strong> {{ tr('Calculating resolution due dates and executing automated supervisory escalations for delayed repairs.') }}</li>
+            <li><strong>{{ tr('Citizen Communication:') }}</strong> {{ tr('Transmitting ticket status notifications, inspection remarks, and closure confirmation notices.') }}</li>
+            <li><strong>{{ tr('Evidence Verification:') }}</strong> {{ tr('Validating field work completion via comparison of pre-repair and post-repair photographic evidence.') }}</li>
+            <li><strong>{{ tr('Municipal Quality Analytics:') }}</strong> {{ tr('Generating anonymous aggregate performance indices across municipal zones to enhance civic infrastructure.') }}</li>
           </ul>
         </div>
       </section>
@@ -146,18 +146,18 @@
       <section id="data-storage-security" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="lock" class="icon-sm" style="color: var(--civic-blue);"></i>
-          6. Data Storage and Security
+          {{ tr('6. Data Storage and Security') }}
         </h2>
         <div class="policy-card">
           <p>
-            All citizen data, grievance records, and evidence media are hosted on secure database and application servers physically located within the territorial borders of India in adherence to national data localization principles.
+            {{ tr('All citizen data, grievance records, and evidence media are hosted on secure database and application servers physically located within the territorial borders of India in adherence to national data localization principles.') }}
           </p>
-          <p>Our security architecture includes:</p>
+          <p>{{ tr('Our security architecture includes:') }}</p>
           <ul>
-            <li><strong>Cryptographic Safeguards:</strong> High-iteration PBKDF2 password hashing and TLS 1.3 encryption for all data in transit across public networks.</li>
-            <li><strong>Role-Based Access Control (RBAC):</strong> Strict software permission gates preventing unauthorized cross-role data access.</li>
-            <li><strong>Injection Prevention:</strong> Parameterized SQL queries and Object-Relational Mapping (ORM) to mitigate SQL injection vulnerabilities.</li>
-            <li><strong>Audit Logging:</strong> Immutable timestamped audit trails of all administrative actions, grievance status changes, and technician dispatches.</li>
+            <li><strong>{{ tr('Cryptographic Safeguards:') }}</strong> {{ tr('High-iteration PBKDF2 password hashing and TLS 1.3 encryption for all data in transit across public networks.') }}</li>
+            <li><strong>{{ tr('Role-Based Access Control (RBAC):') }}</strong> {{ tr('Strict software permission gates preventing unauthorized cross-role data access.') }}</li>
+            <li><strong>{{ tr('Injection Prevention:') }}</strong> {{ tr('Parameterized SQL queries and Object-Relational Mapping (ORM) to mitigate SQL injection vulnerabilities.') }}</li>
+            <li><strong>{{ tr('Audit Logging:') }}</strong> {{ tr('Immutable timestamped audit trails of all administrative actions, grievance status changes, and technician dispatches.') }}</li>
           </ul>
         </div>
       </section>
@@ -166,17 +166,17 @@
       <section id="information-sharing" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="share-2" class="icon-sm" style="color: var(--civic-blue);"></i>
-          7. Information Sharing
+          {{ tr('7. Information Sharing') }}
         </h2>
         <div class="policy-card">
           <p>
-            <strong>We do not sell, trade, rent, or disclose personal citizen data to commercial advertising networks or third-party marketing brokers.</strong>
+            <strong>{{ tr('We do not sell, trade, rent, or disclose personal citizen data to commercial advertising networks or third-party marketing brokers.') }}</strong>
           </p>
-          <p>Data is shared solely under the following necessary circumstances:</p>
+          <p>{{ tr('Data is shared solely under the following necessary circumstances:') }}</p>
           <ul>
-            <li><strong>Assigned Municipal Departments:</strong> Relevant complaint descriptions, location data, and citizen contact details are shared with designated municipal engineers for grievance resolution.</li>
-            <li><strong>Field Service Technicians:</strong> Contact numbers and incident landmarks are accessible to assigned technicians solely for locating civic disruptions.</li>
-            <li><strong>Statutory & Legal Requirements:</strong> Information may be disclosed where mandated by valid judicial orders, warrants, or legally binding summons issued by Indian law enforcement agencies.</li>
+            <li><strong>{{ tr('Assigned Municipal Departments:') }}</strong> {{ tr('Relevant complaint descriptions, location data, and citizen contact details are shared with designated municipal engineers for grievance resolution.') }}</li>
+            <li><strong>{{ tr('Field Service Technicians:') }}</strong> {{ tr('Contact numbers and incident landmarks are accessible to assigned technicians solely for locating civic disruptions.') }}</li>
+            <li><strong>{{ tr('Statutory & Legal Requirements:') }}</strong> {{ tr('Information may be disclosed where mandated by valid judicial orders, warrants, or legally binding summons issued by Indian law enforcement agencies.') }}</li>
           </ul>
         </div>
       </section>
@@ -185,14 +185,14 @@
       <section id="data-retention" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="archive" class="icon-sm" style="color: var(--civic-blue);"></i>
-          8. Data Retention
+          {{ tr('8. Data Retention') }}
         </h2>
         <div class="policy-card">
           <p>
-            Personal data and grievance records are retained in active storage for the duration necessary to resolve the submitted grievance and satisfy statutory municipal audit standards.
+            {{ tr('Personal data and grievance records are retained in active storage for the duration necessary to resolve the submitted grievance and satisfy statutory municipal audit standards.') }}
           </p>
           <p>
-            Resolved complaints and photographic verification records are preserved in read-only public administration archives for a minimum period of 3 years to support warranty inspections, public audit evaluations, and historical infrastructure planning.
+            {{ tr('Resolved complaints and photographic verification records are preserved in read-only public administration archives for a minimum period of 3 years to support warranty inspections, public audit evaluations, and historical infrastructure planning.') }}
           </p>
         </div>
       </section>
@@ -201,15 +201,15 @@
       <section id="user-rights" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="shield" class="icon-sm" style="color: var(--civic-blue);"></i>
-          9. User Rights
+          {{ tr('9. User Rights') }}
         </h2>
         <div class="policy-card">
-          <p>As a citizen user of this portal, you hold the following privacy entitlements:</p>
+          <p>{{ tr('As a citizen user of this portal, you hold the following privacy entitlements:') }}</p>
           <ul>
-            <li><strong>Right to Access:</strong> View all complaints, timeline updates, officer remarks, and uploaded proofs associated with your account.</li>
-            <li><strong>Right to Rectification:</strong> Request correction of inaccurate contact numbers, profile names, or communication preferences.</li>
-            <li><strong>Right to Track Anonymously:</strong> Track public complaint resolution progress using only the unique Complaint Reference ID without logging into an account.</li>
-            <li><strong>Right to Withdraw Consent:</strong> Revoke optional cookie preferences and non-essential analytical tracking at any time.</li>
+            <li><strong>{{ tr('Right to Access:') }}</strong> {{ tr('View all complaints, timeline updates, officer remarks, and uploaded proofs associated with your account.') }}</li>
+            <li><strong>{{ tr('Right to Rectification:') }}</strong> {{ tr('Request correction of inaccurate contact numbers, profile names, or communication preferences.') }}</li>
+            <li><strong>{{ tr('Right to Track Anonymously:') }}</strong> {{ tr('Track public complaint resolution progress using only the unique Complaint Reference ID without logging into an account.') }}</li>
+            <li><strong>{{ tr('Right to Withdraw Consent:') }}</strong> {{ tr('Revoke optional cookie preferences and non-essential analytical tracking at any time.') }}</li>
           </ul>
         </div>
       </section>
@@ -218,14 +218,14 @@
       <section id="access-correction-deletion" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="edit-3" class="icon-sm" style="color: var(--civic-blue);"></i>
-          10. Access, Correction and Deletion Requests
+          {{ tr('10. Access, Correction and Deletion Requests') }}
         </h2>
         <div class="policy-card">
           <p>
             Citizens wishing to access their stored personal profile, request corrections, or request account deactivation may submit an electronic request through the official Civic Help Desk or contact our administrative team at <code>civic-desk@gov.portal</code>.
           </p>
           <p>
-            Requests are verified against the registered mobile number or email address before processing. While account profiles may be deactivated, historical civic complaint tickets submitted to municipal logs are retained as official municipal public records.
+            {{ tr('Requests are verified against the registered mobile number or email address before processing. While account profiles may be deactivated, historical civic complaint tickets submitted to municipal logs are retained as official municipal public records.') }}
           </p>
         </div>
       </section>
@@ -238,10 +238,10 @@
         </h2>
         <div class="policy-card">
           <p>
-            This portal is an enterprise civic grievance management platform intended for general civic use. We do not knowingly solicit or collect identifiable information directly from individuals under 18 years of age without parental or guardian oversight.
+            {{ tr('This portal is an enterprise civic grievance management platform intended for general civic use. We do not knowingly solicit or collect identifiable information directly from individuals under 18 years of age without parental or guardian oversight.') }}
           </p>
           <p>
-            If a parent or guardian discovers that a minor has submitted personal information without consent, they may contact our support desk to review or remove such information.
+            {{ tr('If a parent or guardian discovers that a minor has submitted personal information without consent, they may contact our support desk to review or remove such information.') }}
           </p>
         </div>
       </section>
@@ -250,11 +250,11 @@
       <section id="policy-updates" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="bell" class="icon-sm" style="color: var(--civic-blue);"></i>
-          12. Policy Updates
+          {{ tr('12. Policy Updates') }}
         </h2>
         <div class="policy-card">
           <p>
-            We may revise this Privacy Policy periodically to reflect technological updates, changes in administrative procedures, or updated statutory guidelines.
+            {{ tr('We may revise this Privacy Policy periodically to reflect technological updates, changes in administrative procedures, or updated statutory guidelines.') }}
           </p>
           <p>
             All revisions will be published on this page with an updated "Effective Date" and version number. Continued utilization of the portal after such updates constitutes awareness of the revised provisions.
@@ -266,24 +266,24 @@
       <section id="contact-information" class="policy-section">
         <h2 class="policy-section-title">
           <i data-lucide="mail" class="icon-sm" style="color: var(--civic-blue);"></i>
-          13. Contact Information
+          {{ tr('13. Contact Information') }}
         </h2>
         <div class="policy-card">
           <p>
-            For privacy inquiries, data clarification requests, or feedback regarding our privacy practices, please contact our designated grievance team:
+            {{ tr('For privacy inquiries, data clarification requests, or feedback regarding our privacy practices, please contact our designated grievance team:') }}
           </p>
           <div style="background-color: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-top: 1rem;">
             <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.35rem;">
-              Civic Grievance & Information Officer
+              {{ tr('Civic Grievance & Information Officer') }}
             </div>
             <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">
-              Smart Civic Complaint Management System Help Desk
+              {{ tr('Smart Civic Complaint Management System Help Desk') }}
             </div>
             <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">
-              Municipal Control Helpline: <strong>1800-425-0000</strong> (Toll Free, 24x7)
+              {{ tr('Municipal Control Helpline:') }} <strong>1800-425-0000</strong> (Toll Free, 24x7)
             </div>
             <div style="font-size: 0.9rem; color: var(--text-secondary);">
-              Electronic Inquiries: <strong>civic-desk@gov.portal</strong>
+              {{ tr('Electronic Inquiries:') }} <strong>civic-desk@gov.portal</strong>
             </div>
           </div>
         </div>

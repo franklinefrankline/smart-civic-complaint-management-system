@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const getUrl = (path) => (window.getApiUrl ? window.getApiUrl(path) : path);
   const requestFn = (path, opts) => {
     if (window.apiFetch) return window.apiFetch(path, opts);
-    return fetch(getUrl(path), Object.assign({ credentials: 'include' }, opts || {}));
+    return fetch(getUrl(path), Object.assign({ credentials: 'include', cache: 'no-store' }, opts || {}));
   };
 
   // 1. Notification Bell Dropdown Controller (Works on both Navbar & Dashboard Sidebar)
@@ -110,10 +110,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadNotifications(isBackgroundPoll = false) {
     requestFn('/api/notifications')
       .then(res => {
+        if (res.status === 304) return null;
         if (!res.ok) throw new Error('Failed to fetch notifications.');
         return res.json();
       })
       .then(data => {
+        if (!data) return;
         const count = data.unread_count || 0;
         const list = data.notifications || [];
         list.forEach(n => seenNotifIds.add(n.id));
@@ -228,9 +230,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const resp = await fetch(window.location.href, {
         credentials: 'include',
+        cache: 'no-store',
         headers: { 'X-Live-Refresh': '1' }
       });
-      if (!resp.ok || resp.redirected) return;
+      if (resp.status === 304 || !resp.ok || resp.redirected) return;
       const html = await resp.text();
       const doc = new DOMParser().parseFromString(html, 'text/html');
 

@@ -8,17 +8,17 @@
   <div class="container" style="display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 3rem; align-items: center;">
     <div>
       <h1 style="font-size: 2.5rem; font-weight: 800; line-height: 1.2; color: var(--text-primary); margin-bottom: 1rem; letter-spacing: -0.02em;">
-        Smart Civic Flow (SCF)
+        {{ tr('Smart Civic Flow (SCF)') }}
       </h1>
       <p style="font-size: 1.1rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 2rem; max-width: 620px;">
-        Smart Civic Complaint Management System &mdash; A Multilingual Web Portal for Transparent Complaint Resolution. Register civic grievances, monitor municipal work orders in real time, and ensure rapid, accountable resolution.
+        {{ tr('Smart Civic Complaint Management System — A Multilingual Web Portal for Transparent Complaint Resolution. Register civic grievances, monitor municipal work orders in real time, and ensure rapid, accountable resolution.') }}
       </p>
       <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
         <a href="{{ url_for('citizen.new_complaint') if current_user else url_for('auth.register') }}" class="btn btn-primary btn-lg">
-          <i data-lucide="file-plus" class="icon-sm"></i> Register a Complaint
+          <i data-lucide="file-plus" class="icon-sm"></i> {{ tr('Register a Complaint') }}
         </a>
         <a href="{{ url_for('public.track') }}" class="btn btn-secondary btn-lg">
-          <i data-lucide="search" class="icon-sm"></i> Track Existing Ticket
+          <i data-lucide="search" class="icon-sm"></i> {{ tr('Track Existing Ticket') }}
         </a>
       </div>
     </div>
@@ -26,23 +26,23 @@
     <!-- Quick Reference Tracker Card -->
     <div class="card" style="padding: 2rem; border-top: 4px solid var(--civic-blue); box-shadow: none;">
       <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem; color: var(--text-primary);">
-        Quick Status Verification
+        {{ tr('Quick Status Verification') }}
       </h3>
       <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-        Enter your complaint reference ID to view real-time stage, assigned department, and officer remarks.
+        {{ tr('Enter your complaint reference ID to view real-time stage, assigned department, and officer remarks.') }}
       </p>
 
       <form action="{{ url_for('public.track') }}" method="GET">
         <div class="form-group">
-          <label class="form-label">Complaint Reference ID</label>
-          <input type="text" name="ref" class="form-control" placeholder="e.g. CMP-202611-ABCD" required style="font-family: monospace; text-transform: uppercase;">
+          <label class="form-label">{{ tr('Complaint Reference ID') }}</label>
+          <input type="text" name="ref" class="form-control" placeholder="{{ tr('e.g. CMP-202611-ABCD') }}" required style="font-family: monospace; text-transform: uppercase;">
         </div>
         <div class="form-group">
-          <label class="form-label">Registered Phone or Email (Optional)</label>
-          <input type="text" name="identifier" class="form-control" placeholder="For detailed citizen logs">
+          <label class="form-label">{{ tr('Registered Phone or Email (Optional)') }}</label>
+          <input type="text" name="identifier" class="form-control" placeholder="{{ tr('For detailed citizen logs') }}">
         </div>
         <button type="submit" class="btn btn-primary w-full" style="padding: 0.65rem;">
-          Track Complaint Progress &rarr;
+          {{ tr('Track Complaint Progress') }} &rarr;
         </button>
       </form>
     </div>
@@ -56,28 +56,28 @@
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.total }}</span>
-          <span class="stat-label">Complaints Registered</span>
+          <span class="stat-label">{{ tr('Complaints Registered') }}</span>
         </div>
         <div class="stat-icon"><i data-lucide="file-text"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #16a34a;">{{ stats.resolved }}</span>
-          <span class="stat-label">Resolved Issues</span>
+          <span class="stat-label">{{ tr('Resolved Issues') }}</span>
         </div>
         <div class="stat-icon" style="color: #16a34a;"><i data-lucide="check-circle-2"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.departments }}</span>
-          <span class="stat-label">Active Civic Departments</span>
+          <span class="stat-label">{{ tr('Active Civic Departments') }}</span>
         </div>
         <div class="stat-icon" style="color: #0f766e;"><i data-lucide="building-2"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #d97706;">{{ stats.rating }} / 5.0</span>
-          <span class="stat-label">Citizen Satisfaction</span>
+          <span class="stat-label">{{ tr('Citizen Satisfaction') }}</span>
         </div>
         <div class="stat-icon" style="color: #d97706;"><i data-lucide="star"></i></div>
       </div>
@@ -90,13 +90,13 @@
   <div class="container">
     <div style="text-align: center; max-width: 700px; margin: 0 auto 3rem;">
       <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-blue); letter-spacing: 0.05em; margin-bottom: 0.35rem;">
-        Resolution Architecture
+        {{ tr('Resolution Architecture') }}
       </div>
       <h2 style="font-size: 1.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
-        Four-Tier Complaint Resolution Workflow
+        {{ tr('Four-Tier Complaint Resolution Workflow') }}
       </h2>
       <p style="color: var(--text-secondary); font-size: 0.95rem;">
-        Deterministic, accountable state machine coordinating citizens, supervisory officers, and field maintenance crews.
+        {{ tr('Deterministic, accountable state machine coordinating citizens, supervisory officers, and field maintenance crews.') }}
       </p>
     </div>
 
@@ -105,9 +105,9 @@
         <div style="width: 36px; height: 36px; border-radius: 4px; background: #eff6ff; color: #1e40af; display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-bottom: 1rem; font-weight: 700;">
           1
         </div>
-        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem;">Lodge Grievance</h4>
+        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem;">{{ tr('Lodge Grievance') }}</h4>
         <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
-          Citizen selects category, enters administrative ward and street address, attaches site photos, and submits.
+          {{ tr('Citizen selects category, enters administrative ward and street address, attaches site photos, and submits.') }}
         </p>
       </div>
 
@@ -115,9 +115,9 @@
         <div style="width: 36px; height: 36px; border-radius: 4px; background: #f0fdfa; color: #0f766e; display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-bottom: 1rem; font-weight: 700;">
           2
         </div>
-        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem;">Officer Triage</h4>
+        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem;">{{ tr('Officer Triage') }}</h4>
         <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
-          Department officer inspects grievance, validates priority SLA, and assigns an on-duty field technician.
+          {{ tr('Department officer inspects grievance, validates priority SLA, and assigns an on-duty field technician.') }}
         </p>
       </div>
 
@@ -125,9 +125,9 @@
         <div style="width: 36px; height: 36px; border-radius: 4px; background: #fffbeb; color: #b45309; display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-bottom: 1rem; font-weight: 700;">
           3
         </div>
-        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem;">Field Repairs</h4>
+        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem;">{{ tr('Field Repairs') }}</h4>
         <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
-          Field crew executes site repairs, uploads before/after photo evidence, and submits work order.
+          {{ tr('Field crew executes site repairs, uploads before/after photo evidence, and submits work order.') }}
         </p>
       </div>
 
@@ -135,9 +135,9 @@
         <div style="width: 36px; height: 36px; border-radius: 4px; background: #ecfdf5; color: #047857; display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-bottom: 1rem; font-weight: 700;">
           4
         </div>
-        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem;">Verify & Feedback</h4>
+        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem;">{{ tr('Verify & Feedback') }}</h4>
         <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
-          Officer verifies evidence and marks resolved. The citizen rates resolution speed or reopens if dissatisfied.
+          {{ tr('Officer verifies evidence and marks resolved. The citizen rates resolution speed or reopens if dissatisfied.') }}
         </p>
       </div>
     </div>
@@ -150,17 +150,17 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
       <div>
         <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-blue); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-          Municipal Coverage
+          {{ tr('Municipal Coverage') }}
         </div>
         <h2 style="font-size: 1.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.35rem;">
-          Participating Civic Departments
+          {{ tr('Participating Civic Departments') }}
         </h2>
         <p style="color: var(--text-secondary); font-size: 0.92rem;">
-          Dedicated municipal divisions committed to SLA-bound public service redressal.
+          {{ tr('Dedicated municipal divisions committed to SLA-bound public service redressal.') }}
         </p>
       </div>
       <a href="{{ url_for('public.departments') }}" class="btn btn-secondary btn-sm">
-        View All Departments &rarr;
+        {{ tr('View All Departments') }} &rarr;
       </a>
     </div>
 
@@ -171,7 +171,7 @@
             {{ dept.code }}
           </div>
           <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem; color: var(--text-primary);">
-            {{ dept.name }}
+            {{ td(dept.name) }}
           </h4>
           <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
             {{ dept.description or 'Dedicated municipal grievance response wing.' }}
@@ -187,36 +187,36 @@
   <div class="container" style="max-width: 820px;">
     <div style="text-align: center; margin-bottom: 2.5rem;">
       <h2 style="font-size: 1.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.35rem;">
-        Frequently Asked Questions
+        {{ tr('Frequently Asked Questions') }}
       </h2>
-      <p style="color: var(--text-secondary); font-size: 0.92rem;">Everything you need to know about municipal complaint resolution.</p>
+      <p style="color: var(--text-secondary); font-size: 0.92rem;">{{ tr('Everything you need to know about municipal complaint resolution.') }}</p>
     </div>
 
     <div style="display: flex; flex-direction: column; gap: 0.85rem;">
       <details class="card" style="padding: 1.1rem 1.25rem; cursor: pointer; box-shadow: none;">
         <summary style="font-weight: 700; color: var(--text-primary); font-size: 0.95rem;">
-          How quickly will my complaint be resolved?
+          {{ tr('How quickly will my complaint be resolved?') }}
         </summary>
         <p style="margin-top: 0.75rem; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6;">
-          Resolution timeframes are bound by our Service Level Agreement (SLA): Urgent emergencies within 24 hours, High priority issues within 48 hours, Medium issues within 4 days, and Low priority issues within 7 days.
+          {{ tr('Resolution timeframes are bound by our Service Level Agreement (SLA): Urgent emergencies within 24 hours, High priority issues within 48 hours, Medium issues within 4 days, and Low priority issues within 7 days.') }}
         </p>
       </details>
 
       <details class="card" style="padding: 1.1rem 1.25rem; cursor: pointer; box-shadow: none;">
         <summary style="font-weight: 700; color: var(--text-primary); font-size: 0.95rem;">
-          Can I track my complaint without logging in?
+          {{ tr('Can I track my complaint without logging in?') }}
         </summary>
         <p style="margin-top: 0.75rem; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6;">
-          Yes. You can use our public "Track Complaint" search tool with your Reference ID (e.g. CMP-202611-XXXX) to check current stage and assigned department.
+          {{ tr('Yes. You can use our public "Track Complaint" search tool with your Reference ID (e.g. CMP-202611-XXXX) to check current stage and assigned department.') }}
         </p>
       </details>
 
       <details class="card" style="padding: 1.1rem 1.25rem; cursor: pointer; box-shadow: none;">
         <summary style="font-weight: 700; color: var(--text-primary); font-size: 0.95rem;">
-          What if the issue is marked resolved but repairs are unsatisfactory?
+          {{ tr('What if the issue is marked resolved but repairs are unsatisfactory?') }}
         </summary>
         <p style="margin-top: 0.75rem; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6;">
-          Citizens have the right to reopen a resolved complaint within 7 days by providing a reason and remarks. The supervisory officer is immediately alerted to re-inspect the site.
+          {{ tr('Citizens have the right to reopen a resolved complaint within 7 days by providing a reason and remarks. The supervisory officer is immediately alerted to re-inspect the site.') }}
         </p>
       </details>
     </div>

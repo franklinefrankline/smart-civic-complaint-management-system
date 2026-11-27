@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}My Complaints | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('My Complaints') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -10,10 +10,10 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
       <div>
         <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
-          My Grievances
+          {{ tr('My Grievances') }}
         </h1>
         <p style="color: var(--text-muted); font-size: 0.92rem;">
-          Search, filter, and track all complaints registered under your account.
+          {{ tr('Search, filter, and track all complaints registered under your account.') }}
         </p>
       </div>
 
@@ -25,36 +25,36 @@
     <!-- Filter Bar -->
     <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
       <form method="GET" action="{{ url_for('citizen.complaints') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-        <input type="text" name="search" class="form-control" placeholder="Search by ID, title, or keywords..." value="{{ search_query }}" style="flex: 2; min-width: 220px;">
+        <input type="text" name="search" class="form-control" placeholder="{{ tr('Search by ID, title, or keywords...') }}" value="{{ search_query }}" style="flex: 2; min-width: 220px;">
         
         <select name="status" class="form-control" style="flex: 1; min-width: 140px;">
-          <option value="">All Statuses</option>
-          <option value="Submitted" {% if current_status == 'Submitted' %}selected{% endif %}>Submitted</option>
-          <option value="Under Review" {% if current_status == 'Under Review' %}selected{% endif %}>Under Review</option>
-          <option value="Accepted" {% if current_status == 'Accepted' %}selected{% endif %}>Accepted</option>
-          <option value="Assigned" {% if current_status == 'Assigned' %}selected{% endif %}>Assigned</option>
-          <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>In Progress</option>
-          <option value="Work Completed" {% if current_status == 'Work Completed' %}selected{% endif %}>Work Completed</option>
-          <option value="Verification Pending" {% if current_status == 'Verification Pending' %}selected{% endif %}>Verification Pending</option>
-          <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>Resolved</option>
-          <option value="Rejected" {% if current_status == 'Rejected' %}selected{% endif %}>Rejected</option>
-          <option value="Reopened" {% if current_status == 'Reopened' %}selected{% endif %}>Reopened</option>
-          <option value="Escalated" {% if current_status == 'Escalated' %}selected{% endif %}>Escalated</option>
+          <option value="">{{ tr('All Statuses') }}</option>
+          <option value="Submitted" {% if current_status == 'Submitted' %}selected{% endif %}>{{ tr('Submitted') }}</option>
+          <option value="Under Review" {% if current_status == 'Under Review' %}selected{% endif %}>{{ tr('Under Review') }}</option>
+          <option value="Accepted" {% if current_status == 'Accepted' %}selected{% endif %}>{{ tr('Accepted') }}</option>
+          <option value="Assigned" {% if current_status == 'Assigned' %}selected{% endif %}>{{ tr('Assigned') }}</option>
+          <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>{{ tr('In Progress') }}</option>
+          <option value="Work Completed" {% if current_status == 'Work Completed' %}selected{% endif %}>{{ tr('Work Completed') }}</option>
+          <option value="Verification Pending" {% if current_status == 'Verification Pending' %}selected{% endif %}>{{ tr('Verification Pending') }}</option>
+          <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>{{ tr('Resolved') }}</option>
+          <option value="Rejected" {% if current_status == 'Rejected' %}selected{% endif %}>{{ tr('Rejected') }}</option>
+          <option value="Reopened" {% if current_status == 'Reopened' %}selected{% endif %}>{{ tr('Reopened') }}</option>
+          <option value="Escalated" {% if current_status == 'Escalated' %}selected{% endif %}>{{ tr('Escalated') }}</option>
         </select>
 
         <select name="category_id" class="form-control" style="flex: 1; min-width: 140px;">
-          <option value="">All Categories</option>
+          <option value="">{{ tr('All Categories') }}</option>
           {% for cat in categories %}
-            <option value="{{ cat.id }}" {% if current_category == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+            <option value="{{ cat.id }}" {% if current_category == cat.id %}selected{% endif %}>{{ td(cat.name) }}</option>
           {% endfor %}
         </select>
 
         <select name="priority" class="form-control" style="flex: 1; min-width: 120px;">
-          <option value="">All Priorities</option>
-          <option value="low" {% if current_priority == 'low' %}selected{% endif %}>Low</option>
-          <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>Medium</option>
-          <option value="high" {% if current_priority == 'high' %}selected{% endif %}>High</option>
-          <option value="urgent" {% if current_priority == 'urgent' %}selected{% endif %}>Urgent</option>
+          <option value="">{{ tr('All Priorities') }}</option>
+          <option value="low" {% if current_priority == 'low' %}selected{% endif %}>{{ tr('Low') }}</option>
+          <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>{{ tr('Medium') }}</option>
+          <option value="high" {% if current_priority == 'high' %}selected{% endif %}>{{ tr('High') }}</option>
+          <option value="urgent" {% if current_priority == 'urgent' %}selected{% endif %}>{{ tr('Urgent') }}</option>
         </select>
 
         <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.65rem 1.25rem;">
@@ -73,14 +73,14 @@
           <table class="table">
             <thead>
               <tr>
-                <th>Reference ID</th>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Assigned Dept</th>
-                <th>Registered</th>
-                <th>Action</th>
+                <th>{{ tr('Reference ID') }}</th>
+                <th>{{ tr('Title') }}</th>
+                <th>{{ tr('Category') }}</th>
+                <th>{{ tr('Priority') }}</th>
+                <th>{{ tr('Status') }}</th>
+                <th>{{ tr('Assigned Dept') }}</th>
+                <th>{{ tr('Registered') }}</th>
+                <th>{{ tr('Action') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -94,15 +94,15 @@
                   <td style="font-weight: 600; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     {{ c.title }}
                   </td>
-                  <td>{{ c.category.name }}</td>
+                  <td>{{ td(c.category.name) }}</td>
                   <td>
                     <span class="badge badge-priority-{{ c.priority }}">
-                      {{ c.priority.upper() }}
+                      {{ td(c.priority) }}
                     </span>
                   </td>
                   <td>
                     <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">
-                      {{ c.status }}
+                      {{ td(c.status) }}
                     </span>
                   </td>
                   <td style="font-size: 0.82rem;">
@@ -113,7 +113,7 @@
                   </td>
                   <td>
                     <a href="{{ url_for('citizen.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm">
-                      View
+                      {{ tr('View') }}
                     </a>
                   </td>
                 </tr>
@@ -125,7 +125,7 @@
       {% else %}
         <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
           <div style="margin-bottom: 0.5rem; color: var(--text-muted);"><i data-lucide="search" style="width: 36px; height: 36px;"></i></div>
-          <p style="font-weight: 600;">No complaints found matching your criteria.</p>
+          <p style="font-weight: 600;">{{ tr('No complaints found matching your criteria.') }}</p>
         </div>
       {% endif %}
     </div>

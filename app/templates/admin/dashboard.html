@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Administrator Overview | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Administrator Overview') }} | {{ t('app_name') }}{% endblock %}
 
 {% block chart_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
@@ -15,25 +15,25 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
       <div>
         <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-          Municipal Case Management System
+          {{ tr('Municipal Case Management System') }}
         </div>
         <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
-          Administrative Overview & Operations
+          {{ tr('Administrative Overview & Operations') }}
         </h1>
         <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">
-          Cross-department complaint monitoring, SLA adherence tracking, and municipal resource oversight.
+          {{ tr('Cross-department complaint monitoring, SLA adherence tracking, and municipal resource oversight.') }}
         </p>
       </div>
 
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <button id="triggerSlaBtn" class="btn btn-secondary btn-sm" title="Scan overdue complaints and escalate per SLA schedule">
-          <i data-lucide="shield-alert" class="icon-sm"></i> Run SLA Evaluation
+        <button id="triggerSlaBtn" class="btn btn-secondary btn-sm" title="{{ tr('Scan overdue complaints and escalate per SLA schedule') }}">
+          <i data-lucide="shield-alert" class="icon-sm"></i> {{ tr('Run SLA Evaluation') }}
         </button>
-        <a href="{{ url_for('admin.export_complaints_csv') }}" class="btn btn-secondary btn-sm" title="Download filtered CSV record">
-          <i data-lucide="download" class="icon-sm"></i> Export CSV
+        <a href="{{ url_for('admin.export_complaints_csv') }}" class="btn btn-secondary btn-sm" title="{{ tr('Download filtered CSV record') }}">
+          <i data-lucide="download" class="icon-sm"></i> {{ tr('Export CSV') }}
         </a>
         <a href="{{ url_for('admin.complaints') }}" class="btn btn-primary btn-sm">
-          <i data-lucide="file-text" class="icon-sm"></i> Manage Complaints
+          <i data-lucide="file-text" class="icon-sm"></i> {{ tr('Manage Complaints') }}
         </a>
       </div>
     </div>
@@ -48,7 +48,7 @@
         </div>
       </div>
       <a href="{{ url_for('admin.users') }}" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; white-space: nowrap;">
-        <i data-lucide="users" class="icon-xs"></i> Check User Accounts
+        <i data-lucide="users" class="icon-xs"></i> {{ tr('Check User Accounts') }}
       </a>
     </div>
     {% endif %}
@@ -58,56 +58,56 @@
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.total }}</span>
-          <span class="stat-label">Total Grievances</span>
+          <span class="stat-label">{{ tr('Total Grievances') }}</span>
         </div>
         <div class="stat-icon"><i data-lucide="folder"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.new }}</span>
-          <span class="stat-label">New Submitted</span>
+          <span class="stat-label">{{ tr('New Submitted') }}</span>
         </div>
         <div class="stat-icon" style="color: #2563eb;"><i data-lucide="inbox"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.pending }}</span>
-          <span class="stat-label">Pending Review</span>
+          <span class="stat-label">{{ tr('Pending Review') }}</span>
         </div>
         <div class="stat-icon" style="color: #d97706;"><i data-lucide="clock"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.in_progress }}</span>
-          <span class="stat-label">In Progress</span>
+          <span class="stat-label">{{ tr('In Progress') }}</span>
         </div>
         <div class="stat-icon" style="color: #7c3aed;"><i data-lucide="wrench"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #16a34a;">{{ stats.resolved }}</span>
-          <span class="stat-label">Resolved</span>
+          <span class="stat-label">{{ tr('Resolved') }}</span>
         </div>
         <div class="stat-icon" style="color: #16a34a;"><i data-lucide="check-circle-2"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #dc2626;">{{ stats.overdue }}</span>
-          <span class="stat-label">Overdue / Escalated</span>
+          <span class="stat-label">{{ tr('Overdue / Escalated') }}</span>
         </div>
         <div class="stat-icon" style="color: #dc2626;"><i data-lucide="alert-octagon"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.citizens }}</span>
-          <span class="stat-label">Active Citizens</span>
+          <span class="stat-label">{{ tr('Active Citizens') }}</span>
         </div>
         <div class="stat-icon" style="color: #0f766e;"><i data-lucide="users"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.rejected }}</span>
-          <span class="stat-label">Rejected</span>
+          <span class="stat-label">{{ tr('Rejected') }}</span>
         </div>
         <div class="stat-icon" style="color: #64748b;"><i data-lucide="x-circle"></i></div>
       </div>
@@ -115,15 +115,15 @@
 
     <!-- Quick Operations Navigation Bar -->
     <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1.75rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-      <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Quick Administration:</span>
-      <a href="{{ url_for('admin.complaints') }}" class="btn btn-secondary btn-sm"><i data-lucide="file-text" class="icon-sm"></i> Complaints</a>
-      <a href="{{ url_for('admin.citizens') }}" class="btn btn-secondary btn-sm"><i data-lucide="users" class="icon-sm"></i> Citizens</a>
-      <a href="{{ url_for('admin.departments') }}" class="btn btn-secondary btn-sm"><i data-lucide="building-2" class="icon-sm"></i> Departments</a>
-      <a href="{{ url_for('admin.officers') }}" class="btn btn-secondary btn-sm"><i data-lucide="user-check" class="icon-sm"></i> Officers</a>
-      <a href="{{ url_for('admin.workers') }}" class="btn btn-secondary btn-sm"><i data-lucide="hard-hat" class="icon-sm"></i> Technicians</a>
-      <a href="{{ url_for('admin.assignments') }}" class="btn btn-secondary btn-sm"><i data-lucide="clipboard-list" class="icon-sm"></i> Assignments</a>
-      <a href="{{ url_for('admin.audit_logs') }}" class="btn btn-secondary btn-sm"><i data-lucide="shield-check" class="icon-sm"></i> Audit Trail</a>
-      <a href="{{ url_for('admin.settings') }}" class="btn btn-secondary btn-sm"><i data-lucide="settings" class="icon-sm"></i> SLA Settings</a>
+      <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">{{ tr('Quick Administration:') }}</span>
+      <a href="{{ url_for('admin.complaints') }}" class="btn btn-secondary btn-sm"><i data-lucide="file-text" class="icon-sm"></i> {{ tr('Complaints') }}</a>
+      <a href="{{ url_for('admin.citizens') }}" class="btn btn-secondary btn-sm"><i data-lucide="users" class="icon-sm"></i> {{ tr('Citizens') }}</a>
+      <a href="{{ url_for('admin.departments') }}" class="btn btn-secondary btn-sm"><i data-lucide="building-2" class="icon-sm"></i> {{ tr('Departments') }}</a>
+      <a href="{{ url_for('admin.officers') }}" class="btn btn-secondary btn-sm"><i data-lucide="user-check" class="icon-sm"></i> {{ tr('Officers') }}</a>
+      <a href="{{ url_for('admin.workers') }}" class="btn btn-secondary btn-sm"><i data-lucide="hard-hat" class="icon-sm"></i> {{ tr('Technicians') }}</a>
+      <a href="{{ url_for('admin.assignments') }}" class="btn btn-secondary btn-sm"><i data-lucide="clipboard-list" class="icon-sm"></i> {{ tr('Assignments') }}</a>
+      <a href="{{ url_for('admin.audit_logs') }}" class="btn btn-secondary btn-sm"><i data-lucide="shield-check" class="icon-sm"></i> {{ tr('Audit Trail') }}</a>
+      <a href="{{ url_for('admin.settings') }}" class="btn btn-secondary btn-sm"><i data-lucide="settings" class="icon-sm"></i> {{ tr('SLA Settings') }}</a>
     </div>
 
     <!-- LEVEL 2: New Complaints Queue (Pending Department Officer Assignment) -->
@@ -132,14 +132,14 @@
         <div>
           <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">
             <i data-lucide="inbox" class="icon-sm" style="color: var(--civic-blue); margin-right: 0.35rem;"></i>
-            New Complaints Queue (Level 2: Officer Assignment)
+            {{ tr('New Complaints Queue (Level 2: Officer Assignment)') }}
           </h2>
           <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
-            Newly submitted grievances awaiting municipal department & officer assignment.
+            {{ tr('Newly submitted grievances awaiting municipal department & officer assignment.') }}
           </p>
         </div>
         <span class="badge badge-submitted" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
-          {{ new_complaints_queue|length if new_complaints_queue else 0 }} Pending Action
+          {{ new_complaints_queue|length if new_complaints_queue else 0 }} {{ tr('Pending Action') }}
         </span>
       </div>
 
@@ -148,13 +148,13 @@
           <table class="table">
             <thead>
               <tr>
-                <th>REF ID</th>
-                <th>CITIZEN</th>
-                <th>DEPARTMENT</th>
-                <th>CATEGORY & TITLE</th>
-                <th>PRIORITY</th>
-                <th>SUBMITTED</th>
-                <th>ACTION</th>
+                <th>{{ tr('REF ID') }}</th>
+                <th>{{ tr('CITIZEN') }}</th>
+                <th>{{ tr('DEPARTMENT') }}</th>
+                <th>{{ tr('CATEGORY & TITLE') }}</th>
+                <th>{{ tr('PRIORITY') }}</th>
+                <th>{{ tr('SUBMITTED') }}</th>
+                <th>{{ tr('ACTION') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -174,17 +174,17 @@
                   </td>
                   <td>
                     <div style="font-weight: 600; font-size: 0.88rem;">{{ c.title }}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">{{ c.category.name }} &bull; {{ c.ward_number or 'Ward Standard' }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">{{ td(c.category.name) }} &bull; {{ c.ward_number or 'Ward Standard' }}</div>
                   </td>
                   <td>
-                    <span class="badge badge-priority-{{ c.priority }}">{{ c.priority.upper() }}</span>
+                    <span class="badge badge-priority-{{ c.priority }}">{{ td(c.priority) }}</span>
                   </td>
                   <td style="font-size: 0.82rem; color: var(--text-secondary);">
                     {{ c.created_at | local_time('%d %b %Y, %I:%M %p') }}
                   </td>
                   <td>
                     <a href="{{ url_for('admin.complaint_detail', complaint_id=c.id) }}" class="btn btn-primary btn-sm" style="white-space: nowrap;">
-                      <i data-lucide="user-plus" class="icon-xs"></i> Assign Officer
+                      <i data-lucide="user-plus" class="icon-xs"></i> {{ tr('Assign Officer') }}
                     </a>
                   </td>
                 </tr>
@@ -195,7 +195,7 @@
       {% else %}
         <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
           <i data-lucide="check-circle" style="width: 38px; height: 38px; color: #16a34a; margin-bottom: 0.5rem;"></i>
-          <p style="font-size: 0.92rem; margin: 0; font-weight: 500;">All complaints have been evaluated and assigned to department officers.</p>
+          <p style="font-size: 0.92rem; margin: 0; font-weight: 500;">{{ tr('All complaints have been evaluated and assigned to department officers.') }}</p>
         </div>
       {% endif %}
     </div>
@@ -205,15 +205,15 @@
       <div class="card" style="box-shadow: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
           <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">
-            Complaint Inflow by Municipal Department
+            {{ tr('Complaint Inflow by Municipal Department') }}
           </h3>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Current Active Load</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">{{ tr('Current Active Load') }}</span>
         </div>
         <div style="height: 250px; position: relative;">
           <canvas id="deptChart"></canvas>
           <div id="dashDeptEmpty" {% if stats.total > 0 %}hidden{% endif %} style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--text-muted); background: var(--bg-surface);">
             <i data-lucide="bar-chart-3" style="width: 34px; height: 34px; opacity: 0.45; margin-bottom: 0.45rem;"></i>
-            <span style="font-size: 0.85rem; font-weight: 500;">No complaints registered yet</span>
+            <span style="font-size: 0.85rem; font-weight: 500;">{{ tr('No complaints registered yet') }}</span>
           </div>
         </div>
       </div>
@@ -221,15 +221,15 @@
       <div class="card" style="box-shadow: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
           <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">
-            Grievance Category Breakdown
+            {{ tr('Grievance Category Breakdown') }}
           </h3>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Top Categories</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">{{ tr('Top Categories') }}</span>
         </div>
         <div style="height: 250px; position: relative;">
           <canvas id="catChart"></canvas>
           <div id="dashCatEmpty" {% if chart_data.cat_counts|sum > 0 %}hidden{% endif %} style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--text-muted); background: var(--bg-surface);">
             <i data-lucide="pie-chart" style="width: 34px; height: 34px; opacity: 0.45; margin-bottom: 0.45rem;"></i>
-            <span style="font-size: 0.85rem; font-weight: 500;">No category activity yet</span>
+            <span style="font-size: 0.85rem; font-weight: 500;">{{ tr('No category activity yet') }}</span>
           </div>
         </div>
       </div>
@@ -240,20 +240,20 @@
       <!-- Recent Complaints -->
       <div id="recentComplaintsCard" class="card" style="box-shadow: none;">
         <div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
-          <h3 style="font-size: 0.95rem; font-weight: 700;">Recent Complaint Submissions</h3>
-          <a href="{{ url_for('admin.complaints') }}" style="font-size: 0.8rem; font-weight: 600;">View All Complaints &rarr;</a>
+          <h3 style="font-size: 0.95rem; font-weight: 700;">{{ tr('Recent Complaint Submissions') }}</h3>
+          <a href="{{ url_for('admin.complaints') }}" style="font-size: 0.8rem; font-weight: 600;">{{ tr('View All Complaints') }} &rarr;</a>
         </div>
 
         <div class="table-responsive">
           <table class="table">
             <thead>
               <tr>
-                <th>Reference</th>
-                <th>Citizen</th>
-                <th>Department</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th>{{ tr('Reference') }}</th>
+                <th>{{ tr('Citizen') }}</th>
+                <th>{{ tr('Department') }}</th>
+                <th>{{ tr('Priority') }}</th>
+                <th>{{ tr('Status') }}</th>
+                <th>{{ tr('Action') }}</th>
               </tr>
             </thead>
             <tbody class="stagger-in">
@@ -268,23 +268,23 @@
                   <td style="font-size: 0.85rem;">{{ c.department.name if c.department else 'Unassigned' }}</td>
                   <td>
                     <span class="badge badge-priority-{{ c.priority }}">
-                      {{ c.priority.upper() }}
+                      {{ td(c.priority) }}
                     </span>
                   </td>
                   <td>
                     <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">
-                      {{ c.status }}
+                      {{ td(c.status) }}
                     </span>
                   </td>
                   <td>
                     <a href="{{ url_for('admin.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
-                      Review
+                      {{ tr('Review') }}
                     </a>
                   </td>
                 </tr>
               {% else %}
                 <tr>
-                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No complaint records registered.</td>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">{{ tr('No complaint records registered.') }}</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -295,15 +295,15 @@
       <!-- Live Audit Log Feed -->
       <div id="auditStreamCard" class="card" style="box-shadow: none;">
         <div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
-          <h3 style="font-size: 0.95rem; font-weight: 700;">Operational Audit Stream</h3>
-          <a href="{{ url_for('admin.audit_logs') }}" style="font-size: 0.8rem; font-weight: 600;">Full Trail &rarr;</a>
+          <h3 style="font-size: 0.95rem; font-weight: 700;">{{ tr('Operational Audit Stream') }}</h3>
+          <a href="{{ url_for('admin.audit_logs') }}" style="font-size: 0.8rem; font-weight: 600;">{{ tr('Full Trail') }} &rarr;</a>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
           {% for log in recent_activities %}
             <div style="padding: 0.6rem 0.75rem; background: var(--bg-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.8rem;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
-                <strong style="color: var(--civic-blue); font-size: 0.8rem;">{{ log.action }}</strong>
+                <strong style="color: var(--civic-blue); font-size: 0.8rem;">{{ tr(log.action) }}</strong>
                 <span style="color: var(--text-muted); font-size: 0.72rem; font-family: monospace;">{{ log.created_at | local_time('%I:%M:%S %p') }}</span>
               </div>
               <div style="color: var(--text-secondary); font-size: 0.78rem;">
@@ -311,7 +311,7 @@
               </div>
             </div>
           {% else %}
-            <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">No audit records available.</div>
+            <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">{{ tr('No audit records available.') }}</div>
           {% endfor %}
         </div>
       </div>
@@ -323,13 +323,13 @@
         <div>
           <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
             <i data-lucide="camera" class="icon-sm" style="color: var(--civic-teal);"></i>
-            Field Worker Evidence Photos ({{ worker_evidence_total if worker_evidence_total is defined else (recent_worker_evidence|length if recent_worker_evidence is defined else 0) }})
+            {{ tr('Field Worker Evidence Photos') }} ({{ worker_evidence_total if worker_evidence_total is defined else (recent_worker_evidence|length if recent_worker_evidence is defined else 0) }})
           </h3>
           <span style="font-size: 0.78rem; color: var(--text-muted);">
             Pre-work, site progress, and completion proof photos uploaded by field technicians.
           </span>
         </div>
-        <a href="{{ url_for('admin.complaints') }}" style="font-size: 0.8rem; font-weight: 600;">All Complaints &rarr;</a>
+        <a href="{{ url_for('admin.complaints') }}" style="font-size: 0.8rem; font-weight: 600;">{{ tr('All Complaints') }} &rarr;</a>
       </div>
 
       {% if recent_worker_evidence is defined and recent_worker_evidence %}
@@ -337,7 +337,7 @@
           {% for att in recent_worker_evidence %}
             <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-subtle); display: flex; flex-direction: column;">
               <div style="padding: 0.4rem 0.65rem; font-size: 0.72rem; font-weight: 700; display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); border-bottom: 1px solid var(--border-color);">
-                <span style="color: var(--civic-teal); text-transform: uppercase;">{{ att.display_type_label }}</span>
+                <span style="color: var(--civic-teal); text-transform: uppercase;">{{ td(att.display_type_label) }}</span>
                 {% if att.complaint %}
                   <a href="{{ url_for('admin.complaint_detail', complaint_id=att.complaint.id) }}" style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">
                     {{ att.complaint.complaint_ref }}
@@ -345,12 +345,12 @@
                 {% endif %}
               </div>
               {% if att.is_image %}
-                <a href="{{ att.public_url }}" target="_blank" title="Open full evidence photo">
+                <a href="{{ att.public_url }}" target="_blank" title="{{ tr('Open full evidence photo') }}">
                   <img src="{{ att.public_url }}" alt="{{ att.display_type_label }}" loading="lazy" style="width: 100%; height: 140px; object-fit: cover; display: block;">
                 </a>
               {% else %}
                 <div style="padding: 2rem 1rem; text-align: center;">
-                  <a href="{{ att.public_url }}" target="_blank" class="btn btn-secondary btn-sm">View Evidence File</a>
+                  <a href="{{ att.public_url }}" target="_blank" class="btn btn-secondary btn-sm">{{ tr('View Evidence File') }}</a>
                 </div>
               {% endif %}
               <div style="padding: 0.65rem 0.75rem; font-size: 0.78rem; flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
@@ -363,7 +363,7 @@
                   </div>
                 {% endif %}
                 <div style="color: var(--text-secondary); font-size: 0.75rem;">
-                  By {{ att.uploaded_by.full_name if att.uploaded_by else 'Field Worker' }}
+                  {{ tr('By') }} {{ att.uploaded_by.full_name if att.uploaded_by else 'Field Worker' }}
                 </div>
                 {% if att.remarks %}
                   <div style="color: var(--text-muted); font-size: 0.74rem; line-height: 1.35;">{{ att.remarks }}</div>
@@ -371,7 +371,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 0.45rem;">
                   <span style="font-size: 0.7rem; color: var(--text-muted);">{{ att.created_at | local_time('%d %b, %I:%M %p') }}</span>
                   {% if att.complaint %}
-                    <a href="{{ url_for('admin.complaint_detail', complaint_id=att.complaint.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">Review</a>
+                    <a href="{{ url_for('admin.complaint_detail', complaint_id=att.complaint.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">{{ tr('Review') }}</a>
                   {% endif %}
                 </div>
               </div>
@@ -380,7 +380,7 @@
         </div>
       {% else %}
         <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">
-          No field worker evidence photos uploaded yet.
+          {{ tr('No field worker evidence photos uploaded yet.') }}
         </div>
       {% endif %}
     </div>
@@ -391,14 +391,14 @@
         <div>
           <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
             <i data-lucide="message-square" class="icon-sm" style="color: var(--civic-blue);"></i>
-            Helpdesk &amp; Contact Inquiries ({{ contact_messages|length if contact_messages is defined else 0 }})
+            {{ tr('Helpdesk & Contact Inquiries') }} ({{ contact_messages|length if contact_messages is defined else 0 }})
           </h3>
           <span style="font-size: 0.78rem; color: var(--text-muted);">
-            Messages submitted via the public Contact Helpdesk form.
+            {{ tr('Messages submitted via the public Contact Helpdesk form.') }}
           </span>
         </div>
         {% if unread_contact_count is defined and unread_contact_count > 0 %}
-          <span class="badge badge-escalated">{{ unread_contact_count }} Unread</span>
+          <span class="badge badge-escalated">{{ unread_contact_count }} {{ tr('Unread') }}</span>
         {% endif %}
       </div>
 
@@ -407,12 +407,12 @@
           <table class="table">
             <thead>
               <tr>
-                <th>Sender</th>
-                <th>Contact</th>
-                <th>Message / Inquiry</th>
-                <th>Submitted</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th>{{ tr('Sender') }}</th>
+                <th>{{ tr('Contact') }}</th>
+                <th>{{ tr('Message / Inquiry') }}</th>
+                <th>{{ tr('Submitted') }}</th>
+                <th>{{ tr('Status') }}</th>
+                <th>{{ tr('Action') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -424,16 +424,16 @@
                   <td style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap;">{{ m.created_at | local_time('%d %b %Y, %I:%M %p') }}</td>
                   <td>
                     {% if m.is_read %}
-                      <span class="badge badge-resolved">Reviewed</span>
+                      <span class="badge badge-resolved">{{ tr('Reviewed') }}</span>
                     {% else %}
-                      <span class="badge badge-escalated">New</span>
+                      <span class="badge badge-escalated">{{ tr('New') }}</span>
                     {% endif %}
                   </td>
                   <td>
                     {% if not m.is_read %}
                       <form method="POST" action="{{ url_for('admin.mark_contact_message_read', msg_id=m.id) }}" style="margin: 0;">
                         <button type="submit" class="btn btn-secondary btn-sm" style="white-space: nowrap; font-size: 0.75rem;">
-                          Mark Reviewed
+                          {{ tr('Mark Reviewed') }}
                         </button>
                       </form>
                     {% else %}
@@ -447,7 +447,7 @@
         </div>
       {% else %}
         <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">
-          No contact inquiries received yet.
+          {{ tr('No contact inquiries received yet.') }}
         </div>
       {% endif %}
     </div>
@@ -458,10 +458,10 @@
         <div>
           <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
             <i data-lucide="star" class="icon-sm" style="color: #f59e0b;"></i>
-            Citizen Feedback &amp; Ratings ({{ feedback_total if feedback_total is defined else (recent_feedbacks|length if recent_feedbacks is defined else 0) }})
+            {{ tr('Citizen Feedback & Ratings') }} ({{ feedback_total if feedback_total is defined else (recent_feedbacks|length if recent_feedbacks is defined else 0) }})
           </h3>
           <span style="font-size: 0.78rem; color: var(--text-muted);">
-            Post-resolution ratings and comments submitted by citizens.
+            {{ tr('Post-resolution ratings and comments submitted by citizens.') }}
           </span>
         </div>
         {% if feedback_total is defined and feedback_total > 0 %}
@@ -477,12 +477,12 @@
             <thead>
               <tr>
                 <th>Complaint</th>
-                <th>Citizen</th>
-                <th>Department</th>
-                <th>Rating</th>
-                <th>Feedback Comment</th>
-                <th>Submitted</th>
-                <th>Action</th>
+                <th>{{ tr('Citizen') }}</th>
+                <th>{{ tr('Department') }}</th>
+                <th>{{ tr('Rating') }}</th>
+                <th>{{ tr('Feedback Comment') }}</th>
+                <th>{{ tr('Submitted') }}</th>
+                <th>{{ tr('Action') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -511,9 +511,9 @@
                     <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 0.25rem;">({{ fb.rating }}/5)</span>
                     {% if fb.response_speed_rating or fb.work_quality_rating %}
                       <div style="font-size: 0.72rem; color: var(--text-muted);">
-                        {% if fb.response_speed_rating %}Speed: {{ fb.response_speed_rating }}/5{% endif %}
+                        {% if fb.response_speed_rating %}{{ tr('Speed:') }} {{ fb.response_speed_rating }}/5{% endif %}
                         {% if fb.response_speed_rating and fb.work_quality_rating %} &bull; {% endif %}
-                        {% if fb.work_quality_rating %}Quality: {{ fb.work_quality_rating }}/5{% endif %}
+                        {% if fb.work_quality_rating %}{{ tr('Quality:') }} {{ fb.work_quality_rating }}/5{% endif %}
                       </div>
                     {% endif %}
                   </td>
@@ -526,7 +526,7 @@
                   <td>
                     {% if fb.complaint %}
                       <a href="{{ url_for('admin.complaint_detail', complaint_id=fb.complaint.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.55rem; font-size: 0.75rem;">
-                        View
+                        {{ tr('View') }}
                       </a>
                     {% else %}
                       &mdash;
@@ -539,7 +539,7 @@
         </div>
       {% else %}
         <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">
-          No citizen feedback submitted yet.
+          {{ tr('No citizen feedback submitted yet.') }}
         </div>
       {% endif %}
     </div>

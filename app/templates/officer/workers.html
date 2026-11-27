@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Manage Workers | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Manage Workers') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -11,10 +11,10 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
       <div>
         <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-teal); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-          {{ department.name if department else 'Department Operations' }}{% if department %} ({{ department.code }}){% endif %}
+          {{ td(department.name) if department else tr('Department Operations') }}{% if department %} ({{ department.code }}){% endif %}
         </div>
         <h1 style="font-size: 1.65rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em;">
-          Manage Workers
+          {{ tr('Manage Workers') }}
         </h1>
         <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.2rem;">
           Register new field workers, update staff credentials, manage duty status, and dispatch department tasks.
@@ -24,10 +24,10 @@
       {% if department %}
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
         <button type="button" id="openAddWorkerModalBtn" onclick="openOfficerAddWorkerModal()" class="btn btn-primary btn-sm">
-          <i data-lucide="user-plus" class="icon-sm"></i> Add Worker
+          <i data-lucide="user-plus" class="icon-sm"></i> {{ tr('Add Worker') }}
         </button>
         <a href="{{ url_for('officer.complaints') }}" class="btn btn-secondary btn-sm">
-          <i data-lucide="clipboard-list" class="icon-sm"></i> Department Complaints
+          <i data-lucide="clipboard-list" class="icon-sm"></i> {{ tr('Department Complaints') }}
         </a>
       </div>
       {% endif %}
@@ -38,21 +38,21 @@
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value">{{ stats.total }}</span>
-          <span class="stat-label">Department Workers</span>
+          <span class="stat-label">{{ tr('Department Workers') }}</span>
         </div>
         <div class="stat-icon"><i data-lucide="users"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #16a34a;">{{ stats.active }}</span>
-          <span class="stat-label">Active Accounts</span>
+          <span class="stat-label">{{ tr('Active Accounts') }}</span>
         </div>
         <div class="stat-icon" style="color: #16a34a;"><i data-lucide="user-check"></i></div>
       </div>
       <div class="stat-card">
         <div class="stat-info">
           <span class="stat-value" style="color: #2563eb;">{{ stats.available }}</span>
-          <span class="stat-label">Available on Duty</span>
+          <span class="stat-label">{{ tr('Available on Duty') }}</span>
         </div>
         <div class="stat-icon" style="color: #2563eb;"><i data-lucide="hard-hat"></i></div>
       </div>
@@ -69,26 +69,26 @@
     <div class="card" style="margin-bottom: 1.5rem; padding: 1.1rem 1.25rem;">
       <form method="GET" action="{{ url_for('officer.workers') }}" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end;">
         <div class="form-group" style="flex: 2; min-width: 220px; margin-bottom: 0;">
-          <label class="form-label" style="font-size: 0.78rem;">Search Workers</label>
+          <label class="form-label" style="font-size: 0.78rem;">{{ tr('Search Workers') }}</label>
           <input type="text" name="search" class="form-control" value="{{ search_query or '' }}"
-            placeholder="Name, Employee ID, Email, Phone, or Designation...">
+            placeholder="{{ tr('Name, Employee ID, Email, Phone, or Designation...') }}">
         </div>
         <div class="form-group" style="flex: 1; min-width: 170px; margin-bottom: 0;">
-          <label class="form-label" style="font-size: 0.78rem;">Account &amp; Duty Filter</label>
+          <label class="form-label" style="font-size: 0.78rem;">{{ tr('Account & Duty Filter') }}</label>
           <select name="status" class="form-control">
-            <option value="">All Workers</option>
-            <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active Accounts</option>
-            <option value="inactive" {% if current_status == 'inactive' %}selected{% endif %}>Deactivated Accounts</option>
-            <option value="available" {% if current_status == 'available' %}selected{% endif %}>Available on Duty</option>
-            <option value="busy" {% if current_status == 'busy' %}selected{% endif %}>Busy / Off-Duty</option>
+            <option value="">{{ tr('All Workers') }}</option>
+            <option value="active" {% if current_status == 'active' %}selected{% endif %}>{{ tr('Active Accounts') }}</option>
+            <option value="inactive" {% if current_status == 'inactive' %}selected{% endif %}>{{ tr('Deactivated Accounts') }}</option>
+            <option value="available" {% if current_status == 'available' %}selected{% endif %}>{{ tr('Available on Duty') }}</option>
+            <option value="busy" {% if current_status == 'busy' %}selected{% endif %}>{{ tr('Busy / Off-Duty') }}</option>
           </select>
         </div>
         <div style="display: flex; gap: 0.5rem;">
           <button type="submit" class="btn btn-primary btn-sm">
-            <i data-lucide="search" class="icon-xs"></i> Filter
+            <i data-lucide="search" class="icon-xs"></i> {{ tr('Filter') }}
           </button>
           {% if search_query or current_status %}
-          <a href="{{ url_for('officer.workers') }}" class="btn btn-secondary btn-sm">Reset</a>
+          <a href="{{ url_for('officer.workers') }}" class="btn btn-secondary btn-sm">{{ tr('Reset') }}</a>
           {% endif %}
         </div>
       </form>
@@ -101,11 +101,11 @@
           <thead>
             <tr>
               <th>Worker &amp; Employee ID</th>
-              <th>Contact Details</th>
-              <th>Assigned Tasks</th>
-              <th>Availability</th>
-              <th>Account Status</th>
-              <th>Actions</th>
+              <th>{{ tr('Contact Details') }}</th>
+              <th>{{ tr('Assigned Tasks') }}</th>
+              <th>{{ tr('Availability') }}</th>
+              <th>{{ tr('Account Status') }}</th>
+              <th>{{ tr('Actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -121,7 +121,7 @@
                   {% endif %}
                 </div>
                 <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem;">
-                  {{ w.designation or 'Field Technician' }} &bull; {{ department.name if department else '' }}
+                  {{ td(w.designation or 'Field Technician') }} &bull; {{ department.name if department else '' }}
                 </div>
               </td>
               <td>
@@ -130,24 +130,24 @@
               </td>
               <td>
                 <span class="badge" style="background: {% if w.active_task_count > 3 %}#fee2e2; color: #b91c1c;{% else %}#dbeafe; color: #1e40af;{% endif %}">
-                  {{ w.active_task_count }} active
+                  {{ w.active_task_count }} {{ tr('active') }}
                 </span>
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
-                  {{ w.completed_task_count }} resolved
+                  {{ w.completed_task_count }} {{ tr('resolved') }}
                 </div>
               </td>
               <td>
                 {% if w.is_available and w.user.is_active %}
-                  <span class="badge badge-resolved">Available</span>
+                  <span class="badge badge-resolved">{{ tr('Available') }}</span>
                 {% else %}
-                  <span class="badge badge-rejected">Busy / Off-Duty</span>
+                  <span class="badge badge-rejected">{{ tr('Busy / Off-Duty') }}</span>
                 {% endif %}
               </td>
               <td>
                 {% if w.user.is_active %}
-                  <span class="badge badge-resolved">Active</span>
+                  <span class="badge badge-resolved">{{ tr('Active') }}</span>
                 {% else %}
-                  <span class="badge badge-rejected">Inactive</span>
+                  <span class="badge badge-rejected">{{ tr('Inactive') }}</span>
                 {% endif %}
               </td>
               <td>
@@ -162,25 +162,25 @@
                     data-designation="{{ w.designation or 'Field Technician' }}"
                     data-account-status="{{ 'active' if w.user.is_active else 'inactive' }}"
                     data-available="{{ '1' if w.is_available else '0' }}">
-                    <i data-lucide="pencil" class="icon-xs"></i> Edit
+                    <i data-lucide="pencil" class="icon-xs"></i> {{ tr('Edit') }}
                   </button>
 
                   {% if w.user.is_active and assignable_complaints %}
                   <button type="button" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.74rem;"
                     onclick="openAssignComplaintModal('{{ w.id }}', '{{ w.user.full_name | e }}')">
-                    <i data-lucide="send" class="icon-xs"></i> Assign Task
+                    <i data-lucide="send" class="icon-xs"></i> {{ tr('Assign Task') }}
                   </button>
                   {% endif %}
 
                   <form method="POST" action="{{ url_for('officer.workers') }}" style="display: inline;"
-                    data-confirm-title="{{ 'Deactivate' if w.user.is_active else 'Activate' }} Worker Account"
-                    data-confirm="Are you sure you want to {{ 'deactivate' if w.user.is_active else 'activate' }} worker {{ w.user.full_name }}?"
-                    data-confirm-btn="{{ 'Deactivate' if w.user.is_active else 'Activate' }}"
+                    data-confirm-title="{{ dt(('Deactivate' if w.user.is_active else 'Activate') ~ ' Worker Account') }}"
+                    data-confirm="{{ dt('Are you sure you want to ' ~ ('deactivate' if w.user.is_active else 'activate') ~ ' worker ' ~ (w.user.full_name) ~ '?') }}"
+                    data-confirm-btn="{{ dt('Deactivate') if w.user.is_active else dt('Activate') }}"
                     data-confirm-variant="{{ 'warning' if w.user.is_active else 'primary' }}">
                     <input type="hidden" name="action" value="toggle_status">
                     <input type="hidden" name="worker_id" value="{{ w.id }}">
                     <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.74rem;">
-                      {{ 'Deactivate' if w.user.is_active else 'Activate' }}
+                      {{ tr('Deactivate' if w.user.is_active else 'Activate') }}
                     </button>
                   </form>
 
@@ -213,12 +213,12 @@
   <div class="modal-dialog card" style="max-width: 540px; margin: auto; padding: 1.75rem 2rem; position: relative; max-height: 92vh; overflow-y: auto;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
       <div>
-        <h3 id="addWorkerModalTitle" style="font-size: 1.25rem; font-weight: 700;">Add New Field Worker</h3>
+        <h3 id="addWorkerModalTitle" style="font-size: 1.25rem; font-weight: 700;">{{ tr('Add New Field Worker') }}</h3>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
           Worker will be registered strictly under {{ department.name if department else 'your department' }}.
         </p>
       </div>
-      <button type="button" onclick="closeModal('addWorkerModal')" aria-label="Close modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      <button type="button" onclick="closeModal('addWorkerModal')" aria-label="{{ tr('Close modal') }}" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
     </div>
 
     <div id="addWorkerErrorAlert" class="alert alert-danger" style="display: none; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.86rem;">
@@ -230,51 +230,51 @@
       <input type="hidden" name="action" value="add_worker">
 
       <div class="form-group">
-        <label class="form-label required">Full Name</label>
-        <input type="text" name="full_name" class="form-control" required placeholder="e.g. Rajesh Kumar">
+        <label class="form-label required">{{ tr('Full Name') }}</label>
+        <input type="text" name="full_name" class="form-control" required placeholder="{{ tr('e.g. Rajesh Kumar') }}">
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
         <div class="form-group">
-          <label class="form-label required">Email Address</label>
+          <label class="form-label required">{{ tr('Email Address') }}</label>
           <input type="email" name="email" class="form-control" required placeholder="worker@civic.gov">
         </div>
         <div class="form-group">
-          <label class="form-label required">Phone Number</label>
+          <label class="form-label required">{{ tr('Phone Number') }}</label>
           <input type="tel" name="mobile" class="form-control" required placeholder="9876543210" inputmode="numeric" maxlength="15">
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
         <div class="form-group">
-          <label class="form-label required">Employee ID</label>
-          <input type="text" name="employee_id" class="form-control" required placeholder="e.g. EMP-WTR-101" style="text-transform: uppercase;">
+          <label class="form-label required">{{ tr('Employee ID') }}</label>
+          <input type="text" name="employee_id" class="form-control" required placeholder="{{ tr('e.g. EMP-WTR-101') }}" style="text-transform: uppercase;">
         </div>
         <div class="form-group">
-          <label class="form-label">Designation</label>
-          <input type="text" name="designation" class="form-control" placeholder="Field Technician">
+          <label class="form-label">{{ tr('Designation') }}</label>
+          <input type="text" name="designation" class="form-control" placeholder="{{ tr('Field Technician') }}">
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 0.9rem;">
         <div class="form-group">
-          <label class="form-label">Department (Locked)</label>
+          <label class="form-label">{{ tr('Department (Locked)') }}</label>
           <input type="text" class="form-control" value="{{ department.name if department else 'Assigned Department' }}{% if department %} ({{ department.code }}){% endif %}" readonly style="background: var(--bg-subtle); cursor: not-allowed; font-weight: 600;">
         </div>
         <div class="form-group">
-          <label class="form-label required">Account Status</label>
+          <label class="form-label required">{{ tr('Account Status') }}</label>
           <select name="account_status" class="form-control" required>
-            <option value="active" selected>Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="active" selected>{{ tr('Active') }}</option>
+            <option value="inactive">{{ tr('Inactive') }}</option>
           </select>
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label required">Password</label>
+        <label class="form-label required">{{ tr('Password') }}</label>
         <div class="password-input-wrapper" style="position: relative; display: flex; align-items: center; width: 100%;">
-          <input type="password" name="password" id="officerAddWorkerPassword" class="form-control" required minlength="6" placeholder="Minimum 6 characters" style="padding-right: 2.75rem;">
-          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" aria-label="Show password" aria-pressed="false" title="Show password" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; padding: 0.25rem;">
+          <input type="password" name="password" id="officerAddWorkerPassword" class="form-control" required minlength="6" placeholder="{{ tr('Minimum 6 characters') }}" style="padding-right: 2.75rem;">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" aria-label="{{ tr('Show password') }}" aria-pressed="false" title="{{ tr('Show password') }}" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; padding: 0.25rem;">
             <svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
               <circle cx="12" cy="12" r="3"></circle>
@@ -286,13 +286,13 @@
       <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
         <input type="checkbox" id="officerAddWorkerResetCheck" name="require_reset" value="1">
         <label for="officerAddWorkerResetCheck" style="font-size: 0.82rem; color: var(--text-secondary); cursor: pointer; margin: 0;">
-          Require worker to change password on first login (temporary invitation password)
+          {{ tr('Require worker to change password on first login (temporary invitation password)') }}
         </label>
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
-        <button type="button" onclick="closeModal('addWorkerModal')" class="btn btn-secondary btn-sm">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm">Create Field Worker</button>
+        <button type="button" onclick="closeModal('addWorkerModal')" class="btn btn-secondary btn-sm">{{ tr('Cancel') }}</button>
+        <button type="submit" class="btn btn-primary btn-sm">{{ tr('Create Field Worker') }}</button>
       </div>
     </form>
   </div>
@@ -302,8 +302,8 @@
 <div id="editWorkerModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="editWorkerModalTitle">
   <div class="modal-dialog card" style="max-width: 540px; margin: auto; padding: 1.75rem 2rem; position: relative; max-height: 92vh; overflow-y: auto;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-      <h3 id="editWorkerModalTitle" style="font-size: 1.25rem; font-weight: 700;">Edit Field Worker</h3>
-      <button type="button" onclick="closeModal('editWorkerModal')" aria-label="Close modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      <h3 id="editWorkerModalTitle" style="font-size: 1.25rem; font-weight: 700;">{{ tr('Edit Field Worker') }}</h3>
+      <button type="button" onclick="closeModal('editWorkerModal')" aria-label="{{ tr('Close modal') }}" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
     </div>
 
     <div id="editWorkerErrorAlert" class="alert alert-danger" style="display: none; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.86rem;">
@@ -316,54 +316,54 @@
       <input type="hidden" name="worker_id" id="editWorkerId">
 
       <div class="form-group">
-        <label class="form-label required">Full Name</label>
+        <label class="form-label required">{{ tr('Full Name') }}</label>
         <input type="text" name="full_name" id="editWorkerFullName" class="form-control" required>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
         <div class="form-group">
-          <label class="form-label required">Email Address</label>
+          <label class="form-label required">{{ tr('Email Address') }}</label>
           <input type="email" name="email" id="editWorkerEmail" class="form-control" required>
         </div>
         <div class="form-group">
-          <label class="form-label required">Phone Number</label>
+          <label class="form-label required">{{ tr('Phone Number') }}</label>
           <input type="tel" name="mobile" id="editWorkerMobile" class="form-control" required inputmode="numeric" maxlength="15">
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
         <div class="form-group">
-          <label class="form-label required">Employee ID</label>
+          <label class="form-label required">{{ tr('Employee ID') }}</label>
           <input type="text" name="employee_id" id="editWorkerEmpId" class="form-control" required style="text-transform: uppercase;">
         </div>
         <div class="form-group">
-          <label class="form-label">Designation</label>
+          <label class="form-label">{{ tr('Designation') }}</label>
           <input type="text" name="designation" id="editWorkerDesignation" class="form-control">
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
         <div class="form-group">
-          <label class="form-label">Account Status</label>
+          <label class="form-label">{{ tr('Account Status') }}</label>
           <select name="account_status" id="editWorkerAccountStatus" class="form-control">
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="active">{{ tr('Active') }}</option>
+            <option value="inactive">{{ tr('Inactive') }}</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Duty Availability</label>
+          <label class="form-label">{{ tr('Duty Availability') }}</label>
           <select name="is_available" id="editWorkerAvailability" class="form-control">
-            <option value="1">Available</option>
-            <option value="0">Busy / Off-Duty</option>
+            <option value="1">{{ tr('Available') }}</option>
+            <option value="0">{{ tr('Busy / Off-Duty') }}</option>
           </select>
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Reset Password (Optional)</label>
+        <label class="form-label">{{ tr('Reset Password (Optional)') }}</label>
         <div class="password-input-wrapper" style="position: relative; display: flex; align-items: center; width: 100%;">
-          <input type="password" name="password" id="editWorkerPassword" class="form-control" minlength="6" placeholder="Leave blank to keep existing password" style="padding-right: 2.75rem;">
-          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" aria-label="Show password" aria-pressed="false" title="Show password" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; padding: 0.25rem;">
+          <input type="password" name="password" id="editWorkerPassword" class="form-control" minlength="6" placeholder="{{ tr('Leave blank to keep existing password') }}" style="padding-right: 2.75rem;">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" aria-label="{{ tr('Show password') }}" aria-pressed="false" title="{{ tr('Show password') }}" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; padding: 0.25rem;">
             <svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
               <circle cx="12" cy="12" r="3"></circle>
@@ -373,8 +373,8 @@
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
-        <button type="button" onclick="closeModal('editWorkerModal')" class="btn btn-secondary btn-sm">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+        <button type="button" onclick="closeModal('editWorkerModal')" class="btn btn-secondary btn-sm">{{ tr('Cancel') }}</button>
+        <button type="submit" class="btn btn-primary btn-sm">{{ tr('Save Changes') }}</button>
       </div>
     </form>
   </div>
@@ -384,8 +384,8 @@
 <div id="assignComplaintModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="assignComplaintModalTitle">
   <div class="modal-dialog card" style="max-width: 500px; margin: auto; padding: 1.75rem 2rem; position: relative;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-      <h3 id="assignComplaintModalTitle" style="font-size: 1.2rem; font-weight: 700;">Assign Department Complaint</h3>
-      <button type="button" onclick="closeModal('assignComplaintModal')" aria-label="Close modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      <h3 id="assignComplaintModalTitle" style="font-size: 1.2rem; font-weight: 700;">{{ tr('Assign Department Complaint') }}</h3>
+      <button type="button" onclick="closeModal('assignComplaintModal')" aria-label="{{ tr('Close modal') }}" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
     </div>
 
     <div id="assignComplaintErrorAlert" class="alert alert-danger" style="display: none; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.86rem;">
@@ -398,28 +398,28 @@
       <input type="hidden" name="worker_id" id="assignTargetWorkerId">
 
       <div class="form-group">
-        <label class="form-label">Field Worker</label>
+        <label class="form-label">{{ tr('Field Worker') }}</label>
         <input type="text" id="assignTargetWorkerName" class="form-control" readonly style="background: var(--bg-subtle); font-weight: 600;">
       </div>
 
       <div class="form-group">
-        <label class="form-label required">Select Department Complaint</label>
+        <label class="form-label required">{{ tr('Select Department Complaint') }}</label>
         <select name="complaint_id" id="assignComplaintSelect" class="form-control" required>
-          <option value="">-- Choose complaint to dispatch --</option>
+          <option value="">{{ tr('-- Choose complaint to dispatch --') }}</option>
           {% for c in assignable_complaints %}
-          <option value="{{ c.id }}">{{ c.complaint_ref }} - {{ c.title }} ({{ c.priority.upper() }})</option>
+          <option value="{{ c.id }}">{{ c.complaint_ref }} - {{ c.title }} ({{ td(c.priority) }})</option>
           {% endfor %}
         </select>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Dispatch Instructions</label>
-        <textarea name="instructions" class="form-control" rows="2" placeholder="Optional site guidance or priority instructions..."></textarea>
+        <label class="form-label">{{ tr('Dispatch Instructions') }}</label>
+        <textarea name="instructions" class="form-control" rows="2" placeholder="{{ tr('Optional site guidance or priority instructions...') }}"></textarea>
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
-        <button type="button" onclick="closeModal('assignComplaintModal')" class="btn btn-secondary btn-sm">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm">Dispatch Work Order</button>
+        <button type="button" onclick="closeModal('assignComplaintModal')" class="btn btn-secondary btn-sm">{{ tr('Cancel') }}</button>
+        <button type="submit" class="btn btn-primary btn-sm">{{ tr('Dispatch Work Order') }}</button>
       </div>
     </form>
   </div>

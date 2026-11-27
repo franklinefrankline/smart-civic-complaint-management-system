@@ -177,6 +177,26 @@ class GlobalRefreshButtonTestCase(unittest.TestCase):
         self.assertIn('CMP-REFRESH-999', decompressed)
         self.assertIn('dashboard-content', decompressed)
 
+    def test_dynamic_pages_and_api_never_return_304_and_set_no_store_headers(self):
+        admin_client = self.app.test_client()
+        self._login_as(admin_client, 'ref.admin@civic.gov', 'Admin@123')
+
+        for path in ['/admin/officers', '/admin/users', '/api/notifications', '/api/live-updates?since_id=0']:
+            res = admin_client.get(
+                path,
+                headers={
+                    'If-None-Match': '"stale-etag-123"',
+                    'If-Modified-Since': 'Wed, 21 Oct 2015 07:28:00 GMT',
+                },
+            )
+            self.assertEqual(res.status_code, 200, msg=f"Expected 200 (not 304) for {path}")
+            self.assertIsNone(res.headers.get('ETag'))
+            self.assertIsNone(res.headers.get('Last-Modified'))
+            cc = (res.headers.get('Cache-Control') or '').lower()
+            self.assertIn('no-store', cc, msg=f"Missing no-store Cache-Control on {path}: {cc}")
+            self.assertEqual(res.headers.get('CDN-Cache-Control'), 'no-store')
+            self.assertEqual(res.headers.get('Vercel-CDN-Cache-Control'), 'no-store')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Escalated Department Complaints | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Escalated Department Complaints') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -10,10 +10,10 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
       <div>
         <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
-          Escalated Department Complaints
+          {{ tr('Escalated Department Complaints') }}
         </h1>
         <p style="color: var(--text-muted); font-size: 0.92rem;">
-          SLA-overdue and administratively escalated complaints requiring immediate supervisor intervention.
+          {{ tr('SLA-overdue and administratively escalated complaints requiring immediate supervisor intervention.') }}
         </p>
       </div>
     </div>
@@ -21,16 +21,16 @@
     <!-- Filter Bar -->
     <div class="card" style="padding: 1.15rem; margin-bottom: 1.5rem;">
       <form method="GET" action="{{ url_for('officer.escalations') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-        <input type="text" name="search" class="form-control" placeholder="Search complaint ref, title, or citizen..." value="{{ search_query or '' }}" style="flex: 2; min-width: 220px;">
+        <input type="text" name="search" class="form-control" placeholder="{{ tr('Search complaint ref, title, or citizen...') }}" value="{{ search_query or '' }}" style="flex: 2; min-width: 220px;">
         <select name="priority" class="form-control" style="flex: 1; min-width: 140px;">
-          <option value="">All Priorities</option>
-          <option value="urgent" {% if current_priority == 'urgent' %}selected{% endif %}>Urgent</option>
-          <option value="high" {% if current_priority == 'high' %}selected{% endif %}>High</option>
-          <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>Medium</option>
-          <option value="low" {% if current_priority == 'low' %}selected{% endif %}>Low</option>
+          <option value="">{{ tr('All Priorities') }}</option>
+          <option value="urgent" {% if current_priority == 'urgent' %}selected{% endif %}>{{ tr('Urgent') }}</option>
+          <option value="high" {% if current_priority == 'high' %}selected{% endif %}>{{ tr('High') }}</option>
+          <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>{{ tr('Medium') }}</option>
+          <option value="low" {% if current_priority == 'low' %}selected{% endif %}>{{ tr('Low') }}</option>
         </select>
-        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-        <a href="{{ url_for('officer.escalations') }}" class="btn btn-secondary btn-sm">Reset</a>
+        <button type="submit" class="btn btn-primary btn-sm">{{ tr('Filter') }}</button>
+        <a href="{{ url_for('officer.escalations') }}" class="btn btn-secondary btn-sm">{{ tr('Reset') }}</a>
       </form>
     </div>
 
@@ -39,13 +39,13 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Reference</th>
-              <th>Complaint &amp; Escalation History</th>
-              <th>Department</th>
-              <th>Priority</th>
-              <th>SLA Deadline</th>
-              <th>Responsible Person</th>
-              <th>Action</th>
+              <th>{{ tr('Reference') }}</th>
+              <th>{{ tr('Complaint & Escalation History') }}</th>
+              <th>{{ tr('Department') }}</th>
+              <th>{{ tr('Priority') }}</th>
+              <th>{{ tr('SLA Deadline') }}</th>
+              <th>{{ tr('Responsible Person') }}</th>
+              <th>{{ tr('Action') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -55,7 +55,7 @@
                 <td>
                   <span style="font-family: monospace; font-weight: 700; color: var(--civic-blue);">{{ c.complaint_ref }}</span>
                   {% if c.is_escalated %}
-                    <span class="badge badge-escalated" style="display: block; margin-top: 0.25rem; width: fit-content; font-size: 0.65rem;">ESCALATED</span>
+                    <span class="badge badge-escalated" style="display: block; margin-top: 0.25rem; width: fit-content; font-size: 0.65rem;">{{ tr('ESCALATED') }}</span>
                   {% endif %}
                 </td>
                 <td style="max-width: 250px;">
@@ -65,7 +65,7 @@
                   </div>
                 </td>
                 <td style="font-size: 0.84rem;">{{ c.department.name if c.department else '-' }}</td>
-                <td><span class="badge badge-priority-{{ c.priority }}">{{ c.priority.upper() }}</span></td>
+                <td><span class="badge badge-priority-{{ c.priority }}">{{ td(c.priority) }}</span></td>
                 <td style="font-size: 0.8rem; color: var(--status-rejected); font-weight: 700; white-space: nowrap;">
                   {{ c.sla_due_date | local_time('%Y-%m-%d %H:%M', 'Overdue') }}
                 </td>
@@ -75,7 +75,7 @@
                   {% elif c.assigned_officer %}
                     <div><strong>{{ c.assigned_officer.full_name }}</strong> <span style="color: var(--text-muted);">(Officer)</span></div>
                   {% else %}
-                    <span style="color: var(--text-muted);">Department Desk</span>
+                    <span style="color: var(--text-muted);">{{ tr('Department Desk') }}</span>
                   {% endif %}
                 </td>
                 <td>
@@ -85,17 +85,17 @@
                         <input type="hidden" name="action" value="escalate_complaint">
                         <input type="hidden" name="complaint_id" value="{{ c.id }}">
                         <input type="hidden" name="remarks" value="Escalated by Department Officer for urgent intervention.">
-                        <button type="submit" class="btn btn-warning btn-sm" style="white-space: nowrap;">Escalate</button>
+                        <button type="submit" class="btn btn-warning btn-sm" style="white-space: nowrap;">{{ tr('Escalate') }}</button>
                       </form>
                     {% endif %}
-                    <a href="{{ url_for('officer.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm">Manage</a>
+                    <a href="{{ url_for('officer.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm">{{ tr('Manage') }}</a>
                   </div>
                 </td>
               </tr>
             {% else %}
               <tr>
                 <td colspan="7" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
-                  No escalated or overdue complaints in your department right now.
+                  {{ tr('No escalated or overdue complaints in your department right now.') }}
                 </td>
               </tr>
             {% endfor %}

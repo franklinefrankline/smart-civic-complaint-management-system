@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Work Verification Queue | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Work Verification Queue') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -10,10 +10,10 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
       <div>
         <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
-          Work Verification Queue
+          {{ tr('Work Verification Queue') }}
         </h1>
         <p style="color: var(--text-muted); font-size: 0.92rem;">
-          Review completed field tasks, progress remarks, and submitted photographic evidence before resolving or returning for rework.
+          {{ tr('Review completed field tasks, progress remarks, and submitted photographic evidence before resolving or returning for rework.') }}
         </p>
       </div>
     </div>
@@ -21,16 +21,16 @@
     <!-- Filter Bar -->
     <div class="card" style="padding: 1.15rem; margin-bottom: 1.5rem;">
       <form method="GET" action="{{ url_for('officer.verification') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-        <input type="text" name="search" class="form-control" placeholder="Search complaint reference, title, or citizen..." value="{{ search_query or '' }}" style="flex: 2; min-width: 220px;">
+        <input type="text" name="search" class="form-control" placeholder="{{ tr('Search complaint reference, title, or citizen...') }}" value="{{ search_query or '' }}" style="flex: 2; min-width: 220px;">
         <select name="priority" class="form-control" style="flex: 1; min-width: 140px;">
-          <option value="">All Priorities</option>
-          <option value="urgent" {% if current_priority == 'urgent' %}selected{% endif %}>Urgent</option>
-          <option value="high" {% if current_priority == 'high' %}selected{% endif %}>High</option>
-          <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>Medium</option>
-          <option value="low" {% if current_priority == 'low' %}selected{% endif %}>Low</option>
+          <option value="">{{ tr('All Priorities') }}</option>
+          <option value="urgent" {% if current_priority == 'urgent' %}selected{% endif %}>{{ tr('Urgent') }}</option>
+          <option value="high" {% if current_priority == 'high' %}selected{% endif %}>{{ tr('High') }}</option>
+          <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>{{ tr('Medium') }}</option>
+          <option value="low" {% if current_priority == 'low' %}selected{% endif %}>{{ tr('Low') }}</option>
         </select>
-        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-        <a href="{{ url_for('officer.verification') }}" class="btn btn-secondary btn-sm">Reset</a>
+        <button type="submit" class="btn btn-primary btn-sm">{{ tr('Filter') }}</button>
+        <a href="{{ url_for('officer.verification') }}" class="btn btn-secondary btn-sm">{{ tr('Reset') }}</a>
       </form>
     </div>
 
@@ -44,51 +44,51 @@
               <div>
                 <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap;">
                   <span style="font-family: monospace; font-weight: 800; color: var(--civic-blue);">{{ c.complaint_ref }}</span>
-                  <span class="badge badge-priority-{{ c.priority }}">{{ c.priority.upper() }}</span>
-                  <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">{{ c.status }}</span>
+                  <span class="badge badge-priority-{{ c.priority }}">{{ td(c.priority) }}</span>
+                  <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">{{ td(c.status) }}</span>
                 </div>
                 <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0;">{{ c.title }}</h3>
                 <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
-                  Worker: <strong>{{ c.assigned_worker.full_name if c.assigned_worker else 'Field Technician' }}</strong>
-                  &bull; Citizen: {{ c.citizen.full_name if c.citizen else 'Citizen' }}
-                  &bull; Updated: {{ c.updated_at | local_time('%d %b %Y, %I:%M %p') }}
+                  {{ tr('Worker:') }} <strong>{{ c.assigned_worker.full_name if c.assigned_worker else 'Field Technician' }}</strong>
+                  &bull; {{ tr('Citizen:') }} {{ c.citizen.full_name if c.citizen else 'Citizen' }}
+                  &bull; {{ tr('Updated:') }} {{ c.updated_at | local_time('%d %b %Y, %I:%M %p') }}
                 </div>
               </div>
               <a href="{{ url_for('officer.complaint_detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm">
-                Full Details &rarr;
+                {{ tr('Full Details') }} &rarr;
               </a>
             </div>
 
             {% if hist and hist.remarks %}
               <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.85rem;">
-                <strong>Latest Progress / Completion Remarks:</strong> {{ hist.remarks }}
+                <strong>{{ tr('Latest Progress / Completion Remarks:') }}</strong> {{ hist.remarks }}
               </div>
             {% endif %}
 
             <!-- Submitted Evidence -->
             <div style="margin-bottom: 1rem;">
               <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">
-                Submitted Photographic Evidence ({{ atts|length }})
+                {{ tr('Submitted Photographic Evidence') }} ({{ atts|length }})
               </div>
               {% if atts %}
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem;">
                   {% for att in atts %}
                     <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-subtle);">
                       <div style="padding: 0.25rem 0.5rem; font-size: 0.68rem; font-weight: 700; background: var(--bg-surface); border-bottom: 1px solid var(--border-color);">
-                        {{ att.display_type_label.upper() }}
+                        {{ td(att.display_type_label) }}
                       </div>
                       {% if att.is_image %}
                         <a href="{{ att.public_url }}" target="_blank">
                           <img src="{{ att.public_url }}" alt="{{ att.display_type_label }}" loading="lazy" style="width: 100%; height: 100px; object-fit: cover; display: block;">
                         </a>
                       {% else %}
-                        <div style="padding: 1rem; text-align: center;"><a href="{{ att.public_url }}" target="_blank" style="font-size: 0.78rem;">View File</a></div>
+                        <div style="padding: 1rem; text-align: center;"><a href="{{ att.public_url }}" target="_blank" style="font-size: 0.78rem;">{{ tr('View File') }}</a></div>
                       {% endif %}
                     </div>
                   {% endfor %}
                 </div>
               {% else %}
-                <div style="font-size: 0.84rem; color: var(--text-muted);">No photographic evidence attached for this submission.</div>
+                <div style="font-size: 0.84rem; color: var(--text-muted);">{{ tr('No photographic evidence attached for this submission.') }}</div>
               {% endif %}
             </div>
 
@@ -97,22 +97,22 @@
               <form method="POST" action="{{ url_for('officer.verification') }}" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                 <input type="hidden" name="action" value="verify_resolve">
                 <input type="hidden" name="complaint_id" value="{{ c.id }}">
-                <input type="text" name="remarks" class="form-control" placeholder="Verification approval remarks..." required style="flex: 1; min-width: 180px;">
+                <input type="text" name="remarks" class="form-control" placeholder="{{ tr('Verification approval remarks...') }}" required style="flex: 1; min-width: 180px;">
                 <button type="submit" class="btn btn-success btn-sm" style="white-space: nowrap;">
-                  <i data-lucide="check-circle-2" class="icon-xs"></i> Approve &amp; Resolve
+                  <i data-lucide="check-circle-2" class="icon-xs"></i> {{ tr('Approve & Resolve') }}
                 </button>
               </form>
 
               <form method="POST" action="{{ url_for('officer.verification') }}" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;"
-                data-confirm-title="Return Work for Rework"
-                data-confirm="Return complaint {{ c.complaint_ref }} to the worker for rework?"
-                data-confirm-btn="Return for Rework"
+                data-confirm-title="{{ tr('Return Work for Rework') }}"
+                data-confirm="{{ dt('Return complaint ' ~ (c.complaint_ref) ~ ' to the worker for rework?') }}"
+                data-confirm-btn="{{ tr('Return for Rework') }}"
                 data-confirm-variant="warning">
                 <input type="hidden" name="action" value="return_rework">
                 <input type="hidden" name="complaint_id" value="{{ c.id }}">
-                <input type="text" name="rework_reason" class="form-control" placeholder="Mandatory rework reason..." required style="flex: 1; min-width: 180px;">
+                <input type="text" name="rework_reason" class="form-control" placeholder="{{ tr('Mandatory rework reason...') }}" required style="flex: 1; min-width: 180px;">
                 <button type="submit" class="btn btn-warning btn-sm" style="white-space: nowrap;">
-                  <i data-lucide="rotate-ccw" class="icon-xs"></i> Return for Rework
+                  <i data-lucide="rotate-ccw" class="icon-xs"></i> {{ tr('Return for Rework') }}
                 </button>
               </form>
             </div>
@@ -123,9 +123,9 @@
     {% else %}
       <div class="card" style="text-align: center; padding: 3rem 1.25rem; color: var(--text-muted);">
         <div style="font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
-          No completed tasks are currently awaiting work verification.
+          {{ tr('No completed tasks are currently awaiting work verification.') }}
         </div>
-        <p style="font-size: 0.85rem; margin: 0;">Completed work orders submitted by technicians will appear here for inspection.</p>
+        <p style="font-size: 0.85rem; margin: 0;">{{ tr('Completed work orders submitted by technicians will appear here for inspection.') }}</p>
       </div>
     {% endif %}
   </div>

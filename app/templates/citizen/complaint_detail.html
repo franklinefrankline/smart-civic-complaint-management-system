@@ -15,26 +15,26 @@
             {{ complaint.complaint_ref }}
           </span>
           <span class="badge badge-{{ complaint.status.lower().replace(' ', '-') }}">
-            {{ complaint.status }}
+            {{ td(complaint.status) }}
           </span>
           <span class="badge badge-priority-{{ complaint.priority }}">
-            {{ complaint.priority.upper() }}
+            {{ td(complaint.priority) }}
           </span>
           {% if complaint.is_escalated %}
-            <span class="badge badge-escalated">ESCALATED OVERDUE</span>
+            <span class="badge badge-escalated">{{ tr('ESCALATED OVERDUE') }}</span>
           {% endif %}
         </div>
         <h1 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary);">
           {{ complaint.title }}
         </h1>
         <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
-          Submitted on {{ complaint.created_at | local_time('%d %B %Y, %I:%M %p') }}
+          {{ tr('Submitted on') }} {{ complaint.created_at | local_time('%d %B %Y, %I:%M %p') }}
         </div>
       </div>
 
       <div style="display: flex; gap: 0.75rem;">
         <a href="{{ url_for('citizen.complaints') }}" class="btn btn-secondary btn-sm">
-          &larr; Back to List
+          &larr; {{ tr('Back to List') }}
         </a>
       </div>
     </div>
@@ -43,7 +43,7 @@
     {% if complaint.status == 'Rejected' %}
       <div class="alert alert-danger" style="margin-bottom: 1.5rem;">
         <div>
-          <strong>Department Rejection Notice:</strong><br>
+          <strong>{{ tr('Department Rejection Notice:') }}</strong><br>
           {{ complaint.rejection_reason or 'This complaint was evaluated and rejected as not feasible or outside municipal jurisdiction.' }}
         </div>
       </div>
@@ -54,7 +54,7 @@
       <div>
         <div class="card" style="margin-bottom: 1.5rem;">
           <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-primary);">
-            Complaint Description
+            {{ tr('Complaint Description') }}
           </h3>
           <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; white-space: pre-line;">
             {{ complaint.description }}
@@ -62,19 +62,19 @@
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.88rem;">
             <div>
-              <span style="color: var(--text-muted);">Category:</span><br>
-              <strong>{{ complaint.category.name }}</strong>
+              <span style="color: var(--text-muted);">{{ tr('Category:') }}</span><br>
+              <strong>{{ td(complaint.category.name) }}</strong>
             </div>
             <div>
-              <span style="color: var(--text-muted);">Department:</span><br>
+              <span style="color: var(--text-muted);">{{ tr('Department:') }}</span><br>
               <strong>{{ complaint.department.name if complaint.department else 'Unassigned' }}</strong>
             </div>
             <div>
-              <span style="color: var(--text-muted);">Address / Landmark:</span><br>
-              <strong>{{ complaint.address or 'Address not specified' }}</strong>
+              <span style="color: var(--text-muted);">{{ tr('Address / Landmark:') }}</span><br>
+              <strong>{{ tr(complaint.address or 'Address not specified') }}</strong>
             </div>
             <div>
-              <span style="color: var(--text-muted);">SLA Resolution Target:</span><br>
+              <span style="color: var(--text-muted);">{{ tr('SLA Resolution Target:') }}</span><br>
               <strong style="color: {% if complaint.is_overdue %}var(--status-rejected){% else %}var(--text-primary){% endif %};">
                 {{ complaint.sla_due_date | local_time('%d %b %Y, %I:%M %p', 'Standard') }}
               </strong>
@@ -85,7 +85,7 @@
         <!-- Photographic Proofs & Attachments -->
         <div class="card" style="margin-bottom: 1.5rem;">
           <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary);">
-            Supporting Photos & Verification Evidence
+            {{ tr('Supporting Photos & Verification Evidence') }}
           </h3>
 
           {% if attachments %}
@@ -94,13 +94,13 @@
                 <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-subtle);">
                   <div style="padding: 0.4rem 0.6rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; background: var(--bg-surface); border-bottom: 1px solid var(--border-color);">
                     {% if att.attachment_type == 'initial' %}
-                      Citizen Photo
+                      {{ tr('Citizen Photo') }}
                     {% elif att.attachment_type == 'before_work' %}
-                      Pre-Work Proof
+                      {{ tr('Pre-Work Proof') }}
                     {% elif att.attachment_type == 'after_work' %}
-                      Completed Work Proof
+                      {{ tr('Completed Work Proof') }}
                     {% else %}
-                      Verification
+                      {{ tr('Verification') }}
                     {% endif %}
                   </div>
                   
@@ -111,7 +111,7 @@
                   {% else %}
                     <div style="padding: 2rem 1rem; text-align: center;">
                       <div style="margin-bottom: 0.5rem; color: var(--text-muted);"><i data-lucide="file-text" style="width: 32px; height: 32px;"></i></div>
-                      <a href="{{ att.public_url }}" target="_blank" style="font-size: 0.8rem; font-weight: 600;">View Document</a>
+                      <a href="{{ att.public_url }}" target="_blank" style="font-size: 0.8rem; font-weight: 600;">{{ tr('View Document') }}</a>
                     </div>
                   {% endif %}
 
@@ -124,7 +124,7 @@
               {% endfor %}
             </div>
           {% else %}
-            <p style="font-size: 0.88rem; color: var(--text-muted);">No supporting photographs attached.</p>
+            <p style="font-size: 0.88rem; color: var(--text-muted);">{{ tr('No supporting photographs attached.') }}</p>
           {% endif %}
         </div>
 
@@ -132,7 +132,7 @@
         {% if complaint.status == 'Resolved' %}
           <div class="card" style="border-top: 4px solid var(--status-resolved); margin-bottom: 1.5rem;">
             <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary);">
-              Citizen Resolution Feedback
+              {{ tr('Citizen Resolution Feedback') }}
             </h3>
             
             {% if existing_feedback %}
@@ -149,16 +149,16 @@
                   "{{ existing_feedback.comment or 'Satisfied with the municipal response.' }}"
                 </p>
                 <div style="font-size: 0.78rem; color: var(--text-muted);">
-                  Feedback registered on {{ existing_feedback.created_at | local_time('%d %B %Y') }}
+                  {{ tr('Feedback registered on') }} {{ existing_feedback.created_at | local_time('%d %B %Y') }}
                 </div>
               </div>
             {% else %}
               <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
-                This grievance has been resolved. Please rate the speed and quality of our municipal crew.
+                {{ tr('This grievance has been resolved. Please rate the speed and quality of our municipal crew.') }}
               </p>
               <form method="POST" action="{{ url_for('citizen.submit_feedback', complaint_id=complaint.id) }}">
                 <div class="form-group">
-                  <label class="form-label">Overall Rating (1 to 5 Stars)</label>
+                  <label class="form-label">{{ tr('Overall Rating (1 to 5 Stars)') }}</label>
                   <div class="star-rating">
                     <input type="hidden" name="rating" value="5" required>
                     <span class="star active"><i data-lucide="star" class="icon-md"></i></span>
@@ -170,12 +170,12 @@
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label">Feedback Comments</label>
-                  <textarea name="comment" class="form-control" rows="2" placeholder="Was the repair work done cleanly and effectively?"></textarea>
+                  <label class="form-label">{{ tr('Feedback Comments') }}</label>
+                  <textarea name="comment" class="form-control" rows="2" placeholder="{{ tr('Was the repair work done cleanly and effectively?') }}"></textarea>
                 </div>
 
                 <button type="submit" class="btn btn-success btn-sm">
-                  Submit Citizen Feedback
+                  {{ tr('Submit Citizen Feedback') }}
                 </button>
               </form>
             {% endif %}
@@ -185,19 +185,19 @@
           <div class="card" style="border-top: 4px solid var(--status-reopened);">
             <details>
               <summary style="font-weight: 700; cursor: pointer; color: var(--text-primary); font-size: 0.95rem;">
-                Need to reopen this issue?
+                {{ tr('Need to reopen this issue?') }}
               </summary>
               <div style="margin-top: 1rem;">
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-                  If the fault has recurred or repairs were incomplete, you may reopen this complaint for departmental supervisor re-evaluation.
+                  {{ tr('If the fault has recurred or repairs were incomplete, you may reopen this complaint for departmental supervisor re-evaluation.') }}
                 </p>
                 <form method="POST" action="{{ url_for('citizen.reopen_complaint', complaint_id=complaint.id) }}">
                   <div class="form-group">
-                    <label class="form-label">Reason for Reopening <span style="color: red;">*</span></label>
-                    <textarea name="reopen_reason" class="form-control" rows="2" required placeholder="Explain why the resolution was unsatisfactory..." minlength="10"></textarea>
+                    <label class="form-label">{{ tr('Reason for Reopening') }} <span style="color: red;">*</span></label>
+                    <textarea name="reopen_reason" class="form-control" rows="2" required placeholder="{{ tr('Explain why the resolution was unsatisfactory...') }}" minlength="10"></textarea>
                   </div>
                   <button type="submit" class="btn btn-warning btn-sm">
-                    Reopen Complaint for Review
+                    {{ tr('Reopen Complaint for Review') }}
                   </button>
                 </form>
               </div>
@@ -211,7 +211,7 @@
         <!-- 9-Stage Redressal Lifecycle Timeline -->
         <div class="card" style="margin-bottom: 1.5rem; border-top: 4px solid var(--civic-blue);">
           <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary);">
-            <i data-lucide="git-commit" class="icon-sm" style="color: var(--civic-blue);"></i> 9-Stage Redressal Lifecycle
+            <i data-lucide="git-commit" class="icon-sm" style="color: var(--civic-blue);"></i> {{ tr('9-Stage Redressal Lifecycle') }}
           </h4>
           <div class="timeline stagger-in">
             {% for s in stages %}
@@ -220,7 +220,7 @@
                 <div class="timeline-content">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
                     <strong style="color: {% if s.is_completed %}var(--text-primary){% else %}var(--text-muted){% endif %}; font-size: 0.88rem;">
-                      {{ s.step }}. {{ s.title }}
+                      {{ s.step }}. {{ tr(s.title) }}
                       {% if s.is_completed %}<i data-lucide="check" class="icon-xs" style="color: #16a34a; margin-left: 0.25rem;"></i>{% endif %}
                     </strong>
                     {% if s.timestamp %}
@@ -228,7 +228,7 @@
                     {% endif %}
                   </div>
                   <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.3; margin: 0;">
-                    {{ s.remarks }}
+                    {{ tr(s.remarks) }}
                   </p>
                 </div>
               </div>
@@ -239,41 +239,41 @@
         <!-- Incident Location Information Card (No Map) -->
         <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem; box-shadow: none;">
           <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-            Incident Location & Address
+            {{ tr('Incident Location & Address') }}
           </h4>
           <div style="display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.85rem;">
             <div>
-              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Street Address</span>
+              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('Street Address') }}</span>
               <strong style="color: var(--text-primary);">{{ complaint.street_name or complaint.address or 'Standard Location' }}</strong>
             </div>
             <div>
-              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Area / Locality</span>
-              <span style="color: var(--text-primary);">{{ complaint.locality or 'Central Zone' }}</span>
+              <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('Area / Locality') }}</span>
+              <span style="color: var(--text-primary);">{{ tr(complaint.locality or 'Central Zone') }}</span>
             </div>
             {% if complaint.landmark %}
               <div>
-                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Landmark</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('Landmark') }}</span>
                 <span style="color: var(--text-primary);">Near {{ complaint.landmark }}</span>
               </div>
             {% endif %}
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.25rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
               <div>
-                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">Municipal Ward</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('Municipal Ward') }}</span>
                 <span class="badge" style="background: var(--bg-subtle); color: var(--civic-blue); font-weight: 700;">{{ complaint.ward_number or 'Ward 4' }}</span>
               </div>
               <div>
-                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">PIN Code</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('PIN Code') }}</span>
                 <span style="font-family: monospace; font-weight: 600;">{{ complaint.pincode or '600001' }}</span>
               </div>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
               <div>
-                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">City / District</span>
-                <span>{{ complaint.city or 'Chennai' }}, {{ complaint.district or 'Chennai' }}</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('City / District') }}</span>
+                <span>{{ td(complaint.city or 'Chennai') }}, {{ td(complaint.district or 'Chennai') }}</span>
               </div>
               <div>
-                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">State</span>
-                <span>{{ complaint.state or 'Tamil Nadu' }}</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; display: block;">{{ tr('State') }}</span>
+                <span>{{ td(complaint.state or 'Tamil Nadu') }}</span>
               </div>
             </div>
           </div>
@@ -282,7 +282,7 @@
         <!-- Status History Timeline -->
         <div class="card">
           <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary);">
-            Resolution History
+            {{ tr('Resolution History') }}
           </h4>
           <div class="timeline stagger-in" style="margin-top: 0.5rem;">
             {% for hist in history %}
@@ -290,14 +290,14 @@
                 <div class="timeline-marker"></div>
                 <div class="timeline-content">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
-                    <strong style="color: var(--civic-blue); font-size: 0.88rem;">{{ hist.new_status }}</strong>
+                    <strong style="color: var(--civic-blue); font-size: 0.88rem;">{{ td(hist.new_status) }}</strong>
                     <span class="timeline-time">{{ hist.created_at | local_time('%d %b %Y, %I:%M %p') }}</span>
                   </div>
                   <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.3;">
-                    {{ hist.remarks or 'Status updated.' }}
+                    {{ tr(hist.remarks or 'Status updated.') }}
                   </p>
                   <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">
-                    By: {{ hist.changed_by.full_name if hist.changed_by else 'Civic Automation' }}
+                    {{ tr('By:') }} {{ hist.changed_by.full_name if hist.changed_by else 'Civic Automation' }}
                   </div>
                 </div>
               </div>

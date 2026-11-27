@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Citizen Feedback | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Citizen Feedback') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -9,13 +9,13 @@
   <div class="dashboard-content">
     <div style="margin-bottom: 1.75rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
       <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-blue); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-        Service Quality Assessment
+        {{ tr('Service Quality Assessment') }}
       </div>
       <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
         Resolved Grievances & Feedback
       </h1>
       <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">
-        Rate completed municipal repairs to assist civic administration in benchmarking departmental performance.
+        {{ tr('Rate completed municipal repairs to assist civic administration in benchmarking departmental performance.') }}
       </p>
     </div>
 
@@ -24,12 +24,12 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Reference</th>
-              <th>Complaint Title</th>
-              <th>Department</th>
-              <th>Resolved Date</th>
-              <th>Your Rating</th>
-              <th>Action</th>
+              <th>{{ tr('Reference') }}</th>
+              <th>{{ tr('Complaint Title') }}</th>
+              <th>{{ tr('Department') }}</th>
+              <th>{{ tr('Resolved Date') }}</th>
+              <th>{{ tr('Your Rating') }}</th>
+              <th>{{ tr('Action') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -58,7 +58,7 @@
                       {% endfor %}
                     </div>
                   {% else %}
-                    <span class="badge" style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">Pending Feedback</span>
+                    <span class="badge" style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">{{ tr('Pending Feedback') }}</span>
                   {% endif %}
                 </td>
                 <td>
@@ -70,8 +70,8 @@
             {% else %}
               <tr>
                 <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">
-                  <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">No Resolved Grievances</div>
-                  <p style="font-size: 0.85rem;">Once your filed complaints are marked resolved by municipal officers, you can rate service quality here.</p>
+                  <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">{{ tr('No Resolved Grievances') }}</div>
+                  <p style="font-size: 0.85rem;">{{ tr('Once your filed complaints are marked resolved by municipal officers, you can rate service quality here.') }}</p>
                 </td>
               </tr>
             {% endfor %}

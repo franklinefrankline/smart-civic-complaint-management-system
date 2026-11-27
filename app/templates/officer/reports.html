@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Department Performance Report | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Department Performance Report') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -10,15 +10,15 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
       <div>
         <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">
-          Department Performance Report
+          {{ tr('Department Performance Report') }}
         </h1>
         <p style="color: var(--text-muted); font-size: 0.92rem;">
-          Resolution audit, time compliance, and status summary.
+          {{ tr('Resolution audit, time compliance, and status summary.') }}
         </p>
       </div>
 
       <a href="{{ url_for('admin.export_complaints_csv', department_id=current_user.department_id) }}" class="btn btn-primary btn-sm">
-        <i data-lucide="download" class="icon-sm"></i> Export Department Data (CSV)
+        <i data-lucide="download" class="icon-sm"></i> {{ tr('Export Department Data (CSV)') }}
       </a>
     </div>
 
@@ -28,21 +28,21 @@
         <div class="stat-icon" style="background: #dbeafe; color: #1e40af;"><i data-lucide="file-text"></i></div>
         <div class="stat-info">
           <span class="stat-value">{{ total }}</span>
-          <span class="stat-label">Total Assigned Complaints</span>
+          <span class="stat-label">{{ tr('Total Assigned Complaints') }}</span>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon" style="background: #dcfce7; color: #15803d;"><i data-lucide="check-circle-2"></i></div>
         <div class="stat-info">
           <span class="stat-value">{{ resolved }}</span>
-          <span class="stat-label">Resolved Issues</span>
+          <span class="stat-label">{{ tr('Resolved Issues') }}</span>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon" style="background: #fef3c7; color: #b45309;"><i data-lucide="clock"></i></div>
         <div class="stat-info">
           <span class="stat-value">{{ pending }}</span>
-          <span class="stat-label">Pending Execution</span>
+          <span class="stat-label">{{ tr('Pending Execution') }}</span>
         </div>
       </div>
     </div>
@@ -53,13 +53,13 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Reference</th>
-              <th>Title</th>
-              <th>Citizen</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Created</th>
-              <th>Resolved</th>
+              <th>{{ tr('Reference') }}</th>
+              <th>{{ tr('Title') }}</th>
+              <th>{{ tr('Citizen') }}</th>
+              <th>{{ tr('Priority') }}</th>
+              <th>{{ tr('Status') }}</th>
+              <th>{{ tr('Created') }}</th>
+              <th>{{ tr('Resolved') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -74,12 +74,12 @@
                 <td>{{ c.citizen.full_name }}</td>
                 <td>
                   <span class="badge badge-priority-{{ c.priority }}">
-                    {{ c.priority.upper() }}
+                    {{ td(c.priority) }}
                   </span>
                 </td>
                 <td>
                   <span class="badge badge-{{ c.status.lower().replace(' ', '-') }}">
-                    {{ c.status }}
+                    {{ td(c.status) }}
                   </span>
                 </td>
                 <td style="font-size: 0.8rem; color: var(--text-muted);">
@@ -92,7 +92,7 @@
             {% else %}
               <tr>
                 <td colspan="7" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
-                  No complaint records found for your department yet.
+                  {{ tr('No complaint records found for your department yet.') }}
                 </td>
               </tr>
             {% endfor %}

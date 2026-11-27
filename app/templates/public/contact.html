@@ -1,54 +1,54 @@
 {% extends "base.html" %}
 
-{% block title %}Contact & Civic Helpdesk | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Contact & Civic Helpdesk') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="container" style="padding: 4rem 2rem;">
   <div style="text-align: center; margin-bottom: 3rem;">
     <h1 style="font-size: 2.25rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.75rem;">
-      Municipal Helpdesk & Support
+      {{ tr('Municipal Helpdesk & Support') }}
     </h1>
     <p style="font-size: 1.1rem; color: var(--text-secondary);">
-      Need assistance with your grievance or experiencing portal issues? Get in touch with our civic support desk.
+      {{ tr('Need assistance with your grievance or experiencing portal issues? Get in touch with our civic support desk.') }}
     </p>
   </div>
 
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem;">
     <div class="card" style="padding: 1.75rem;">
-      <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">Direct Contact</h3>
+      <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">{{ tr('Direct Contact') }}</h3>
       <div style="display: flex; flex-direction: column; gap: 1rem; font-size: 0.92rem; color: var(--text-secondary);">
         <div>
-          <strong><i data-lucide="building" class="icon-sm"></i> Headquarters:</strong><br>
-          Municipal Corporation Main Secretariat,<br>
+          <strong><i data-lucide="building" class="icon-sm"></i> {{ tr('Headquarters:') }}</strong><br>
+          {{ tr('Municipal Corporation Main Secretariat,') }}<br>
           Civic Centre, Central Ward, 600001
         </div>
         <div>
-          <strong><i data-lucide="clock" class="icon-sm"></i> Helpdesk Hours:</strong><br>
-          Monday &ndash; Saturday, 9:00 AM &ndash; 6:00 PM IST
+          <strong><i data-lucide="clock" class="icon-sm"></i> {{ tr('Helpdesk Hours:') }}</strong><br>
+          {{ tr('Monday – Saturday, 9:00 AM – 6:00 PM IST') }}
         </div>
         <div>
-          <strong><i data-lucide="message-square" class="icon-sm"></i> Online Support Portal:</strong><br>
-          Submit your inquiry using the form beside this card; messages are delivered directly to the Administrator dashboard.
+          <strong><i data-lucide="message-square" class="icon-sm"></i> {{ tr('Online Support Portal:') }}</strong><br>
+          {{ tr('Submit your inquiry using the form beside this card; messages are delivered directly to the Administrator dashboard.') }}
         </div>
       </div>
     </div>
 
     <div class="card" style="padding: 1.75rem;">
-      <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">Send an Inquiry</h3>
+      <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">{{ tr('Send an Inquiry') }}</h3>
       <form method="POST" action="{{ url_for('public.contact') }}">
         <div class="form-group">
-          <label class="form-label">Full Name</label>
-          <input type="text" name="name" class="form-control" required placeholder="Your Name">
+          <label class="form-label">{{ tr('Full Name') }}</label>
+          <input type="text" name="name" class="form-control" required placeholder="{{ tr('Your Name') }}">
         </div>
         <div class="form-group">
-          <label class="form-label">Email or Phone</label>
-          <input type="text" name="contact" class="form-control" required placeholder="Email or Phone">
+          <label class="form-label">{{ tr('Email or Phone') }}</label>
+          <input type="text" name="contact" class="form-control" required placeholder="{{ tr('Email or Phone') }}">
         </div>
         <div class="form-group">
-          <label class="form-label">Message / Inquiry</label>
-          <textarea name="message" class="form-control" rows="3" required placeholder="How can our civic helpdesk assist you?"></textarea>
+          <label class="form-label">{{ tr('Message / Inquiry') }}</label>
+          <textarea name="message" class="form-control" rows="3" required placeholder="{{ tr('How can our civic helpdesk assist you?') }}"></textarea>
         </div>
-        <button type="submit" class="btn btn-primary w-full">Send Message</button>
+        <button type="submit" class="btn btn-primary w-full">{{ tr('Send Message') }}</button>
       </form>
     </div>
   </div>

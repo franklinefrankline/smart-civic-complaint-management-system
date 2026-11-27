@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}System Settings | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('System Settings') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -9,70 +9,70 @@
   <div class="dashboard-content">
     <div style="margin-bottom: 1.75rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
       <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-blue); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-        System Configuration
+        {{ tr('System Configuration') }}
       </div>
       <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
-        Service Level Agreements (SLA) & Portal Parameters
+        {{ tr('Service Level Agreements (SLA) & Portal Parameters') }}
       </h1>
       <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">
-        Configure municipal resolution timeframes, automated escalation thresholds, and civic contact endpoints.
+        {{ tr('Configure municipal resolution timeframes, automated escalation thresholds, and civic contact endpoints.') }}
       </p>
     </div>
 
     <div class="card" style="padding: 2rem; box-shadow: none;">
       <form method="POST" action="{{ url_for('admin.settings') }}">
         <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-          Priority Resolution SLA Thresholds (Hours)
+          {{ tr('Priority Resolution SLA Thresholds (Hours)') }}
         </h3>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.5rem;">
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Urgent Priority SLA (Hours)</label>
+            <label class="form-label">{{ tr('Urgent Priority SLA (Hours)') }}</label>
             <input type="number" name="setting_sla_urgent_hours" class="form-control" value="{{ settings_dict.get('sla_urgent_hours', '24') if settings_dict else '24' }}" min="1" max="168" required>
-            <small style="color: var(--text-muted); font-size: 0.75rem;">Time to resolution before automatic administrative escalation.</small>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ tr('Time to resolution before automatic administrative escalation.') }}</small>
           </div>
 
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">High Priority SLA (Hours)</label>
+            <label class="form-label">{{ tr('High Priority SLA (Hours)') }}</label>
             <input type="number" name="setting_sla_high_hours" class="form-control" value="{{ settings_dict.get('sla_high_hours', '48') if settings_dict else '48' }}" min="1" max="336" required>
-            <small style="color: var(--text-muted); font-size: 0.75rem;">Significant public hazard resolution target.</small>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ tr('Significant public hazard resolution target.') }}</small>
           </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 2rem;">
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Medium Priority SLA (Hours)</label>
+            <label class="form-label">{{ tr('Medium Priority SLA (Hours)') }}</label>
             <input type="number" name="setting_sla_medium_hours" class="form-control" value="{{ settings_dict.get('sla_medium_hours', '96') if settings_dict else '96' }}" min="1" max="720" required>
-            <small style="color: var(--text-muted); font-size: 0.75rem;">Standard civic issue resolution window (4 days).</small>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ tr('Standard civic issue resolution window (4 days).') }}</small>
           </div>
 
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Low Priority SLA (Hours)</label>
+            <label class="form-label">{{ tr('Low Priority SLA (Hours)') }}</label>
             <input type="number" name="setting_sla_low_hours" class="form-control" value="{{ settings_dict.get('sla_low_hours', '168') if settings_dict else '168' }}" min="1" max="720" required>
-            <small style="color: var(--text-muted); font-size: 0.75rem;">Routine maintenance timeframe (7 days).</small>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ tr('Routine maintenance timeframe (7 days).') }}</small>
           </div>
         </div>
 
         <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-          Civic Helplines & Support Endpoints
+          {{ tr('Civic Helplines & Support Endpoints') }}
         </h3>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 2rem;">
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Municipal Control Room Phone</label>
+            <label class="form-label">{{ tr('Municipal Control Room Phone') }}</label>
             <input type="text" name="setting_support_phone" class="form-control" value="{{ settings_dict.get('support_phone', '1800-425-0000') if settings_dict else '1800-425-0000' }}" required>
           </div>
 
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Official Grievance Desk Email</label>
+            <label class="form-label">{{ tr('Official Grievance Desk Email') }}</label>
             <input type="email" name="setting_support_email" class="form-control" value="{{ settings_dict.get('support_email', 'civic-desk@gov.portal') if settings_dict else 'civic-desk@gov.portal' }}" required>
           </div>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
-          <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Cancel</a>
+          <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">{{ tr('Cancel') }}</a>
           <button type="submit" class="btn btn-primary">
-            <i data-lucide="save" class="icon-sm"></i> Save Settings
+            <i data-lucide="save" class="icon-sm"></i> {{ tr('Save Settings') }}
           </button>
         </div>
       </form>
@@ -81,19 +81,19 @@
     <!-- Production Maintenance & Demo Data Cleanup -->
     <div class="card" style="margin-top: 1.5rem; padding: 2rem; border-left: 4px solid var(--status-rejected);">
       <h3 style="font-size: 1rem; font-weight: 700; color: var(--status-rejected); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-        <i data-lucide="alert-triangle" class="icon-sm"></i> Production Database Cleanup
+        <i data-lucide="alert-triangle" class="icon-sm"></i> {{ tr('Production Database Cleanup') }}
       </h3>
       <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 1.25rem; line-height: 1.5;">
         Remove all test complaints, work assignments, notifications, proof attachments, and demo citizen accounts. 
         Your official civic departments, categories, and administrator credentials will be preserved.
       </p>
       <form method="POST" action="{{ url_for('admin.clean_demo_data') }}"
-        data-confirm-title="Purge Test & Demo Data"
-        data-confirm="Are you sure you want to permanently remove all test complaints, assignments, notifications, and demo citizen accounts? Official departments and admin accounts are preserved."
-        data-confirm-btn="Purge Test Data"
+        data-confirm-title="{{ tr('Purge Test & Demo Data') }}"
+        data-confirm="{{ tr('Are you sure you want to permanently remove all test complaints, assignments, notifications, and demo citizen accounts? Official departments and admin accounts are preserved.') }}"
+        data-confirm-btn="{{ tr('Purge Test Data') }}"
         data-confirm-variant="danger">
         <button type="submit" class="btn btn-secondary" style="color: var(--status-rejected); border-color: var(--status-rejected);">
-          <i data-lucide="trash-2" class="icon-sm"></i> Clear All Demo Complaints & Test Data
+          <i data-lucide="trash-2" class="icon-sm"></i> {{ tr('Clear All Demo Complaints & Test Data') }}
         </button>
       </form>
     </div>

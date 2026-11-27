@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Department Notifications | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Department Notifications') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
@@ -10,18 +10,18 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
       <div>
         <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-teal); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-          Department Desk
+          {{ tr('Department Desk') }}
         </div>
         <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
-          Officer Notifications
+          {{ tr('Officer Notifications') }}
         </h1>
         <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">
-          Inflow alerts, worker completion reports awaiting inspection, and citizen reopenings.
+          {{ tr('Inflow alerts, worker completion reports awaiting inspection, and citizen reopenings.') }}
         </p>
       </div>
 
       <button class="btn btn-secondary btn-sm" onclick="(window.apiFetch ? window.apiFetch('/api/notifications/read-all', {method: 'POST'}) : fetch('/api/notifications/read-all', {method: 'POST', credentials: 'include'})).then(r => { if (!r.ok) throw new Error('Failed'); location.reload(); }).catch(() => window.showToast && window.showToast('Unable to mark notifications as read.', 'error'))">
-        <i data-lucide="check" class="icon-sm"></i> Mark All as Read
+        <i data-lucide="check" class="icon-sm"></i> {{ tr('Mark All as Read') }}
       </button>
     </div>
 
@@ -44,20 +44,20 @@
             <div style="display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0;">
               {% if not n.is_read %}
                 <button type="button" onclick="window.markSingleNotificationRead && window.markSingleNotificationRead({{ n.id }}, this)" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
-                  Mark Read
+                  {{ tr('Mark Read') }}
                 </button>
               {% endif %}
               {% if n.link %}
                 <a href="{{ n.link }}" onclick="if (!{{ 'true' if n.is_read else 'false' }}) { fetch('/api/notifications/{{ n.id }}/read', {method: 'POST', credentials: 'include', keepalive: true}).catch(() => {}); }" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;">
-                  Review &rarr;
+                  {{ tr('Review') }} &rarr;
                 </a>
               {% endif %}
             </div>
           </div>
         {% else %}
           <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
-            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">No Department Notifications</div>
-            <p style="font-size: 0.85rem;">All work order updates and incoming notices have been reviewed.</p>
+            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">{{ tr('No Department Notifications') }}</div>
+            <p style="font-size: 0.85rem;">{{ tr('All work order updates and incoming notices have been reviewed.') }}</p>
           </div>
         {% endfor %}
       </div>

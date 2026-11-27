@@ -15,8 +15,12 @@
   };
 
   window.apiFetch = function(path, options) {
-    const opts = Object.assign({ credentials: 'include' }, options || {});
+    const opts = Object.assign({ credentials: 'include', cache: 'no-store' }, options || {});
     return fetch(window.getApiUrl(path), opts);
+  };
+
+  window.scfT = window.scfT || function(text) {
+    return text == null ? '' : String(text);
   };
 
   window.handleSmartBack = function(fallbackUrl) {

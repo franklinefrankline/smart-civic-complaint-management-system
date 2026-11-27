@@ -1,30 +1,32 @@
 {% extends "base.html" %}
 
-{% block title %}Officer Management | {{ t('app_name') }}{% endblock %}
+{% block title %}{{ tr('Officer Management') }} | {{ t('app_name') }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-layout">
   {% include 'shared/_sidebar.html' %}
 
   <div class="dashboard-content">
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+    <div
+      style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
       <div>
-        <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-teal); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-          Departmental Leadership
+        <div
+          style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--civic-teal); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+          {{ tr('Departmental Leadership') }}
         </div>
         <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">
-          Department Officer Management
+          {{ tr('Department Officer Management') }}
         </h1>
         <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">
-          Supervise municipal department officers, department assignments, and grievance triage oversight.
+          {{ tr('Supervise municipal department officers, department assignments, and grievance triage oversight.') }}
         </p>
       </div>
       <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
         <button type="button" onclick="openModal('addOfficerModal')" class="btn btn-primary btn-sm">
-          <i data-lucide="user-plus" class="icon-sm"></i> Add New Officer
+          <i data-lucide="user-plus" class="icon-sm"></i> {{ tr('Add New Officer') }}
         </button>
         <a href="{{ url_for('admin.departments') }}" class="btn btn-secondary btn-sm">
-          <i data-lucide="building-2" class="icon-sm"></i> Manage Departments
+          <i data-lucide="building-2" class="icon-sm"></i> {{ tr('Manage Departments') }}
         </a>
       </div>
     </div>
@@ -32,9 +34,11 @@
     <!-- Search Bar -->
     <div class="card" style="padding: 1rem; margin-bottom: 1.5rem; box-shadow: none;">
       <form method="GET" action="{{ url_for('admin.officers') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-        <input type="text" name="search" class="form-control" placeholder="Search officers by name or email..." value="{{ search_query }}" style="flex: 2; min-width: 240px;">
-        <button type="submit" class="btn btn-primary btn-sm">Search</button>
-        <a href="{{ url_for('admin.officers') }}" class="btn btn-secondary btn-sm">Reset</a>
+        <input type="text" name="search" class="form-control"
+          placeholder="{{ tr('Search officers by name or email...') }}" value="{{ search_query }}"
+          style="flex: 2; min-width: 240px;">
+        <button type="submit" class="btn btn-primary btn-sm">{{ tr('Search') }}</button>
+        <a href="{{ url_for('admin.officers') }}" class="btn btn-secondary btn-sm">{{ tr('Reset') }}</a>
       </form>
     </div>
 
@@ -44,93 +48,109 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Officer Name</th>
-              <th>Assigned Department</th>
-              <th>Email</th>
-              <th>Mobile Number</th>
-              <th>Account Status</th>
-              <th>Last Login</th>
-              <th>Action</th>
+              <th>{{ tr('Officer Name') }}</th>
+              <th>{{ tr('Assigned Department') }}</th>
+              <th>{{ tr('Email') }}</th>
+              <th>{{ tr('Mobile Number') }}</th>
+              <th>{{ tr('Account Status') }}</th>
+              <th>{{ tr('Last Login') }}</th>
+              <th>{{ tr('Action') }}</th>
             </tr>
           </thead>
           <tbody>
             {% for o in officers %}
-              <tr>
-                <td>
-                  <strong>{{ o.full_name }}</strong>
-                </td>
-                <td style="font-size: 0.85rem;">
-                  {% if o.department %}
-                    <span class="badge" style="background: var(--bg-subtle); color: var(--civic-blue); font-weight: 700;">
-                      {{ o.department.name }} ({{ o.department.code }})
-                    </span>
-                  {% else %}
-                    <span style="color: var(--text-muted);">Unassigned</span>
-                  {% endif %}
-                </td>
-                <td style="font-size: 0.85rem;">{{ o.email }}</td>
-                <td style="font-size: 0.85rem;">{{ o.mobile_number }}</td>
-                <td>
-                  {% if o.is_active %}
-                    <span class="badge badge-resolved">Active Duty</span>
-                  {% else %}
-                    <span class="badge badge-rejected">Disabled</span>
-                  {% endif %}
-                  {% if o.is_password_reset_required %}
-                    <div style="margin-top: 0.25rem;">
-                      <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.72rem;">
-                        <i data-lucide="clock" class="icon-xs" style="width: 10px; height: 10px;"></i> Pending Reset
-                      </span>
-                    </div>
-                  {% endif %}
-                </td>
-                <td style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">
-                  {{ o.last_login_at | local_time('%Y-%m-%d %H:%M', 'Never') }}
-                </td>
-                <td>
-                  <div style="display: flex; gap: 0.4rem; align-items: center;">
-                    <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;"
-                      data-confirm-title="{{ 'Disable Officer Account' if o.is_active else 'Activate Officer Account' }}"
-                      data-confirm="Are you sure you want to {{ 'disable' if o.is_active else 'activate' }} officer account {{ o.full_name }}?"
-                      data-confirm-btn="{{ 'Disable' if o.is_active else 'Activate' }}"
-                      data-confirm-variant="warning">
-                      <input type="hidden" name="action" value="toggle_status">
-                      <input type="hidden" name="user_id" value="{{ o.id }}">
-                      <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
-                        {{ 'Disable' if o.is_active else 'Activate' }}
-                      </button>
-                    </form>
-                    <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;"
-                      data-confirm-title="Delete Department Officer"
-                      data-confirm="Permanently delete officer account {{ o.full_name }} ({{ o.email }})? All associated records will be removed. This cannot be undone."
-                      data-confirm-btn="Delete Officer"
-                      data-confirm-variant="danger">
-                      <input type="hidden" name="action" value="delete_user">
-                      <input type="hidden" name="user_id" value="{{ o.id }}">
-                      <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
-                        <i data-lucide="trash-2" class="icon-sm"></i> Delete
-                      </button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-            {% else %}
-              <tr>
-                <td colspan="7" style="text-align: center; padding: 3rem 1.5rem;">
-                  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem;">
-                    <div style="width: 52px; height: 52px; border-radius: 50%; background: rgba(59, 130, 246, 0.12); display: flex; align-items: center; justify-content: center; color: var(--civic-blue);">
-                      <i data-lucide="shield-check" style="width: 26px; height: 26px;"></i>
-                    </div>
-                    <h4 style="margin: 0; font-size: 1.1rem; color: var(--text-primary); font-weight: 700;">No Department Officers Registered</h4>
-                    <p style="margin: 0; font-size: 0.88rem; color: var(--text-muted); max-width: 420px; line-height: 1.5;">
-                      Assign department leaders to manage civic grievances, oversee workload triage, and dispatch field technicians.
-                    </p>
-                    <button type="button" onclick="openModal('addOfficerModal')" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">
-                      <i data-lucide="user-plus" class="icon-sm"></i> Add First Officer
+            <tr>
+              <td>
+                <strong>{{ o.full_name }}</strong>
+              </td>
+              <td style="font-size: 0.85rem;">
+                {% if o.department %}
+                <span class="badge" style="background: var(--bg-subtle); color: var(--civic-blue); font-weight: 700;">
+                  {{ td(o.department.name) }} ({{ o.department.code }})
+                </span>
+                {% else %}
+                <span style="color: var(--text-muted);">{{ tr('Unassigned') }}</span>
+                {% endif %}
+              </td>
+              <td style="font-size: 0.85rem;">{{ o.email }}</td>
+              <td style="font-size: 0.85rem;">{{ o.mobile_number }}</td>
+              <td>
+                {% if o.is_active %}
+                <span class="badge badge-resolved">{{ tr('Active Duty') }}</span>
+                {% else %}
+                <span class="badge badge-rejected">{{ tr('Disabled') }}</span>
+                {% endif %}
+                {% if o.is_password_reset_required %}
+                <div style="margin-top: 0.25rem;">
+                  <span class="badge"
+                    style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.72rem;">
+                    <i data-lucide="clock" class="icon-xs" style="width: 10px; height: 10px;"></i> {{ tr('Pending
+                    Reset') }}
+                  </span>
+                </div>
+                {% endif %}
+              </td>
+              <td style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">
+                {{ o.last_login_at | local_time('%Y-%m-%d %H:%M', 'Never') }}
+              </td>
+              <td>
+                <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                  <button type="button" class="btn btn-secondary btn-sm"
+                    style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="openAdminEditUserModal(this)"
+                    data-user-id="{{ o.id }}" data-full-name="{{ o.full_name }}" data-email="{{ o.email }}"
+                    data-mobile="{{ o.mobile_number }}" data-role="officer" data-dept-id="{{ o.department_id or '' }}"
+                    data-active="{{ '1' if o.is_active else '0' }}">
+                    {{ tr('Edit') }}
+                  </button>
+                  <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;"
+                    data-confirm-title="{{ tr('Disable Officer Account' if o.is_active else 'Activate Officer Account') }}"
+                    data-confirm="{{ dt('Are you sure you want to ' ~ ('disable' if o.is_active else 'activate') ~ ' officer account ' ~ o.full_name ~ '?') }}"
+                    data-confirm-btn="{{ tr('Disable' if o.is_active else 'Activate') }}"
+                    data-confirm-variant="warning">
+                    <input type="hidden" name="action" value="toggle_status">
+                    <input type="hidden" name="user_id" value="{{ o.id }}">
+                    <button type="submit" class="btn btn-secondary btn-sm"
+                      style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
+                      {{ tr('Disable' if o.is_active else 'Activate') }}
                     </button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin.users') }}" style="display: inline;"
+                    data-confirm-title="{{ tr('Delete Department Officer') }}"
+                    data-confirm="{{ dt('Permanently delete officer account ' ~ o.full_name ~ ' (' ~ o.email ~ ')? All associated records will be removed. This cannot be undone.') }}"
+                    data-confirm-btn="{{ tr('Delete Officer') }}" data-confirm-variant="danger">
+                    <input type="hidden" name="action" value="delete_user">
+                    <input type="hidden" name="user_id" value="{{ o.id }}">
+                    <button type="submit" class="btn btn-danger btn-sm"
+                      style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
+                      <i data-lucide="trash-2" class="icon-sm"></i> {{ tr('Delete') }}
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 3rem 1.5rem;">
+                <div
+                  style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem;">
+                  <div
+                    style="width: 52px; height: 52px; border-radius: 50%; background: rgba(59, 130, 246, 0.12); display: flex; align-items: center; justify-content: center; color: var(--civic-blue);">
+                    <i data-lucide="shield-check" style="width: 26px; height: 26px;"></i>
                   </div>
-                </td>
-              </tr>
+                  <h4 style="margin: 0; font-size: 1.1rem; color: var(--text-primary); font-weight: 700;">{{ tr('No
+                    Department Officers Registered') }}</h4>
+                  <p
+                    style="margin: 0; font-size: 0.88rem; color: var(--text-muted); max-width: 420px; line-height: 1.5;">
+                    {{ tr('Assign department leaders to manage civic grievances, oversee workload triage, and dispatch
+                    field technicians.') }}
+                  </p>
+                  <button type="button" onclick="openModal('addOfficerModal')" class="btn btn-primary btn-sm"
+                    style="margin-top: 0.5rem;">
+                    <i data-lucide="user-plus" class="icon-sm"></i> {{ tr('Add First Officer') }}
+                  </button>
+                </div>
+              </td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -140,65 +160,81 @@
 </div>
 
 <!-- Add Officer Modal -->
-<div id="addOfficerModal" class="modal-overlay {% if modal_open %}show{% endif %}" style="{% if modal_open %}display: flex;{% endif %}">
+<div id="addOfficerModal" class="modal-overlay {% if modal_open %}show{% endif %}"
+  style="{% if modal_open %}display: flex;{% endif %}">
   <div class="modal-dialog card" style="max-width: 500px; margin: auto; padding: 2rem; position: relative;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-      <h3 style="font-size: 1.25rem; font-weight: 700;">Add Department Officer</h3>
-      <button type="button" onclick="closeModal('addOfficerModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      <h3 style="font-size: 1.25rem; font-weight: 700;">{{ tr('Add Department Officer') }}</h3>
+      <button type="button" onclick="closeModal('addOfficerModal')"
+        style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
     </div>
 
-    <div id="addOfficerErrorAlert" class="alert alert-danger" style="display: {% if modal_open and modal_error %}flex{% else %}none{% endif %}; align-items: center; gap: 0.65rem; margin-bottom: 1.25rem; padding: 0.8rem 1rem; border-radius: var(--radius-md); font-size: 0.88rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5;">
+    <div id="addOfficerErrorAlert" class="alert alert-danger"
+      style="display: {% if modal_open and modal_error %}flex{% else %}none{% endif %}; align-items: center; gap: 0.65rem; margin-bottom: 1.25rem; padding: 0.8rem 1rem; border-radius: var(--radius-md); font-size: 0.88rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5;">
       <i data-lucide="alert-circle" class="icon-sm" style="flex-shrink: 0; color: #ef4444;"></i>
-      <span id="addOfficerErrorMessage">{{ modal_error if modal_error else '' }}</span>
+      <span id="addOfficerErrorMessage">{{ dt(modal_error) if modal_error else '' }}</span>
     </div>
 
     <form id="addOfficerForm" method="POST" action="{{ url_for('admin.officers') }}" data-custom-ajax="1" novalidate>
       <input type="hidden" name="action" value="add_officer">
 
       <div class="form-group">
-        <label class="form-label required">Officer Full Name</label>
-        <input type="text" name="full_name" class="form-control" value="{{ form_data.full_name if form_data else '' }}" required placeholder="e.g. Suresh Raman">
+        <label class="form-label required">{{ tr('Officer Full Name') }}</label>
+        <input type="text" name="full_name" class="form-control" value="{{ form_data.full_name if form_data else '' }}"
+          required placeholder="{{ tr('e.g. Suresh Raman') }}">
       </div>
 
       <div class="form-group">
-        <label class="form-label required">Official Email Address</label>
-        <input type="email" name="email" class="form-control" value="{{ form_data.email if form_data else '' }}" required placeholder="e.g. officer.water@civic.gov" style="{% if modal_error_field in ['email', 'both'] %}border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);{% endif %}">
+        <label class="form-label required">{{ tr('Official Email Address') }}</label>
+        <input type="email" name="email" class="form-control" value="{{ form_data.email if form_data else '' }}"
+          required placeholder="e.g. officer.water@civic.gov"
+          style="{% if modal_error_field in ['email', 'both'] %}border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);{% endif %}">
       </div>
 
       <div class="form-group">
-        <label class="form-label required">Mobile Number</label>
-        <input type="tel" name="mobile" class="form-control" value="{{ form_data.mobile if form_data else '' }}" required placeholder="e.g. 9840123456" inputmode="numeric" maxlength="15" style="{% if modal_error_field in ['mobile', 'both'] %}border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);{% endif %}">
+        <label class="form-label required">{{ tr('Mobile Number') }}</label>
+        <input type="tel" name="mobile" class="form-control" value="{{ form_data.mobile if form_data else '' }}"
+          required placeholder="{{ tr('e.g. 9840123456') }}" inputmode="numeric" maxlength="15"
+          style="{% if modal_error_field in ['mobile', 'both'] %}border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);{% endif %}">
       </div>
 
       <div class="form-group">
-        <label class="form-label required">Assigned Civic Department</label>
+        <label class="form-label required">{{ tr('Assigned Civic Department') }}</label>
         <select name="department_id" class="form-control" required>
-          <option value="">-- Select Municipal Department --</option>
+          <option value="">{{ tr('-- Select Municipal Department --') }}</option>
           {% for d in departments %}
-            <option value="{{ d.id }}" {% if form_data and form_data.department_id|string == d.id|string %}selected{% endif %}>{{ d.name }} ({{ d.code }})</option>
+          <option value="{{ d.id }}" {% if form_data and form_data.department_id|string==d.id|string %}selected{% endif
+            %}>{{ td(d.name) }} ({{ d.code }})</option>
           {% endfor %}
         </select>
       </div>
 
       <div class="form-group">
-        <label class="form-label required">Initial Access Password</label>
-        <div class="password-input-wrapper" style="position: relative; display: flex; align-items: center; width: 100%;">
-          <input type="password" name="password" id="modalOfficerPassword" class="form-control" value="{{ form_data.password if form_data else 'Welcome@123' }}" required minlength="6" placeholder="Enter initial password" style="padding-right: 2.75rem;">
-          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" aria-label="Show password" aria-pressed="false" title="Show or hide password" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; padding: 0.25rem; z-index: 5;">
-            <svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <label class="form-label required">{{ tr('Initial Access Password') }}</label>
+        <div class="password-input-wrapper"
+          style="position: relative; display: flex; align-items: center; width: 100%;">
+          <input type="password" name="password" id="modalOfficerPassword" class="form-control"
+            value="{{ form_data.password if form_data else 'Welcome@123' }}" required minlength="6"
+            placeholder="{{ tr('Enter initial password') }}" style="padding-right: 2.75rem;">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)"
+            aria-label="{{ tr('Show password') }}" aria-pressed="false" title="{{ tr('Show or hide password') }}"
+            style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; padding: 0.25rem; z-index: 5;">
+            <svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
               <circle cx="12" cy="12" r="3"></circle>
             </svg>
           </button>
         </div>
         <span class="form-hint" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
-          The officer will be required to reset this password upon their first login.
+          {{ tr('The officer will be required to reset this password upon their first login.') }}
         </span>
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
-        <button type="button" onclick="closeModal('addOfficerModal')" class="btn btn-secondary">Cancel</button>
-        <button type="submit" class="btn btn-primary">Create Officer</button>
+        <button type="button" onclick="closeModal('addOfficerModal')" class="btn btn-secondary">{{ tr('Cancel')
+          }}</button>
+        <button type="submit" class="btn btn-primary">{{ tr('Create Officer') }}</button>
       </div>
     </form>
   </div>
@@ -217,13 +253,84 @@
     {% if modal_open and modal_error %}
     if (window.showPersistentAlertPopup) {
       window.showPersistentAlertPopup({
-        title: {{ (modal_error_title or 'Duplicate Account Details') | tojson }},
-        message: {{ modal_error | tojson }},
+        title: {{ dt(modal_error_title or 'Duplicate Account Details') | tojson }},
+        message: {{ dt(modal_error) | tojson }},
         variant: 'danger',
-        closeText: 'Close'
+        closeText: {{ tr('Close') | tojson }}
       });
     }
-    {% endif %}
+  {% endif %}
   });
 </script>
+
+<!-- Edit Officer Modal -->
+<div id="editUserModal" class="modal-overlay">
+  <div class="modal-dialog card" style="max-width: 500px; margin: auto; padding: 2rem; position: relative;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <h3 style="font-size: 1.25rem; font-weight: 700;">{{ tr('Edit Department Officer') }}</h3>
+      <button type="button" onclick="closeModal('editUserModal')"
+        style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+    <div id="editUserErrorAlert" class="alert alert-danger"
+      style="display: none; align-items: center; gap: 0.65rem; margin-bottom: 1rem; padding: 0.8rem 1rem; border-radius: var(--radius-md); font-size: 0.88rem;">
+      <i data-lucide="alert-circle" class="icon-sm"></i>
+      <span id="editUserErrorMessage"></span>
+    </div>
+    <form id="editUserForm" method="POST" action="{{ url_for('admin.users') }}" data-custom-ajax="1" novalidate>
+      <input type="hidden" name="action" value="edit_user">
+      <input type="hidden" name="user_id" id="editUserId">
+      <input type="hidden" name="role" id="editUserRole" value="officer">
+      <div class="form-group">
+        <label class="form-label required">{{ tr('Officer Full Name') }}</label>
+        <input type="text" name="full_name" id="editUserFullName" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label required">{{ tr('Email Address') }}</label>
+        <input type="email" name="email" id="editUserEmail" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label required">{{ tr('Mobile Number') }}</label>
+        <input type="tel" name="mobile" id="editUserMobile" class="form-control" required maxlength="15">
+      </div>
+      <div class="form-group" id="editUserDeptGroup">
+        <label class="form-label required">{{ tr('Assigned Civic Department') }}</label>
+        <select name="department_id" id="editUserDept" class="form-control" required>
+          <option value="">{{ tr('-- Select Department --') }}</option>
+          {% for d in departments %}
+          <option value="{{ d.id }}">{{ td(d.name) }} ({{ d.code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">{{ tr('Account Status') }}</label>
+        <select name="account_status" id="editUserStatus" class="form-control">
+          <option value="active">{{ tr('Active') }}</option>
+          <option value="inactive">{{ tr('Disabled') }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">{{ tr('New Password (Optional)') }}</label>
+        <div class="password-input-wrapper"
+          style="position: relative; display: flex; align-items: center; width: 100%;">
+          <input type="password" name="password" id="editUserPassword" class="form-control"
+            placeholder="{{ tr('Leave blank to keep existing password') }}" style="padding-right: 2.75rem;">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)"
+            aria-label="{{ tr('Show password') }}" aria-pressed="false" title="{{ tr('Show password') }}"
+            style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; padding: 0.25rem; z-index: 5;">
+            <svg class="icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
+        <button type="button" onclick="closeModal('editUserModal')" class="btn btn-secondary">{{ tr('Cancel')
+          }}</button>
+        <button type="submit" class="btn btn-primary">{{ tr('Save Officer') }}</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
