@@ -1785,18 +1785,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Global Back Navigation Button Handler + Auto Injection for Dashboard Pages Without One
+  // Global Back Navigation & Consistent Top-Right Refresh Action Bar across ALL pages and roles
+  function createGlobalRefreshButton() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-secondary btn-sm global-refresh-btn';
+    btn.setAttribute('data-global-refresh', '');
+    btn.setAttribute('title', 'Refresh current page');
+    btn.setAttribute('aria-label', 'Refresh current page');
+    btn.innerHTML = '<i data-lucide="refresh-cw" class="icon-xs global-refresh-icon"></i><span class="global-refresh-label">Refresh</span>';
+    return btn;
+  }
+
+  window.performGlobalRefresh = function(triggerBtn) {
+    if (window.__scfRefreshInFlight) return;
+    window.__scfRefreshInFlight = true;
+
+    document.querySelectorAll('[data-global-refresh]').forEach(btn => {
+      btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
+      btn.classList.add('is-refreshing');
+      const label = btn.querySelector('.global-refresh-label');
+      if (label) label.textContent = 'Refreshing...';
+    });
+
+    if (triggerBtn && triggerBtn.classList) {
+      triggerBtn.classList.add('is-refreshing');
+    }
+
+    try {
+      sessionStorage.setItem('scf_nav_transition', '1');
+      sessionStorage.setItem('scf_refresh_scroll', JSON.stringify({
+        url: window.location.href,
+        y: window.scrollY || 0
+      }));
+    } catch (_) {}
+
+    if (window.showPageLoader) {
+      window.showPageLoader('Refreshing...', 0, false);
+    }
+
+    // Use GET navigation when no hash is present so browsers never re-submit stale POST payloads
+    if (!window.location.hash) {
+      window.location.assign(window.location.href);
+    } else {
+      window.location.reload();
+    }
+  };
+
   window.ensureDashboardBackBar = function() {
     const dashContent = document.querySelector('.dashboard-content');
-    if (dashContent && !dashContent.querySelector('[data-back-nav]')) {
-      const hasExistingBackLink = Array.from(dashContent.querySelectorAll('a, button')).some(el => {
+    let iconsChanged = false;
+
+    if (dashContent) {
+      let bar = dashContent.querySelector('.page-back-bar');
+      const hasBackNav = Boolean(dashContent.querySelector('[data-back-nav]'));
+      const hasExistingBackLink = hasBackNav || Array.from(dashContent.querySelectorAll('a, button')).some(el => {
         const txt = (el.textContent || '').trim().toLowerCase();
         return txt.startsWith('← back') || txt.includes('back to ');
       });
-      if (!hasExistingBackLink) {
+
+      if (!bar && !hasExistingBackLink) {
         const roleMatch = window.location.pathname.match(/^\/(admin|citizen|officer|worker)\//);
         const fallbackUrl = roleMatch ? `/${roleMatch[1]}/dashboard` : '/';
-        const bar = document.createElement('div');
+        bar = document.createElement('div');
         bar.className = 'page-back-bar';
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -1805,12 +1857,48 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.setAttribute('data-fallback-url', fallbackUrl);
         btn.innerHTML = '<i data-lucide="arrow-left" class="icon-xs"></i><span>Back</span>';
         bar.appendChild(btn);
+        bar.appendChild(createGlobalRefreshButton());
         dashContent.insertBefore(bar, dashContent.firstChild);
-        if (window.lucide) lucide.createIcons();
+        iconsChanged = true;
+      } else if (bar && !bar.querySelector('[data-global-refresh]')) {
+        bar.appendChild(createGlobalRefreshButton());
+        iconsChanged = true;
+      } else if (!dashContent.querySelector('[data-global-refresh]')) {
+        const refreshBar = document.createElement('div');
+        refreshBar.className = 'page-back-bar page-refresh-only-bar';
+        refreshBar.appendChild(createGlobalRefreshButton());
+        dashContent.insertBefore(refreshBar, dashContent.firstChild);
+        iconsChanged = true;
       }
+    } else if (!document.querySelector('[data-global-refresh]')) {
+      const mainEl = document.querySelector('.main-content') || document.body;
+      if (mainEl) {
+        const fallbackBar = document.createElement('div');
+        fallbackBar.className = 'page-back-bar page-refresh-only-bar container';
+        fallbackBar.style.marginTop = '1rem';
+        fallbackBar.appendChild(createGlobalRefreshButton());
+        mainEl.insertBefore(fallbackBar, mainEl.firstChild);
+        iconsChanged = true;
+      }
+    }
+
+    if (iconsChanged && window.lucide) {
+      lucide.createIcons();
     }
   };
   window.ensureDashboardBackBar();
+
+  // Restore scroll position cleanly after a global Refresh click on the same URL
+  try {
+    const savedScrollRaw = sessionStorage.getItem('scf_refresh_scroll');
+    if (savedScrollRaw) {
+      sessionStorage.removeItem('scf_refresh_scroll');
+      const savedScroll = JSON.parse(savedScrollRaw);
+      if (savedScroll && savedScroll.url === window.location.href && typeof savedScroll.y === 'number' && savedScroll.y > 0) {
+        requestAnimationFrame(() => window.scrollTo(0, savedScroll.y));
+      }
+    }
+  } catch (_) {}
 
   // Smooth destination page reveal AFTER layout, Back bar, theme, and icons are completely ready
   if (document.documentElement.classList.contains('scf-page-entering')) {
@@ -1832,6 +1920,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   document.addEventListener('click', (e) => {
+    const refreshBtn = e.target.closest('[data-global-refresh]');
+    if (refreshBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.performGlobalRefresh(refreshBtn);
+      return;
+    }
+
     const backBtn = e.target.closest('[data-back-nav]');
     if (!backBtn) return;
     e.preventDefault();
@@ -1841,11 +1937,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Restore button & loader states cleanly when returning via browser history (bfcache)
   window.addEventListener('pageshow', () => {
+    window.__scfRefreshInFlight = false;
     if (window.hidePageLoader) window.hidePageLoader();
     document.documentElement.classList.remove('scf-page-entering');
     document.querySelectorAll('button.btn-loading, input.btn-loading').forEach(btn => {
       btn.classList.remove('btn-loading');
       btn.disabled = false;
+    });
+    document.querySelectorAll('[data-global-refresh]').forEach(btn => {
+      btn.disabled = false;
+      btn.removeAttribute('aria-busy');
+      btn.classList.remove('is-refreshing');
+      const label = btn.querySelector('.global-refresh-label');
+      if (label) label.textContent = 'Refresh';
     });
   });
 

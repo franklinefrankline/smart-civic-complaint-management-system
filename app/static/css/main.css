@@ -4625,11 +4625,18 @@ textarea.form-control {
   }
 }
 
-/* Global Page Back Navigation Button */
+/* Global Page Back Navigation & Refresh Action Bar */
 .page-back-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   margin-bottom: 1.25rem;
+}
+
+.page-back-bar.page-refresh-only-bar {
+  justify-content: flex-end;
 }
 
 .page-back-btn {
@@ -4639,6 +4646,52 @@ textarea.form-control {
   font-weight: 600;
   padding: 0.45rem 0.9rem;
   border-radius: var(--radius-sm);
+}
+
+.global-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-sm);
+  margin-left: auto;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.global-refresh-btn:disabled,
+.global-refresh-btn.is-refreshing {
+  opacity: 0.75;
+  cursor: wait;
+}
+
+.global-refresh-btn.is-refreshing .global-refresh-icon {
+  animation: scfSpinRefresh 0.7s linear infinite;
+}
+
+@keyframes scfSpinRefresh {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.nav-actions .nav-refresh-btn {
+  height: 38px;
+  min-height: 38px;
+  padding: 0 0.75rem;
+  margin-left: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1100px) {
+  .nav-actions .nav-refresh-btn {
+    width: 38px;
+    min-width: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+  .nav-actions .nav-refresh-label {
+    display: none;
+  }
 }
 
 @media (max-width: 900px) {
