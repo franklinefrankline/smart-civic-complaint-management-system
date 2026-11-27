@@ -296,7 +296,7 @@ def create_app(config_name=None):
                 return resp
 
     @app.after_request
-    def apply_cors_headers(response):
+    def apply_cors_and_compression(response):
         origin = request.headers.get('Origin', '').rstrip('/')
         allowed = app.config.get('CORS_ALLOWED_ORIGINS', [])
         if origin and origin in allowed:
@@ -305,6 +305,26 @@ def create_app(config_name=None):
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
             response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept'
             response.headers['Vary'] = 'Origin'
+
+        # Fast built-in Gzip compression for HTML/JSON payloads to cut Vercel <-> Render latency
+        if (
+            not response.direct_passthrough
+            and response.status_code == 200
+            and 'Content-Encoding' not in response.headers
+            and 'gzip' in (request.headers.get('Accept-Encoding', '').lower())
+            and (response.mimetype in ('text/html', 'application/json', 'text/plain', 'text/css', 'application/javascript', 'image/svg+xml'))
+        ):
+            data = response.get_data()
+            if data and len(data) > 1024:
+                import gzip
+                compressed = gzip.compress(data, compresslevel=4)
+                if len(compressed) < len(data):
+                    response.set_data(compressed)
+                    response.headers['Content-Encoding'] = 'gzip'
+                    response.headers['Content-Length'] = str(len(compressed))
+                    existing_vary = response.headers.get('Vary', '')
+                    if 'Accept-Encoding' not in existing_vary:
+                        response.headers['Vary'] = f"{existing_vary}, Accept-Encoding".strip(', ')
         return response
 
     # Context processor for templates
@@ -316,9 +336,13 @@ def create_app(config_name=None):
         def t(key, default=None):
             return get_translation(key, current_lang, default)
 
-        if request.path.startswith(('/api/', '/static/', '/health', '/uploads/', '/proofs/')):
+        is_partial_swap = (
+            request.headers.get('X-Async-Partial') == '1'
+            or request.headers.get('X-Live-Refresh') == '1'
+        )
+        if request.path.startswith(('/api/', '/static/', '/health', '/uploads/', '/proofs/')) or is_partial_swap:
             return dict(
-                current_user=None,
+                current_user=getattr(g, 'user', None) if is_partial_swap else None,
                 current_lang=current_lang,
                 t=t,
                 unread_notifications_count=0,

@@ -165,6 +165,18 @@ class GlobalRefreshButtonTestCase(unittest.TestCase):
             self.assertEqual(sess.get('user_id'), self.admin.id)
             self.assertEqual(sess.get('user_role'), 'admin')
 
+        # Verify gzip compression & X-Async-Partial refresh endpoint performance headers
+        import gzip as _gzip
+        gz_res = admin_client.get(
+            '/admin/complaints?status=Submitted',
+            headers={'Accept-Encoding': 'gzip', 'X-Async-Partial': '1'},
+        )
+        self.assertEqual(gz_res.status_code, 200)
+        self.assertEqual(gz_res.headers.get('Content-Encoding'), 'gzip')
+        decompressed = _gzip.decompress(gz_res.data).decode('utf-8')
+        self.assertIn('CMP-REFRESH-999', decompressed)
+        self.assertIn('dashboard-content', decompressed)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -958,7 +958,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     clearTimeout(loaderDelayTimer);
-    const delay = typeof delayMs === 'number' ? delayMs : 150;
+    const delay = typeof delayMs === 'number' ? delayMs : 260;
     if (delay > 0) {
       loaderDelayTimer = setTimeout(activate, delay);
     } else {
@@ -1009,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch(fetchUrl, {
         credentials: 'include',
+        cache: 'no-store',
         headers: { 'X-Async-Partial': '1' },
         signal: controller.signal
       });
@@ -1797,35 +1798,61 @@ document.addEventListener('DOMContentLoaded', () => {
     return btn;
   }
 
-  window.performGlobalRefresh = function(triggerBtn) {
+  window.performGlobalRefresh = async function(triggerBtn) {
     if (window.__scfRefreshInFlight) return;
     window.__scfRefreshInFlight = true;
 
-    document.querySelectorAll('[data-global-refresh]').forEach(btn => {
-      btn.disabled = true;
-      btn.setAttribute('aria-busy', 'true');
-      btn.classList.add('is-refreshing');
-      const label = btn.querySelector('.global-refresh-label');
-      if (label) label.textContent = 'Refreshing...';
-    });
+    const setRefreshingState = (active) => {
+      document.querySelectorAll('[data-global-refresh]').forEach(btn => {
+        btn.disabled = active;
+        if (active) {
+          btn.setAttribute('aria-busy', 'true');
+          btn.classList.add('is-refreshing');
+        } else {
+          btn.removeAttribute('aria-busy');
+          btn.classList.remove('is-refreshing');
+        }
+        const label = btn.querySelector('.global-refresh-label');
+        if (label) label.textContent = active ? 'Refreshing...' : 'Refresh';
+      });
+    };
 
+    setRefreshingState(true);
     if (triggerBtn && triggerBtn.classList) {
       triggerBtn.classList.add('is-refreshing');
     }
 
+    // Fast in-place refresh on dashboard pages without tearing down CSS/JS/Charts/session
+    const dashContent = document.querySelector('.dashboard-content');
+    const hasInlineChartCanvas = Boolean(dashContent && dashContent.querySelector('canvas'));
     try {
-      sessionStorage.setItem('scf_nav_transition', '1');
+      if (typeof window.refreshAdminAnalytics === 'function') {
+        await window.refreshAdminAnalytics();
+        if (window.refreshLiveNotifications) window.refreshLiveNotifications();
+        setRefreshingState(false);
+        window.__scfRefreshInFlight = false;
+        return;
+      }
+
+      if (dashContent && !hasInlineChartCanvas && window.refreshDashboardContent) {
+        await window.refreshDashboardContent(window.location.href);
+        if (window.refreshLiveNotifications) window.refreshLiveNotifications();
+        setRefreshingState(false);
+        window.__scfRefreshInFlight = false;
+        return;
+      }
+    } catch (_) {
+      // Fall back cleanly to full GET reload below
+    }
+
+    try {
       sessionStorage.setItem('scf_refresh_scroll', JSON.stringify({
         url: window.location.href,
         y: window.scrollY || 0
       }));
     } catch (_) {}
 
-    if (window.showPageLoader) {
-      window.showPageLoader('Refreshing...', 0, false);
-    }
-
-    // Use GET navigation when no hash is present so browsers never re-submit stale POST payloads
+    // Full GET reload (without artificial overlay delay) for public pages or chart pages
     if (!window.location.hash) {
       window.location.assign(window.location.href);
     } else {
@@ -1903,19 +1930,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Smooth destination page reveal AFTER layout, Back bar, theme, and icons are completely ready
   if (document.documentElement.classList.contains('scf-page-entering')) {
     const loaderEl = document.getElementById('globalPageLoader');
-    if (loaderEl) {
-      loaderEl.classList.add('is-active');
-      loaderEl.setAttribute('aria-hidden', 'false');
-    }
     try { sessionStorage.removeItem('scf_nav_transition'); } catch (_) {}
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        document.documentElement.classList.remove('scf-page-entering');
-        if (loaderEl) {
-          loaderEl.classList.remove('is-active');
-          loaderEl.setAttribute('aria-hidden', 'true');
-        }
-      });
+      document.documentElement.classList.remove('scf-page-entering');
+      if (loaderEl) {
+        loaderEl.classList.remove('is-active');
+        loaderEl.setAttribute('aria-hidden', 'true');
+      }
     });
   }
 

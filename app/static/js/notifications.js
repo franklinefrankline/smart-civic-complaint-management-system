@@ -456,6 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (hasAuthSession) {
+    window.refreshLiveNotifications = () => pollLiveUpdatesOnce(true);
     // Defer initial background live-sync so initial page load & interactions never queue behind it
     setTimeout(() => {
       pollLiveUpdatesOnce(true).then(() => {
