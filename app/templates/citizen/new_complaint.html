@@ -99,6 +99,7 @@
 
           <input type="hidden" name="latitude" id="latitudeInput" value="">
           <input type="hidden" name="longitude" id="longitudeInput" value="">
+          <input type="hidden" name="ward_number" id="wardInput" value="{{ current_user.ward_number or '' }}">
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
             <div class="form-group" style="margin-bottom: 0;">
@@ -123,10 +124,8 @@
               <input type="hidden" name="city" id="cityHidden" value="{{ current_user.city or 'Chennai' }}">
             </div>
             <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">Ward Number <span style="color: red;">*</span></label>
-              <select id="wardSelect" class="form-control" required></select>
-              <input type="text" id="wardCustom" class="form-control" placeholder="e.g. Ward 4 / Zone 5" style="display: none; margin-top: 0.45rem;">
-              <input type="hidden" name="ward_number" id="wardInput" value="{{ current_user.ward_number or 'Ward 1' }}">
+              <label class="form-label">PIN Code <span style="color: red;">*</span></label>
+              <input type="text" name="pincode" id="pincodeInput" class="form-control" required placeholder="e.g. 600017" pattern="[0-9]{6}" maxlength="6" inputmode="numeric">
             </div>
           </div>
 
@@ -137,19 +136,14 @@
             </div>
             <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">Area or Locality <span style="color: red;">*</span></label>
-              <input type="text" name="locality" id="localityInput" list="localityOptions" class="form-control" required placeholder="Select or type locality (e.g. T. Nagar)">
-              <datalist id="localityOptions"></datalist>
+              <input type="text" name="locality" id="localityInput" class="form-control" required placeholder="e.g. T. Nagar / Peelamedu">
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
             <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">Landmark (Optional)</label>
               <input type="text" name="landmark" id="landmarkInput" class="form-control" placeholder="e.g. Opposite Post Office / Near Water Tank">
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">PIN Code <span style="color: red;">*</span></label>
-              <input type="text" name="pincode" id="pincodeInput" class="form-control" required placeholder="e.g. 600017" pattern="[0-9]{6}" maxlength="6" inputmode="numeric">
             </div>
           </div>
         </div>
@@ -170,6 +164,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/location.js', v='20261127c') }}" defer></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const categorySelect = document.getElementById('category_id');
@@ -180,257 +175,9 @@
     const latInput = document.getElementById('latitudeInput');
     const lngInput = document.getElementById('longitudeInput');
 
-    // Structured Municipal Location Catalog
-    const LOCATION_DATA = {
-      'Tamil Nadu': {
-        'Chennai': ['Greater Chennai Corporation', 'City Centre', 'Ambattur', 'Avadi', 'Sholinganallur', 'Tiruvottiyur'],
-        'Chengalpattu': ['Tambaram Corporation', 'Chengalpattu Municipality', 'Pallavaram', 'Maraimalai Nagar'],
-        'Kanchipuram': ['Kanchipuram Corporation', 'Sriperumbudur', 'Kundrathur'],
-        'Tiruvallur': ['Avadi Corporation', 'Tiruvallur Municipality', 'Poonamallee', 'Tiruttani'],
-        'Coimbatore': ['Coimbatore Corporation', 'Pollachi', 'Mettupalayam', 'Valparai'],
-        'Madurai': ['Madurai Corporation', 'Melur', 'Thirumangalam'],
-        'Tiruchirappalli': ['Tiruchirappalli Corporation', 'Srirangam', 'Thiruverumbur'],
-        'Salem': ['Salem Corporation', 'Attur', 'Mettur'],
-        'Tirunelveli': ['Tirunelveli Corporation', 'Ambasamudram'],
-        'Vellore': ['Vellore Corporation', 'Gudiyatham', 'Katpadi'],
-        'Erode': ['Erode Corporation', 'Gobichettipalayam', 'Bhavani'],
-        'Thanjavur': ['Thanjavur Corporation', 'Kumbakonam']
-      },
-      'Karnataka': {
-        'Bengaluru Urban': ['BBMP (Bengaluru)', 'Yelahanka', 'Bommanahalli', 'Mahadevapura'],
-        'Mysuru': ['Mysuru City Corporation', 'Nanjangud'],
-        'Mangaluru': ['Mangaluru City Corporation', 'Ullal']
-      },
-      'Kerala': {
-        'Thiruvananthapuram': ['Thiruvananthapuram Corporation', 'Neyyattinkara'],
-        'Ernakulam': ['Kochi Corporation', 'Aluva', 'Kakkanad'],
-        'Kozhikode': ['Kozhikode Corporation', 'Vadakara']
-      },
-      'Andhra Pradesh': {
-        'Visakhapatnam': ['GVMC Visakhapatnam', 'Anakapalle'],
-        'Vijayawada': ['Vijayawada Municipal Corporation']
-      },
-      'Telangana': {
-        'Hyderabad': ['GHMC Hyderabad', 'Secunderabad'],
-        'Rangareddy': ['LB Nagar', 'Shamshabad']
-      },
-      'Maharashtra': {
-        'Mumbai': ['BMC (Greater Mumbai)', 'Bandra', 'Andheri'],
-        'Pune': ['Pune Municipal Corporation', 'Pimpri-Chinchwad']
-      },
-      'Delhi': {
-        'New Delhi': ['NDMC New Delhi', 'MCD Central', 'MCD South']
-      }
-    };
-
-    const CITY_LOCALITIES = {
-      'Greater Chennai Corporation': ['T. Nagar', 'Mylapore', 'Adyar', 'Anna Nagar', 'Velachery', 'Guindy', 'Kodambakkam', 'Triplicane', 'Perambur', 'Nungambakkam', 'Royapettah', 'Besant Nagar'],
-      'City Centre': ['Central Square', 'Park Avenue', 'Anna Salai', 'Egmore', 'Nungambakkam'],
-      'Tambaram Corporation': ['Tambaram East', 'Tambaram West', 'Chromepet', 'Pallavaram', 'Selaiyur'],
-      'Coimbatore Corporation': ['RS Puram', 'Gandhipuram', 'Peelamedu', 'Saibaba Colony', 'Race Course'],
-      'Madurai Corporation': ['Anna Nagar', 'KK Nagar', 'Simmakkal', 'Goripalayam', 'Tallakulam']
-    };
-
-    const stateSelect = document.getElementById('stateSelect');
-    const stateCustom = document.getElementById('stateCustom');
-    const stateHidden = document.getElementById('stateHidden');
-    const districtSelect = document.getElementById('districtSelect');
-    const districtCustom = document.getElementById('districtCustom');
-    const districtHidden = document.getElementById('districtHidden');
-    const citySelect = document.getElementById('citySelect');
-    const cityCustom = document.getElementById('cityCustom');
-    const cityHidden = document.getElementById('cityHidden');
-    const wardSelect = document.getElementById('wardSelect');
-    const wardCustom = document.getElementById('wardCustom');
-    const localityOptions = document.getElementById('localityOptions');
-
-    function populateSelect(selectEl, items, preferredVal, otherLabel) {
-      selectEl.innerHTML = '';
-      items.forEach(item => {
-        const opt = document.createElement('option');
-        opt.value = item;
-        opt.textContent = item;
-        selectEl.appendChild(opt);
-      });
-      const otherOpt = document.createElement('option');
-      otherOpt.value = '__other__';
-      otherOpt.textContent = otherLabel || 'Other (Enter manually)...';
-      selectEl.appendChild(otherOpt);
-
-      if (preferredVal && items.some(i => i.toLowerCase() === preferredVal.toLowerCase())) {
-        const match = items.find(i => i.toLowerCase() === preferredVal.toLowerCase());
-        selectEl.value = match;
-        return false;
-      } else if (preferredVal && preferredVal.trim() !== '') {
-        selectEl.value = '__other__';
-        return true;
-      } else if (items.length > 0) {
-        selectEl.value = items[0];
-        return false;
-      }
-      return false;
-    }
-
-    function bindFieldSync(selectEl, customEl, hiddenEl, onChangeCallback) {
-      function syncValue() {
-        if (selectEl.value === '__other__') {
-          customEl.style.display = 'block';
-          customEl.required = true;
-          hiddenEl.value = customEl.value.trim();
-        } else {
-          customEl.style.display = 'none';
-          customEl.required = false;
-          hiddenEl.value = selectEl.value;
-        }
-      }
-      selectEl.addEventListener('change', () => {
-        syncValue();
-        if (onChangeCallback) onChangeCallback();
-      });
-      customEl.addEventListener('input', () => {
-        if (selectEl.value === '__other__') {
-          hiddenEl.value = customEl.value.trim();
-        }
-      });
-      return syncValue;
-    }
-
-    function updateLocalities(cityName) {
-      if (!localityOptions) return;
-      const list = CITY_LOCALITIES[cityName] || CITY_LOCALITIES['Greater Chennai Corporation'] || [];
-      localityOptions.innerHTML = list.map(loc => `<option value="${loc}">`).join('');
-    }
-
-    function refreshDistricts(preferredDistrict, preferredCity) {
-      const st = stateSelect.value;
-      const districts = (LOCATION_DATA[st] && Object.keys(LOCATION_DATA[st])) || [];
-      const useCustomDist = populateSelect(districtSelect, districts, preferredDistrict, 'Other District...');
-      if (useCustomDist) {
-        districtCustom.value = preferredDistrict;
-      }
-      syncDistrict();
-      refreshCities(preferredCity);
-    }
-
-    function refreshCities(preferredCity) {
-      const st = stateSelect.value;
-      const dist = districtSelect.value;
-      const cities = (LOCATION_DATA[st] && LOCATION_DATA[st][dist]) || [];
-      const useCustomCity = populateSelect(citySelect, cities, preferredCity, 'Other City / Municipality...');
-      if (useCustomCity) {
-        cityCustom.value = preferredCity;
-      }
-      syncCity();
-      updateLocalities(cityHidden.value);
-    }
-
-    const syncState = bindFieldSync(stateSelect, stateCustom, stateHidden, () => {
-      refreshDistricts(null, null);
-    });
-    const syncDistrict = bindFieldSync(districtSelect, districtCustom, districtHidden, () => {
-      refreshCities(null);
-    });
-    const syncCity = bindFieldSync(citySelect, cityCustom, cityHidden, () => {
-      updateLocalities(cityHidden.value);
-    });
-    const syncWard = bindFieldSync(wardSelect, wardCustom, wardInput, () => {
-      checkDuplicates();
-    });
-    wardCustom.addEventListener('blur', checkDuplicates);
-
-    // Initialize cascading options
-    if (stateSelect && districtSelect && citySelect && wardSelect) {
-      const states = Object.keys(LOCATION_DATA);
-      populateSelect(stateSelect, states, 'Tamil Nadu', 'Other State...');
-      syncState();
-
-      const initialCity = cityHidden.value || 'City Centre';
-      refreshDistricts('Chennai', initialCity);
-
-      const wards = Array.from({ length: 40 }, (_, i) => `Ward ${i + 1}`);
-      const initialWard = wardInput.value || 'Ward 1';
-      const normalizedWard = /^\d+$/.test(initialWard.trim()) ? `Ward ${initialWard.trim()}` : initialWard;
-      const useCustomWard = populateSelect(wardSelect, wards, normalizedWard, 'Other Ward / Zone...');
-      if (useCustomWard) {
-        wardCustom.value = initialWard;
-      }
-      syncWard();
-    }
-
-    // Current GPS Location Detector (No Maps)
-    const detectBtn = document.getElementById('detectLocationBtn');
-    const gpsStatusText = document.getElementById('gpsStatusText');
-    const streetInput = document.getElementById('streetInput');
-    const pincodeInput = document.getElementById('pincodeInput');
-
-    if (detectBtn) {
-      detectBtn.addEventListener('click', () => {
-        if (!navigator.geolocation) {
-          if (window.showToast) window.showToast('Geolocation is not supported by your browser.', 'warning');
-          return;
-        }
-        const origHtml = detectBtn.innerHTML;
-        detectBtn.disabled = true;
-        detectBtn.innerHTML = 'Detecting location...';
-
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            const lat = pos.coords.latitude.toFixed(6);
-            const lng = pos.coords.longitude.toFixed(6);
-            if (latInput) latInput.value = lat;
-            if (lngInput) lngInput.value = lng;
-            if (gpsStatusText) {
-              gpsStatusText.textContent = `GPS Coordinates Captured: ${lat}, ${lng}`;
-              gpsStatusText.style.display = 'block';
-              gpsStatusText.style.color = '#16a34a';
-            }
-
-            try {
-              const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
-              if (resp.ok) {
-                const geo = await resp.json();
-                const addr = geo.address || {};
-                const detState = addr.state;
-                const detDist = (addr.state_district || addr.county || '').replace(/\s*District$/i, '').trim();
-                const detCity = addr.city || addr.town || addr.municipality || '';
-                const detLocality = addr.suburb || addr.neighbourhood || addr.quarter || addr.village || '';
-                const detStreet = [addr.house_number, addr.road].filter(Boolean).join(' ');
-                const detPin = addr.postcode ? addr.postcode.replace(/\D/g, '').slice(0, 6) : '';
-
-                if (detState) {
-                  const states = Object.keys(LOCATION_DATA);
-                  const customSt = populateSelect(stateSelect, states, detState, 'Other State...');
-                  if (customSt) stateCustom.value = detState;
-                  syncState();
-                  refreshDistricts(detDist || null, detCity || null);
-                }
-                if (detStreet && streetInput && !streetInput.value) streetInput.value = detStreet;
-                if (detLocality && localityInput) localityInput.value = detLocality;
-                if (detPin && detPin.length === 6 && pincodeInput) pincodeInput.value = detPin;
-              }
-            } catch (e) {
-              // GPS coordinates are still captured even if reverse geocoding is offline
-            }
-
-            detectBtn.disabled = false;
-            detectBtn.innerHTML = origHtml;
-            if (window.lucide) lucide.createIcons();
-            if (window.showToast) window.showToast('Current location coordinates captured.', 'success');
-            checkDuplicates();
-          },
-          (err) => {
-            detectBtn.disabled = false;
-            detectBtn.innerHTML = origHtml;
-            if (window.lucide) lucide.createIcons();
-            if (gpsStatusText) {
-              gpsStatusText.textContent = 'Location access denied or unavailable. Please select options below.';
-              gpsStatusText.style.display = 'block';
-              gpsStatusText.style.color = '#d97706';
-            }
-            if (window.showToast) window.showToast('Could not access GPS location: ' + err.message, 'warning');
-          },
-          { enableHighAccuracy: true, timeout: 10000 }
-        );
+    if (window.initCivicLocationSelector) {
+      window.initCivicLocationSelector({
+        onLocationUpdated: checkDuplicates
       });
     }
 

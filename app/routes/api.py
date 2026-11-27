@@ -18,6 +18,7 @@ from app.services.complaint_service import (
 )
 from app.services.notification_service import mark_as_read, mark_all_as_read
 from app.services.sla_service import check_and_escalate_overdue_complaints
+from app.services.location_service import reverse_geocode_coordinates
 from app.utils.decorators import login_required
 
 api_bp = Blueprint('api', __name__)
@@ -66,6 +67,24 @@ def admin_analytics_data():
     if g.user.role != 'admin':
         return jsonify({'error': 'Administrator access required.'}), 403
     return jsonify(build_admin_analytics_payload())
+
+@api_bp.route('/reverse-geocode', methods=['GET'])
+@login_required
+def reverse_geocode():
+    """Reverse-geocode GPS coordinates into normalized Indian administrative address fields."""
+    try:
+        lat = float(request.args.get('lat', ''))
+        lng = float(request.args.get('lng', ''))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'message': 'Valid latitude and longitude coordinates are required.'}), 400
+
+    if not (-90.0 <= lat <= 90.0) or not (-180.0 <= lng <= 180.0):
+        return jsonify({'success': False, 'message': 'Coordinates are outside valid geographic bounds.'}), 400
+
+    result = reverse_geocode_coordinates(lat, lng)
+    status_code = 200 if result.get('success') else 502
+    return jsonify(result), status_code
+
 
 @api_bp.route('/complaints/locations')
 def complaint_locations():
