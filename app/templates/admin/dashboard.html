@@ -326,7 +326,7 @@
             {{ tr('Field Worker Evidence Photos') }} ({{ worker_evidence_total if worker_evidence_total is defined else (recent_worker_evidence|length if recent_worker_evidence is defined else 0) }})
           </h3>
           <span style="font-size: 0.78rem; color: var(--text-muted);">
-            Pre-work, site progress, and completion proof photos uploaded by field technicians.
+            {{ tr('Pre-work, site progress, and completion proof photos uploaded by field technicians.') }}
           </span>
         </div>
         <a href="{{ url_for('admin.complaints') }}" style="font-size: 0.8rem; font-weight: 600;">{{ tr('All Complaints') }} &rarr;</a>
@@ -381,6 +381,101 @@
       {% else %}
         <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">
           {{ tr('No field worker evidence photos uploaded yet.') }}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Department Officers & Field Workers Added Details -->
+    <div id="officerAddedWorkersCard" class="card" style="box-shadow: none; margin-top: 1.25rem; border-top: 3px solid #6366f1;">
+      <div class="card-header" style="margin-bottom: 0.85rem; padding-bottom: 0.6rem;">
+        <div>
+          <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="hard-hat" class="icon-sm" style="color: #6366f1;"></i>
+            {{ tr('Department Officers & Field Workers') }} ({{ officer_workers_details|length if officer_workers_details is defined else 0 }})
+          </h3>
+          <span style="font-size: 0.78rem; color: var(--text-muted);">
+            {{ tr('Field workers registered by Department Officers and municipal administrators, including contact, department, and duty status.') }}
+          </span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          {% if officer_added_count is defined and officer_added_count > 0 %}
+            <span class="badge badge-assigned" style="font-size: 0.75rem;">
+              {{ officer_added_count }} {{ tr('Added by Officer') }}
+            </span>
+          {% endif %}
+          <a href="{{ url_for('admin.workers') }}" style="font-size: 0.8rem; font-weight: 600;">{{ tr('Worker Management') }} &rarr;</a>
+        </div>
+      </div>
+
+      {% if officer_workers_details is defined and officer_workers_details %}
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>{{ tr('Worker & Employee ID') }}</th>
+                <th>{{ tr('Department') }}</th>
+                <th>{{ tr('Contact Details') }}</th>
+                <th>{{ tr('Added By (Officer)') }}</th>
+                <th>{{ tr('Availability') }}</th>
+                <th>{{ tr('Current Workload') }}</th>
+                <th>{{ tr('Registered') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in officer_workers_details %}
+                {% set w = item.worker %}
+                <tr>
+                  <td>
+                    <div style="font-weight: 700; color: var(--text-primary);">{{ w.user.full_name if w.user else 'Field Worker' }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                      {% if w.employee_id %}<span style="font-family: monospace; color: var(--civic-blue); font-weight: 600;">{{ w.employee_id }}</span> &bull; {% endif %}
+                      {{ w.designation or tr('Field Technician') }}
+                    </div>
+                  </td>
+                  <td style="font-size: 0.84rem;">
+                    <span class="badge" style="background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--civic-blue); font-weight: 600;">
+                      {{ td(w.department.name) if w.department else tr('Unassigned') }}
+                    </span>
+                  </td>
+                  <td style="font-size: 0.82rem;">
+                    {% if w.user %}
+                      <div>{{ w.user.email }}</div>
+                      <div style="font-size: 0.74rem; color: var(--text-muted);">{{ w.user.mobile_number }}</div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div style="font-weight: 600; font-size: 0.84rem; color: var(--text-primary);">{{ item.added_by_name }}</div>
+                    {% if item.is_officer_added %}
+                      <span class="badge badge-assigned" style="font-size: 0.68rem;">{{ tr('Department Officer') }}</span>
+                    {% elif item.added_by_role == 'admin' %}
+                      <span class="badge badge-resolved" style="font-size: 0.68rem;">{{ tr('Administrator') }}</span>
+                    {% else %}
+                      <span class="badge" style="font-size: 0.68rem; background: var(--bg-subtle); color: var(--text-muted);">{{ tr('System Seeded') }}</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if w.user and not w.user.is_active %}
+                      <span class="badge badge-rejected">{{ tr('Inactive') }}</span>
+                    {% elif w.is_available %}
+                      <span class="badge badge-resolved">{{ tr('Available on Duty') }}</span>
+                    {% else %}
+                      <span class="badge badge-in-progress">{{ tr('Unavailable / Busy') }}</span>
+                    {% endif %}
+                  </td>
+                  <td style="font-size: 0.82rem;">
+                    <strong>{{ w.active_task_count or 0 }}</strong> {{ tr('active') }} &bull; {{ w.completed_task_count or 0 }} {{ tr('completed') }}
+                  </td>
+                  <td style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap;">
+                    {{ w.created_at | local_time('%d %b %Y, %I:%M %p') }}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">
+          {{ tr('No field workers registered yet.') }}
         </div>
       {% endif %}
     </div>

@@ -4,14 +4,14 @@
           data-back-nav
           data-fallback-url="{{ back_fallback_url if back_fallback_url is defined else url_for('public.index') }}">
     <i data-lucide="arrow-left" class="icon-xs"></i>
-    <span>Back</span>
+    <span>{{ tr('Back') }}</span>
   </button>
   <button type="button"
           class="btn btn-secondary btn-sm global-refresh-btn"
           data-global-refresh
-          title="Refresh current page"
-          aria-label="Refresh current page">
+          title="{{ tr('Refresh current page') }}"
+          aria-label="{{ tr('Refresh current page') }}">
     <i data-lucide="refresh-cw" class="icon-xs global-refresh-icon"></i>
-    <span class="global-refresh-label">Refresh</span>
+    <span class="global-refresh-label">{{ tr('Refresh') }}</span>
   </button>
 </div>

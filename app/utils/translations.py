@@ -1,156 +1,290 @@
-# Multilingual translation dictionary for English, Tamil, and Hindi
+"""
+Multilingual translation engine backed directly by src/locales/{en,ta,hi}/translation.json.
+Preserves technical identifiers, emails, references, and user-entered values unchanged.
+"""
+import json
+import os
+import re
 
-TRANSLATIONS = {
-    # Brand and Meta
-    'app_name': {
-        'en': 'SCF (Smart Civic Flow)',
-        'ta': 'SCF (ஸ்மார்ட் சிவிக் ஃப்ளோ)',
-        'hi': 'SCF (स्मार्ट सिविक फ्लो)'
-    },
-    'app_subtitle': {
-        'en': 'Smart Civic Flow — Transparent Municipal Grievance & Complaint Resolution',
-        'ta': 'வெளிப்படையான புகார் தீர்வுக்கான பன்மொழி இணையதளம்',
-        'hi': 'पारदर्शी शिकायत निवारण हेतु बहुभाषी वेब पोर्टल'
-    },
-    
-    # Navigation
-    'nav_home': {'en': 'Home', 'ta': 'முகப்பு', 'hi': 'होम'},
-    'nav_about': {'en': 'About', 'ta': 'பற்றி', 'hi': 'परिचय'},
-    'nav_how_it_works': {'en': 'How It Works', 'ta': 'எப்படி செயல்படுகிறது', 'hi': 'यह कैसे काम करता है'},
-    'nav_departments': {'en': 'Departments', 'ta': 'துறைகள்', 'hi': 'विभाग'},
-    'nav_track': {'en': 'Track Complaint', 'ta': 'புகாரைக் கண்காணிக்க', 'hi': 'शिकायत ट्रैक करें'},
-    'nav_contact': {'en': 'Contact', 'ta': 'தொடர்பு', 'hi': 'संपर्क'},
-    'nav_login': {'en': 'Sign In', 'ta': 'உள்நுழைய', 'hi': 'लॉग इन'},
-    'nav_register': {'en': 'Register', 'ta': 'பதிவு செய்', 'hi': 'पंजीकरण'},
-    'nav_dashboard': {'en': 'Dashboard', 'ta': 'டாஷ்போர்டு', 'hi': 'डैशबोर्ड'},
-    'nav_logout': {'en': 'Sign Out', 'ta': 'வெளியேறு', 'hi': 'लॉग आउट'},
-    'nav_new_complaint': {'en': 'File Complaint', 'ta': 'புகார் பதிவு செய்', 'hi': 'शिकायत दर्ज करें'},
-    'nav_my_complaints': {'en': 'My Complaints', 'ta': 'என் புகார்கள்', 'hi': 'मेरी शिकायतें'},
-    'nav_all_complaints': {'en': 'All Complaints', 'ta': 'அனைத்து புகார்கள்', 'hi': 'सभी शिकायतें'},
-    'nav_users': {'en': 'Users', 'ta': 'பயனர்கள்', 'hi': 'उपयोगकर्ता'},
-    'nav_workers': {'en': 'Field Workers', 'ta': 'களப் பணியாளர்கள்', 'hi': 'फील्ड कार्यकर्ता'},
-    'nav_analytics': {'en': 'Analytics', 'ta': 'பகுப்பாய்வு', 'hi': 'एनालिटिक्स'},
-    'nav_audit_logs': {'en': 'Audit Logs', 'ta': 'தணிக்கை பதிவுகள்', 'hi': 'ऑडिट लॉग'},
-    'nav_tasks': {'en': 'My Tasks', 'ta': 'எனது பணிகள்', 'hi': 'मेरे कार्य'},
-    'nav_reports': {'en': 'Reports', 'ta': 'அறிக்கைகள்', 'hi': 'रिपोर्ट्स'},
-    
-    # Statuses
-    'status_Submitted': {'en': 'Submitted', 'ta': 'சமர்ப்பிக்கப்பட்டது', 'hi': 'दर्ज की गई'},
-    'status_Under_Review': {'en': 'Under Review', 'ta': 'ஆய்வில் உள்ளது', 'hi': 'समीक्षाधीन'},
-    'status_Accepted': {'en': 'Accepted', 'ta': 'ஏற்றுக்கொள்ளப்பட்டது', 'hi': 'स्वीकृत'},
-    'status_Assigned': {'en': 'Assigned', 'ta': 'ஒதுக்கப்பட்டது', 'hi': 'आवंटित'},
-    'status_In_Progress': {'en': 'In Progress', 'ta': 'செயலில் உள்ளது', 'hi': 'प्रगति में'},
-    'status_Work_Completed': {'en': 'Work Completed', 'ta': 'பணி முடிந்தது', 'hi': 'कार्य पूर्ण'},
-    'status_Verification_Pending': {'en': 'Verification Pending', 'ta': 'சரிபார்ப்பு நிலுவை', 'hi': 'सत्यापन लंबित'},
-    'status_Resolved': {'en': 'Resolved', 'ta': 'தீர்க்கப்பட்டது', 'hi': 'समाधान हो गया'},
-    'status_Rejected': {'en': 'Rejected', 'ta': 'நிராகரிக்கப்பட்டது', 'hi': 'अस्वीकृत'},
-    'status_Reopened': {'en': 'Reopened', 'ta': 'மீண்டும் திறக்கப்பட்டது', 'hi': 'पुनः खोला गया'},
-    'status_Escalated': {'en': 'Escalated', 'ta': 'மேலதிகாரிக்கு அனுப்பப்பட்டது', 'hi': 'एस्केलेट किया गया'},
-    
-    # Priority
-    'priority_low': {'en': 'Low', 'ta': 'குறைந்த', 'hi': 'निम्न'},
-    'priority_medium': {'en': 'Medium', 'ta': 'நடுத்தர', 'hi': 'मध्यम'},
-    'priority_high': {'en': 'High', 'ta': 'அதிக', 'hi': 'उच्च'},
-    'priority_urgent': {'en': 'Urgent', 'ta': 'அவசரம்', 'hi': 'अति आवश्यक'},
+SUPPORTED_LANGUAGES = ('en', 'ta', 'hi')
+LANGUAGE_META = [
+    {'code': 'en', 'name': 'English', 'native': 'English'},
+    {'code': 'ta', 'name': 'Tamil', 'native': 'தமிழ்'},
+    {'code': 'hi', 'name': 'Hindi', 'native': 'हिन्दी'},
+]
 
-    # Common Actions & Buttons
-    'btn_submit': {'en': 'Submit', 'ta': 'சமர்ப்பி', 'hi': 'जमा करें'},
-    'btn_cancel': {'en': 'Cancel', 'ta': 'ரத்து செய்', 'hi': 'रद्द करें'},
-    'btn_save': {'en': 'Save Changes', 'ta': 'மாற்றங்களை சேமி', 'hi': 'बदलाव सहेजें'},
-    'btn_filter': {'en': 'Apply Filter', 'ta': 'வடிகட்டவும்', 'hi': 'फ़िल्टर लागू करें'},
-    'btn_reset': {'en': 'Reset', 'ta': 'மீட்டமை', 'hi': 'रीसेट'},
-    'btn_export_csv': {'en': 'Export CSV', 'ta': 'CSV பதிவிறக்கு', 'hi': 'सीएसवी निर्यात'},
-    'btn_view': {'en': 'View Details', 'ta': 'விவரங்களைக் காண்க', 'hi': 'विवरण देखें'},
-    'btn_accept': {'en': 'Accept', 'ta': 'ஏற்றுக்கொள்', 'hi': 'स्वीकार करें'},
-    'btn_reject': {'en': 'Reject', 'ta': 'நிராகரி', 'hi': 'अस्वीकार करें'},
-    'btn_assign': {'en': 'Assign Worker', 'ta': 'பணியாளரை நியமி', 'hi': 'कार्यकर्ता नियुक्त करें'},
-    'btn_start_work': {'en': 'Start Work', 'ta': 'வேலையைத் தொடங்கு', 'hi': 'कार्य शुरू करें'},
-    'btn_complete_work': {'en': 'Submit Completion', 'ta': 'முடிக்கப்பட்டதைச் சமர்ப்பி', 'hi': 'समाप्ति प्रस्तुत करें'},
-    'btn_approve': {'en': 'Approve Resolution', 'ta': 'தீர்வை அங்கீகரி', 'hi': 'समाधान स्वीकृत करें'},
-    'btn_return': {'en': 'Return for Rework', 'ta': 'மீண்டும் செய்ய திருப்பி அனுப்பு', 'hi': 'पुनर्कार्य हेतु लौटाएं'},
-    'btn_reopen': {'en': 'Reopen Complaint', 'ta': 'புகாரை மீண்டும் திற', 'hi': 'शिकायत पुनः खोलें'},
-    'btn_give_feedback': {'en': 'Submit Feedback', 'ta': 'கருத்து தெரிவிக்க', 'hi': 'प्रतिक्रिया दें'},
-    
-    # Dashboard Cards
-    'card_total_complaints': {'en': 'Total Complaints', 'ta': 'மொத்த புகார்கள்', 'hi': 'कुल शिकायतें'},
-    'card_pending': {'en': 'Pending', 'ta': 'நிலுவையில் உள்ளவை', 'hi': 'लंबित'},
-    'card_in_progress': {'en': 'In Progress', 'ta': 'செயலில் உள்ளவை', 'hi': 'प्रगति में'},
-    'card_resolved': {'en': 'Resolved', 'ta': 'தீர்க்கப்பட்டவை', 'hi': 'समाधानित'},
-    'card_rejected': {'en': 'Rejected', 'ta': 'நிராகரிக்கப்பட்டவை', 'hi': 'अस्वीकृत'},
-    'card_overdue': {'en': 'Overdue / Escalated', 'ta': 'காலாவதியானது / அவசரம்', 'hi': 'अतिदेय / एस्केलेटेड'},
-    'card_total_citizens': {'en': 'Registered Citizens', 'ta': 'பதிவு செய்த குடிமக்கள்', 'hi': 'पंजीकृत नागरिक'},
-    'card_active_workers': {'en': 'Active Workers', 'ta': 'செயலில் உள்ள பணியாளர்கள்', 'hi': 'सक्रिय कार्यकर्ता'},
-    'card_departments': {'en': 'Civic Departments', 'ta': 'நகராட்சி துறைகள்', 'hi': 'नागरिक विभाग'},
-    
-    # Hero & Landing
-    'hero_title': {
-        'en': 'Empowering Citizens, Resolving Civic Issues Transparently',
-        'ta': 'குடிமக்களுக்கு அதிகாரம் அளித்தல், நகர்ப்புற பிரச்சனைகளை வெளிப்படையாக தீர்த்தல்',
-        'hi': 'नागरिकों का सशक्तिकरण, समस्याओं का पारदर्शी समाधान'
-    },
-    'hero_desc': {
-        'en': 'Report water leakages, road damages, street light failures, sanitation issues, and track live resolution right from your device.',
-        'ta': 'குடிநீர் கசிவு, சாலை சேதம், தெருவிளக்கு பழுது மற்றும் சுகாதார பிரச்சனைகளைப் பதிவு செய்து நேரலையில் கண்காணிக்கவும்.',
-        'hi': 'जल रिसाव, सड़क क्षति, स्ट्रीट लाइट खराबी, स्वच्छता समस्याओं की रिपोर्ट करें और समाधान को ट्रैक करें।'
-    },
-    'hero_btn_register': {'en': 'File a New Complaint', 'ta': 'புதிய புகார் பதிவு செய்', 'hi': 'नई शिकायत दर्ज करें'},
-    'hero_btn_track': {'en': 'Track Existing Complaint', 'ta': 'புகாரைக் கண்காணிக்க', 'hi': 'शिकायत ट्रैक करें'},
-    
-    # Form Labels
-    'lbl_full_name': {'en': 'Full Name', 'ta': 'முழு பெயர்', 'hi': 'पूरा नाम'},
-    'lbl_email': {'en': 'Email Address', 'ta': 'மின்னஞ்சல் முகவரி', 'hi': 'ईमेल पता'},
-    'lbl_mobile': {'en': 'Mobile Number', 'ta': 'கைபேசி எண்', 'hi': 'मोबाइल नंबर'},
-    'lbl_password': {'en': 'Password', 'ta': 'கடவுச்சொல்', 'hi': 'पासवर्ड'},
-    'lbl_confirm_password': {'en': 'Confirm Password', 'ta': 'கடவுச்சொல்லை உறுதிப்படுத்து', 'hi': 'पासवर्ड की पुष्टि करें'},
-    'lbl_address': {'en': 'Address', 'ta': 'முகவரி', 'hi': 'पता'},
-    'lbl_city': {'en': 'City', 'ta': 'நகரம்', 'hi': 'शहर'},
-    'lbl_ward': {'en': 'Ward Number', 'ta': 'வார்டு எண்', 'hi': 'वार्ड संख्या'},
-    'lbl_category': {'en': 'Complaint Category', 'ta': 'புகார் வகை', 'hi': 'शिकायत श्रेणी'},
-    'lbl_department': {'en': 'Department', 'ta': 'துறை', 'hi': 'विभाग'},
-    'lbl_title': {'en': 'Complaint Title', 'ta': 'புகார் தலைப்பு', 'hi': 'शिकायत शीर्षक'},
-    'lbl_description': {'en': 'Detailed Description', 'ta': 'விரிவான விளக்கம்', 'hi': 'विस्तृत विवरण'},
-    'lbl_priority': {'en': 'Priority Level', 'ta': 'முன்னுரிமை நிலை', 'hi': 'प्राथमिकता स्तर'},
-    'lbl_location': {'en': 'Incident Location (Map & GPS)', 'ta': 'சம்பவ இடம் (வரைபடம் & ஜிபிஎஸ்)', 'hi': 'घटना स्थल (मानचित्र एवं जीपीएस)'},
-    'lbl_attachments': {'en': 'Supporting Photos / Documents', 'ta': 'ஆதார புகைப்படங்கள் / ஆவணங்கள்', 'hi': 'सहायक तस्वीरें / दस्तावेज'},
-    
-    # Messages
-    'msg_duplicate_warning': {
-        'en': 'Notice: A similar complaint was recently reported in this area. You may still proceed with submission.',
-        'ta': 'அறிவிப்பு: இந்தப் பகுதியில் சமீபத்தில் இதே போன்ற புகார் பதிவு செய்யப்பட்டுள்ளது. நீங்கள் சமர்ப்பிக்கலாம்.',
-        'hi': 'सूचना: इस क्षेत्र में हाल ही में इसी प्रकार की शिकायत दर्ज की गई है। आप फिर भी जमा कर सकते हैं।'
-    },
-    'msg_success_complaint': {
-        'en': 'Complaint filed successfully! Your tracking reference ID is: ',
-        'ta': 'புகார் வெற்றிகரமாக பதிவு செய்யப்பட்டது! உங்கள் கண்காணிப்பு எண்: ',
-        'hi': 'शिकायत सफलतापूर्वक दर्ज हो गई! आपकी ट्रैकिंग संदर्भ संख्या है: '
+_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+_LOCALES_DIR = os.path.join(_BASE_DIR, 'src', 'locales')
+
+
+def _load_locale_file(lang):
+    path = os.path.join(_LOCALES_DIR, lang, 'translation.json')
+    if not os.path.isfile(path):
+        return {'keys': {}, 'phrases': {}}
+    with open(path, 'r', encoding='utf-8') as fh:
+        data = json.load(fh)
+    if not isinstance(data, dict):
+        return {'keys': {}, 'phrases': {}}
+    return {
+        'keys': data.get('keys') if isinstance(data.get('keys'), dict) else {},
+        'phrases': data.get('phrases') if isinstance(data.get('phrases'), dict) else {},
     }
-}
+
+
+LOCALE_BUNDLES = {lang: _load_locale_file(lang) for lang in SUPPORTED_LANGUAGES}
+
+# Backward-compatible TRANSLATIONS dict keyed by structured keys
+TRANSLATIONS = {}
+for _k in LOCALE_BUNDLES['en']['keys']:
+    TRANSLATIONS[_k] = {
+        lang: LOCALE_BUNDLES[lang]['keys'].get(_k, LOCALE_BUNDLES['en']['keys'].get(_k, _k))
+        for lang in SUPPORTED_LANGUAGES
+    }
+
+_PHRASES_EXACT = {lang: dict(LOCALE_BUNDLES[lang]['phrases']) for lang in SUPPORTED_LANGUAGES}
+_PHRASES_NORM = {}
+_EN_PHRASES_BY_NORM = {}
+
+for _en_phrase in _PHRASES_EXACT['en']:
+    _norm = ' '.join(_en_phrase.split()).lower()
+    _EN_PHRASES_BY_NORM[_norm] = _en_phrase
+    for _lang in SUPPORTED_LANGUAGES:
+        _PHRASES_NORM.setdefault(_lang, {})[_norm] = _PHRASES_EXACT[_lang].get(_en_phrase, _en_phrase)
+
+
+def normalize_lang(lang, default='en'):
+    if not lang:
+        return default
+    code = str(lang).strip().lower().split('-')[0].split('_')[0]
+    return code if code in SUPPORTED_LANGUAGES else default
+
 
 def get_translation(key, lang='en', default=None):
-    """Retrieve translated string with fallback to English"""
-    if lang not in ['en', 'ta', 'hi']:
-        lang = 'en'
-    entry = TRANSLATIONS.get(key)
-    if entry:
-        return entry.get(lang) or entry.get('en') or (default if default is not None else key)
+    """Retrieve translated string by key with safe fallback to English."""
+    lang = normalize_lang(lang)
+    val = LOCALE_BUNDLES[lang]['keys'].get(key)
+    if val:
+        return val
+    en_val = LOCALE_BUNDLES['en']['keys'].get(key)
+    if en_val:
+        return en_val
     return default if default is not None else key
 
 
-_ENGLISH_TO_KEY = {
-    entry['en'].strip().lower(): key
-    for key, entry in TRANSLATIONS.items()
-    if isinstance(entry, dict) and entry.get('en')
-}
+def _translate_dynamic_sentence(text_str, lang):
+    """Translate parameterized runtime strings cleanly while preserving IDs and names."""
+    exact = _PHRASES_EXACT.get(lang, {}).get(text_str)
+    if exact:
+        return exact
+    norm_key = ' '.join(text_str.split()).lower()
+    norm_hit = _PHRASES_NORM.get(lang, {}).get(norm_key)
+    if norm_hit:
+        return norm_hit
+
+    if text_str.endswith((':', '.', '!', '?', '...')):
+        for punct in ('...', ':', '.', '!', '?'):
+            if text_str.endswith(punct):
+                stem = text_str[:-len(punct)].strip()
+                stem_hit = _PHRASES_NORM.get(lang, {}).get(' '.join(stem.split()).lower())
+                if stem_hit:
+                    return stem_hit + punct
+
+    patterns = (
+        (
+            r'^Ward\s+([A-Za-z0-9-]+)$',
+            {'ta': lambda m: "வார்டு {}".format(m.group(1)), 'hi': lambda m: "वार्ड {}".format(m.group(1))},
+        ),
+        (
+            r'^Complaint registered successfully!\s*Your tracking Reference ID is\s+([A-Z0-9-]+)\.?$',
+            {
+                'ta': lambda m: "புகார் வெற்றிகரமாகப் பதிவு செய்யப்பட்டது! உங்கள் கண்காணிப்பு எண்: {}.".format(m.group(1)),
+                'hi': lambda m: "शिकायत सफलतापूर्वक दर्ज हो गई! आपकी ट्रैकिंग संदर्भ आईडी {} है।".format(m.group(1)),
+            },
+        ),
+        (
+            r'^Complaint #(\d+) could not be located or has been archived\.$',
+            {
+                'ta': lambda m: "புகார் #{} கிடைக்கவில்லை அல்லது காப்பகப்படுத்தப்பட்டுள்ளது.".format(m.group(1)),
+                'hi': lambda m: "शिकायत #{} नहीं मिली या संग्रहीत कर दी गई है।".format(m.group(1)),
+            },
+        ),
+        (
+            r'^Complaint #(\d+) was not found in your authorized department schedule\.$',
+            {
+                'ta': lambda m: "உங்கள் அதிகார எல்லைக்குட்பட்ட துறை அட்டவணையில் புகார் #{} கிடைக்கவில்லை.".format(m.group(1)),
+                'hi': lambda m: "आपके अधिकृत विभाग शेड्यूल में शिकायत #{} नहीं मिली।".format(m.group(1)),
+            },
+        ),
+        (
+            r'^Complaint #(\d+) was not found or is not accessible\.$',
+            {
+                'ta': lambda m: "புகார் #{} கிடைக்கவில்லை அல்லது அணுக முடியவில்லை.".format(m.group(1)),
+                'hi': lambda m: "शिकायत #{} नहीं मिली या सुलभ नहीं है।".format(m.group(1)),
+            },
+        ),
+        (
+            r'^Task #(\d+) was not found in your assignments queue\.$',
+            {
+                'ta': lambda m: "உங்கள் பணி ஒதுக்கீடு வரிசையில் பணி #{} கிடைக்கவில்லை.".format(m.group(1)),
+                'hi': lambda m: "आपकी आवंटन कतार में कार्य #{} नहीं मिला।".format(m.group(1)),
+            },
+        ),
+        (
+            r"^Task is already in status '([^']+)'\.$",
+            {
+                'ta': lambda m: "பணி ஏற்கனவே '{}' நிலையில் உள்ளது.".format(translate_text(m.group(1), 'ta')),
+                'hi': lambda m: "कार्य पहले से '{}' स्थिति में है।".format(translate_text(m.group(1), 'hi')),
+            },
+        ),
+        (
+            r'^Task ([A-Z0-9-]+) accepted and moved to In Progress\.$',
+            {
+                'ta': lambda m: "பணி {} ஏற்றுக்கொள்ளப்பட்டு 'நடைபெறுகிறது' நிலைக்கு மாற்றப்பட்டது.".format(m.group(1)),
+                'hi': lambda m: "कार्य {} स्वीकार कर 'प्रगति में' ले जाया गया।".format(m.group(1)),
+            },
+        ),
+        (
+            r'^Priority updated to ([A-Za-z]+)\.$',
+            {
+                'ta': lambda m: "முன்னுரிமை {} எனப் புதுப்பிக்கப்பட்டது.".format(translate_text(m.group(1).title(), 'ta')),
+                'hi': lambda m: "प्राथमिकता {} में अपडेट की गई।".format(translate_text(m.group(1).title(), 'hi')),
+            },
+        ),
+        (
+            r'^User (.+) created successfully\.$',
+            {
+                'ta': lambda m: "பயனர் {} வெற்றிகரமாக உருவாக்கப்பட்டார்.".format(m.group(1)),
+                'hi': lambda m: "उपयोगकर्ता {} सफलतापूर्वक बनाया गया।".format(m.group(1)),
+            },
+        ),
+        (
+            r"^Field worker '([^']+)' \(([^)]+)\) created in (.+)\.$",
+            {
+                'ta': lambda m: "களப் பணியாளர் '{}' ({}) {} துறையில் உருவாக்கப்பட்டார்.".format(m.group(1), m.group(2), translate_text(m.group(3), 'ta')),
+                'hi': lambda m: "फील्ड कार्यकर्ता '{}' ({}) {} में बनाया गया।".format(m.group(1), m.group(2), translate_text(m.group(3), 'hi')),
+            },
+        ),
+        (
+            r'^Unauthorized access\.\s*You have been redirected to your ([A-Za-z]+) dashboard\.$',
+            {
+                'ta': lambda m: "அங்கீகரிக்கப்படாத அணுகல். உங்கள் {} பலகைக்குத் திருப்பி விடப்பட்டுள்ளீர்கள்.".format(translate_text(m.group(1).lower(), 'ta')),
+                'hi': lambda m: "अनधिकृत पहुंच। आपको आपके {} डैशबोर्ड पर पुनर्निर्देशित किया गया है।".format(translate_text(m.group(1).lower(), 'hi')),
+            },
+        ),
+        (
+            r'^(Action failed|Dispatch failed|Update failed|Escalation failed|Assignment failed|Verification action failed|Worker operation failed|Error registering complaint|Failed to reopen complaint|Error purging test data):\s*(.+)$',
+            {
+                'ta': lambda m: "{}: {}".format(translate_text(m.group(1), 'ta'), m.group(2)),
+                'hi': lambda m: "{}: {}".format(translate_text(m.group(1), 'hi'), m.group(2)),
+            },
+        ),
+        (
+            r'^Assigned to (.+?)\. Assigned Officer: (.+?)\.$',
+            {
+                'ta': lambda m: "{} துறைக்கு ஒதுக்கப்பட்டது. ஒதுக்கப்பட்ட அதிகாரி: {}.".format(translate_text(m.group(1), 'ta'), m.group(2)),
+                'hi': lambda m: "{} को आवंटित। आवंटित अधिकारी: {}।".format(translate_text(m.group(1), 'hi'), m.group(2)),
+            },
+        ),
+        (
+            r'^Administrator assigned to (.+?) \(Officer: (.+?)\)\. Remarks: (.+)$',
+            {
+                'ta': lambda m: "நிர்வாகி {} துறைக்கு ஒதுக்கினார் (அதிகாரி: {}). குறிப்பு: {}".format(translate_text(m.group(1), 'ta'), m.group(2), m.group(3)),
+                'hi': lambda m: "प्रशासक ने {} को आवंटित किया (अधिकारी: {})। टिप्पणी: {}".format(translate_text(m.group(1), 'hi'), m.group(2), m.group(3)),
+            },
+        ),
+        (
+            r'^Assigned to Field Technician (.+?)\. Instructions: (.+)$',
+            {
+                'ta': lambda m: "களப் பணியாளர் {}-க்கு ஒதுக்கப்பட்டது. அறிவுறுத்தல்கள்: {}".format(m.group(1), m.group(2)),
+                'hi': lambda m: "फील्ड तकनीशियन {} को आवंटित। निर्देश: {}".format(m.group(1), m.group(2)),
+            },
+        ),
+        (
+            r'^Verified and approved by Officer (.+?)\. Remarks: (.+)$',
+            {
+                'ta': lambda m: "அதிகாரி {} சரிபார்த்து அங்கீகரித்தார். குறிப்பு: {}".format(m.group(1), m.group(2)),
+                'hi': lambda m: "अधिकारी {} द्वारा सत्यापित और अनुमोदित। टिप्पणी: {}".format(m.group(1), m.group(2)),
+            },
+        ),
+        (
+            r'^Returned for rework by Officer (.+?)\. Reason: (.+)$',
+            {
+                'ta': lambda m: "அதிகாரி {} மறுபணிக்குத் திருப்பி அனுப்பினார். காரணம்: {}".format(m.group(1), m.group(2)),
+                'hi': lambda m: "अधिकारी {} द्वारा पुनर्कार्य हेतु लौटाया गया। कारण: {}".format(m.group(1), m.group(2)),
+            },
+        ),
+        (
+            r'^Officer requested rework:\s*(.+)$',
+            {
+                'ta': lambda m: "அதிகாரி மறுபணி கோரினார்: {}".format(m.group(1)),
+                'hi': lambda m: "अधिकारी ने पुनर्कार्य का अनुरोध किया: {}".format(m.group(1)),
+            },
+        ),
+        (
+            r'^Are you sure you want to (disable|activate) ([a-z ]+?) account (.+)\?$',
+            {
+                'ta': lambda m: "{} கணக்கை {} விரும்புகிறீர்களா?".format(m.group(3), 'முடக்க' if m.group(1).lower() == 'disable' else 'செயல்படுத்த'),
+                'hi': lambda m: "क्या आप वाकई खाता {} को {} करना चाहते हैं?".format(m.group(3), 'अक्षम' if m.group(1).lower() == 'disable' else 'सक्रिय'),
+            },
+        ),
+        (
+            r'^Permanently delete ([a-z ]+?) account (.+?)\? All associated records will be removed\. This cannot be undone\.$',
+            {
+                'ta': lambda m: "{} கணக்கை நிரந்தரமாக நீக்கவா? தொடர்புடைய அனைத்துப் பதிவுகளும் நீக்கப்படும். இதைத் திரும்பப் பெற முடியாது.".format(m.group(2)),
+                'hi': lambda m: "क्या खाता {} को स्थायी रूप से हटाएं? सभी संबंधित रिकॉर्ड हटा दिए जाएंगे। इसे पूर्ववत नहीं किया जा सकता।".format(m.group(2)),
+            },
+        ),
+        (
+            r'^(Complaint Submitted|New Complaint|Status Update|New Complaint Assigned|New Field Task Assigned|Worker Assigned|Complaint Resolved|Rework Required|Rework Requested|Work Accepted|In Progress|Site Evidence Added|Completion Evidence Submitted|New Contact Inquiry):\s*(.+)$',
+            {
+                'ta': lambda m: "{}: {}".format(translate_text(m.group(1), 'ta'), m.group(2)),
+                'hi': lambda m: "{}: {}".format(translate_text(m.group(1), 'hi'), m.group(2)),
+            },
+        ),
+    )
+
+    for regex, handlers in patterns:
+        match = re.match(regex, text_str, flags=re.IGNORECASE)
+        if match and lang in handlers:
+            return handlers[lang](match)
+
+    return text_str
 
 
 def translate_text(text, lang='en'):
-    """Translate literal UI/dynamic text via English lookup, preserving text when unmapped."""
+    """Translate literal UI/dynamic text via src/locales/{lang}/translation.json, preserving text when unmapped."""
     if text is None:
         return ''
     text_str = str(text)
-    if lang not in ['en', 'ta', 'hi'] or lang == 'en':
+    lang = normalize_lang(lang)
+    if lang == 'en' or not text_str.strip():
         return text_str
-    key = _ENGLISH_TO_KEY.get(text_str.strip().lower())
-    if key:
-        return TRANSLATIONS[key].get(lang) or text_str
-    return text_str
+    return _translate_dynamic_sentence(text_str, lang)
+
+
+def translate_json_payload(payload, lang='en'):
+    """Translate user-facing message/error/title fields in JSON payloads cleanly."""
+    lang = normalize_lang(lang)
+    if lang == 'en' or not isinstance(payload, dict):
+        return payload
+
+    out = dict(payload)
+    for key in ('message', 'error', 'title'):
+        if isinstance(out.get(key), str) and out[key].strip():
+            out[key] = translate_text(out[key], lang)
+
+    if isinstance(out.get('notifications'), list):
+        translated_notifs = []
+        for item in out['notifications']:
+            if isinstance(item, dict):
+                n = dict(item)
+                if isinstance(n.get('title'), str):
+                    n['title'] = translate_text(n['title'], lang)
+                if isinstance(n.get('message'), str):
+                    n['message'] = translate_text(n['message'], lang)
+                translated_notifs.append(n)
+            else:
+                translated_notifs.append(item)
+        out['notifications'] = translated_notifs
+
+    return out

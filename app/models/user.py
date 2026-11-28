@@ -21,6 +21,7 @@ class User(db.Model):
     department_id = db.Column(db.Integer, db.ForeignKey('departments.id', ondelete='SET NULL'), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
     is_password_reset_required = db.Column(db.Boolean, default=False, nullable=False)
+    preferred_language = db.Column(db.String(10), nullable=False, default='en', server_default='en')
     password_changed_at = db.Column(db.DateTime, nullable=True)
     last_login_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -68,6 +69,7 @@ class User(db.Model):
             'department_name': self.department.name if self.department else None,
             'is_active': self.is_active,
             'is_password_reset_required': self.is_password_reset_required,
+            'preferred_language': self.preferred_language or 'en',
             'password_changed_at': self.password_changed_at.strftime('%Y-%m-%d %H:%M:%S') if self.password_changed_at else None,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None
         }

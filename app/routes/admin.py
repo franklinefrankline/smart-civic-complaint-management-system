@@ -46,9 +46,11 @@ def before_request():
 
 @admin_bp.route('/dashboard')
 def dashboard():
-    # Single SQL aggregate for citizen count and pending password resets
+    # Single SQL aggregate for citizen, officer, worker counts and pending password resets
     user_row = db.session.query(
         func.sum(case((User.role == 'citizen', 1), else_=0)).label('citizens'),
+        func.sum(case((User.role == 'officer', 1), else_=0)).label('officers'),
+        func.sum(case((User.role == 'worker', 1), else_=0)).label('workers'),
         func.sum(case((User.is_password_reset_required == True, 1), else_=0)).label('resets'),
     ).one()
 
@@ -78,6 +80,8 @@ def dashboard():
 
     stats = {
         'citizens': int(user_row.citizens or 0),
+        'officers': int(user_row.officers or 0),
+        'workers': int(user_row.workers or 0),
         'total': summary['total'],
         'new': summary['submitted'],
         'pending': summary['pending'],
@@ -149,6 +153,49 @@ def dashboard():
     else:
         worker_evidence_total = ComplaintAttachment.query.filter(worker_evidence_filter).count()
 
+    # Recent Field Workers & attribution of which Department Officer created them
+    worker_rows = (
+        Worker.query.options(
+            joinedload(Worker.user),
+            joinedload(Worker.department),
+        )
+        .order_by(Worker.created_at.desc(), Worker.id.desc())
+        .limit(30)
+        .all()
+    )
+    worker_audit_map = {}
+    if worker_rows:
+        worker_id_strs = [str(w.id) for w in worker_rows]
+        worker_audits = (
+            AuditLog.query.filter(
+                AuditLog.entity_type == 'worker',
+                AuditLog.entity_id.in_(worker_id_strs),
+                AuditLog.action.in_(['OFFICER_CREATE_WORKER', 'CREATE_WORKER', 'ADMIN_CREATE_USER']),
+            )
+            .options(joinedload(AuditLog.user))
+            .order_by(AuditLog.created_at.desc())
+            .all()
+        )
+        for al in worker_audits:
+            if al.entity_id not in worker_audit_map:
+                worker_audit_map[al.entity_id] = al
+
+    officer_workers_details = []
+    officer_added_count = 0
+    for w in worker_rows:
+        audit_entry = worker_audit_map.get(str(w.id))
+        creator = audit_entry.user if (audit_entry and audit_entry.user) else None
+        is_officer_added = bool(audit_entry and audit_entry.action == 'OFFICER_CREATE_WORKER')
+        if is_officer_added:
+            officer_added_count += 1
+        officer_workers_details.append({
+            'worker': w,
+            'is_officer_added': is_officer_added,
+            'added_by_name': creator.full_name if creator else 'System Seeded',
+            'added_by_role': creator.role if creator else 'system',
+        })
+    officer_workers_details.sort(key=lambda item: (0 if item['is_officer_added'] else 1))
+
     return render_template(
         'admin/dashboard.html',
         stats=stats,
@@ -163,6 +210,8 @@ def dashboard():
         feedback_avg=feedback_avg,
         recent_worker_evidence=recent_worker_evidence,
         worker_evidence_total=worker_evidence_total,
+        officer_workers_details=officer_workers_details,
+        officer_added_count=officer_added_count,
     )
 
 

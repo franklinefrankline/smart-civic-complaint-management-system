@@ -46,7 +46,11 @@ def login():
             
         # Check if user is required to reset password on initial login
         if user.is_password_reset_required:
+            from app.utils.translations import SUPPORTED_LANGUAGES
+            saved_lang = session.get('lang') or request.cookies.get('sccmt_lang')
             session.clear()
+            if saved_lang in SUPPORTED_LANGUAGES:
+                session['lang'] = saved_lang
             session['force_reset_user_id'] = user.id
             session['force_reset_name'] = user.full_name
             session['force_reset_email'] = user.email
@@ -55,12 +59,27 @@ def login():
             return redirect(url_for('auth.force_reset_password'))
 
         # Set session (always persistent so refreshes never unexpectedly log users out)
+        from app.utils.translations import SUPPORTED_LANGUAGES
+        pre_lang = session.get('lang') or request.cookies.get('sccmt_lang')
+        pre_explicit = request.cookies.get('sccmt_lang_explicit') == '1'
+        saved_user_lang = user.preferred_language if getattr(user, 'preferred_language', None) in SUPPORTED_LANGUAGES else None
+        if saved_user_lang and saved_user_lang != 'en' and not (pre_explicit and pre_lang in SUPPORTED_LANGUAGES):
+            active_lang = saved_user_lang
+        elif pre_explicit and pre_lang in SUPPORTED_LANGUAGES:
+            active_lang = pre_lang
+            if user.preferred_language != active_lang:
+                user.preferred_language = active_lang
+        else:
+            active_lang = saved_user_lang or (pre_lang if pre_lang in SUPPORTED_LANGUAGES else 'en')
+
         session.clear()
         session['user_id'] = user.id
         session['user_role'] = user.role
         session['user_name'] = user.full_name
+        session['lang'] = active_lang
         session.permanent = True
         g.user = user
+        g.active_lang = active_lang
         
         user.last_login_at = datetime.utcnow()
         db.session.commit()
@@ -76,9 +95,12 @@ def login():
         }
         next_page = request.args.get('next', '').strip()
         if next_page and next_page.startswith('/') and not next_page.startswith('//'):
-            return redirect(next_page)
-            
-        return redirect(url_for(role_dashboards.get(user.role, 'public.index')))
+            resp = redirect(next_page)
+        else:
+            resp = redirect(url_for(role_dashboards.get(user.role, 'public.index')))
+        resp.set_cookie('sccmt_lang', active_lang, max_age=31536000, path='/', samesite='Lax')
+        resp.set_cookie('sccmt_lang_explicit', '0', max_age=31536000, path='/', samesite='Lax')
+        return resp
         
     return render_template('public/login.html')
 
@@ -177,13 +199,22 @@ def register():
 
 @auth_bp.route('/logout')
 def logout():
+    from app.utils.translations import SUPPORTED_LANGUAGES
     user_id = session.get('user_id')
+    saved_lang = session.get('lang') or request.cookies.get('sccmt_lang')
     if user_id:
         log_action(user_id, 'USER_LOGOUT', 'user', user_id)
     session.clear()
+    if saved_lang in SUPPORTED_LANGUAGES:
+        session['lang'] = saved_lang
+        g.active_lang = saved_lang
     g.pop('user', None)
     flash("You have been signed out successfully.", "info")
-    return redirect(url_for('public.index'))
+    resp = redirect(url_for('public.index'))
+    if saved_lang in SUPPORTED_LANGUAGES:
+        resp.set_cookie('sccmt_lang', saved_lang, max_age=31536000, path='/', samesite='Lax')
+        resp.set_cookie('sccmt_lang_explicit', '0', max_age=31536000, path='/', samesite='Lax')
+    return resp
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
@@ -232,10 +263,15 @@ def force_reset_password():
         log_action(user.id, 'PASSWORD_RESET_INITIAL', 'user', user.id, details={'role': user.role})
         
         # Log user in directly and route to their dashboard
+        from app.utils.translations import SUPPORTED_LANGUAGES
+        saved_lang = session.get('lang') or request.cookies.get('sccmt_lang')
+        active_lang = user.preferred_language if getattr(user, 'preferred_language', None) in SUPPORTED_LANGUAGES and user.preferred_language != 'en' else (saved_lang if saved_lang in SUPPORTED_LANGUAGES else 'en')
         session.clear()
         session['user_id'] = user.id
         session['user_role'] = user.role
         session['user_name'] = user.full_name
+        session['lang'] = active_lang
+        g.active_lang = active_lang
         
         flash("Your password has been successfully updated! Welcome to your dashboard.", "success")
         

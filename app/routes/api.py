@@ -364,3 +364,31 @@ def realtime_stream():
     }
     return Response(event_generator(), mimetype='text/event-stream', headers=headers)
 
+
+@api_bp.route('/language', methods=['GET', 'POST'])
+def api_language():
+    """Read or persist user interface language in session, cookie, and DB user preference."""
+    from app.utils.translations import SUPPORTED_LANGUAGES
+    if request.method == 'POST':
+        payload = request.get_json(silent=True) or request.form.to_dict() or {}
+        raw_lang = (payload.get('lang') or payload.get('language') or '').strip().lower()
+        if raw_lang not in SUPPORTED_LANGUAGES:
+            return jsonify({'success': False, 'message': 'Unsupported language selection.'}), 400
+        session['lang'] = raw_lang
+        g.active_lang = raw_lang
+        uid = session.get('user_id')
+        if uid:
+            user_obj = User.query.get(uid)
+            if user_obj and user_obj.preferred_language != raw_lang:
+                user_obj.preferred_language = raw_lang
+                db.session.commit()
+        resp = jsonify({'success': True, 'lang': raw_lang})
+        resp.set_cookie('sccmt_lang', raw_lang, max_age=31536000, path='/', samesite='Lax')
+        resp.set_cookie('sccmt_lang_explicit', '1', max_age=31536000, path='/', samesite='Lax')
+        return resp
+
+    current = session.get('lang') or request.cookies.get('sccmt_lang') or 'en'
+    if current not in SUPPORTED_LANGUAGES:
+        current = 'en'
+    return jsonify({'success': True, 'lang': current})
+

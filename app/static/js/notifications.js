@@ -175,18 +175,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderList(notifications) {
     if (!notifList) return;
+    const tr = (s) => (window.scfT ? window.scfT(s) : s);
     if (!notifications || notifications.length === 0) {
-      notifList.innerHTML = '<div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No notifications at this time</div>';
+      notifList.innerHTML = `<div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">${escapeHtml(tr('No notifications at this time'))}</div>`;
       return;
     }
 
     notifList.innerHTML = notifications.map((n, idx) => `
       <a href="${n.link || '#'}" class="notif-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" style="animation: pageFadeInUp 200ms ease-out forwards; animation-delay: ${idx * 35}ms;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
-          <strong style="color: var(--text-primary); font-size: 0.84rem;">${escapeHtml(n.title)}</strong>
-          <span style="font-size: 0.72rem; color: var(--text-muted); white-space: nowrap;">${escapeHtml(n.time_ago || '')}</span>
+          <strong style="color: var(--text-primary); font-size: 0.84rem;">${escapeHtml(tr(n.title))}</strong>
+          <span style="font-size: 0.72rem; color: var(--text-muted); white-space: nowrap;">${escapeHtml(tr(n.time_ago || ''))}</span>
         </div>
-        <p style="margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.35;">${escapeHtml(n.message)}</p>
+        <p style="margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.35;">${escapeHtml(tr(n.message))}</p>
       </a>
     `).join('');
 
@@ -339,9 +340,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (toAnnounce.length > 0 && window.showToast) {
+      const tr = (s) => (window.scfT ? window.scfT(s) : s);
       toAnnounce.slice(-2).forEach(n => {
         const toastType = (n.notification_type === 'rework_required') ? 'warning' : 'info';
-        window.showToast(n.message || n.title, toastType, n.title || 'New Update', 5500);
+        window.showToast(tr(n.message || n.title), toastType, tr(n.title || 'New Update'), 5500);
       });
     }
 

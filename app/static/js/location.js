@@ -467,11 +467,12 @@
         }
       }
 
+      const tr = (s) => (window.scfT ? window.scfT(s) : s);
       selectEl.innerHTML = '';
       if (allowEmptyPlaceholder) {
         const ph = document.createElement('option');
         ph.value = '';
-        ph.textContent = settings.placeholder;
+        ph.textContent = tr(settings.placeholder);
         selectEl.appendChild(ph);
       }
 
@@ -484,7 +485,7 @@
 
       const otherOpt = document.createElement('option');
       otherOpt.value = '__other__';
-      otherOpt.textContent = otherLabel || 'Other (Enter manually)...';
+      otherOpt.textContent = tr(otherLabel || 'Other (Enter manually)...');
       selectEl.appendChild(otherOpt);
 
       if (matched) {
@@ -731,22 +732,23 @@
     }
 
     if (detectBtn) {
+      const tr = (s) => (window.scfT ? window.scfT(s) : s);
       detectBtn.addEventListener('click', () => {
         if (!navigator.geolocation) {
           if (gpsStatusText) {
-            gpsStatusText.textContent = 'Geolocation is not supported by your browser. Please fill the address manually.';
+            gpsStatusText.textContent = tr('Geolocation is not supported by your browser. Please fill the address manually.');
             gpsStatusText.style.display = 'block';
             gpsStatusText.style.color = '#d97706';
           }
           if (window.showToast) {
-            window.showToast('Geolocation is not supported by your browser. Please select address options manually.', 'warning', 'Location Unavailable');
+            window.showToast(tr('Geolocation is not supported by your browser. Please select address options manually.'), 'warning', tr('Location Unavailable'));
           }
           return;
         }
 
         const origHtml = detectBtn.innerHTML;
         detectBtn.disabled = true;
-        detectBtn.innerHTML = 'Detecting location...';
+        detectBtn.innerHTML = tr('Detecting location...');
 
         navigator.geolocation.getCurrentPosition(
           async (pos) => {
@@ -756,7 +758,7 @@
             if (lngInput) lngInput.value = lng;
 
             if (gpsStatusText) {
-              gpsStatusText.textContent = `GPS Coordinates Captured: ${lat}, ${lng} — resolving administrative details...`;
+              gpsStatusText.textContent = tr(`GPS Coordinates Captured: ${lat}, ${lng} — resolving administrative details...`);
               gpsStatusText.style.display = 'block';
               gpsStatusText.style.color = '#2563eb';
             }
@@ -805,24 +807,24 @@
                 if (missingCritical || (wardSelect && !hasWard)) {
                   window.showToast(
                     wardSelect && !hasWard
-                      ? 'GPS coordinates and address details detected. Please select any unavailable fields manually.'
-                      : 'GPS coordinates captured. Please verify any missing address details.',
+                      ? tr('GPS coordinates and address details detected. Please select any unavailable fields manually.')
+                      : tr('GPS coordinates captured. Please verify any missing address details.'),
                     'info',
-                    'Location Detected'
+                    tr('Location Detected')
                   );
                 } else {
-                  window.showToast('All location details and GPS coordinates populated automatically.', 'success', 'Location Detected');
+                  window.showToast(tr('All location details and GPS coordinates populated automatically.'), 'success', tr('Location Detected'));
                 }
               }
             } else {
               reverseFailed = true;
               if (gpsStatusText) {
-                gpsStatusText.textContent = `GPS Coordinates Captured (${lat}, ${lng}), but address details could not be resolved automatically.`;
+                gpsStatusText.textContent = tr(`GPS Coordinates Captured (${lat}, ${lng}), but address details could not be resolved automatically.`);
                 gpsStatusText.style.display = 'block';
                 gpsStatusText.style.color = '#d97706';
               }
               if (window.showToast) {
-                window.showToast('GPS coordinates captured, but reverse geocoding failed. Please select State, District, and City manually.', 'warning', 'Partial Location Data');
+                window.showToast(tr('GPS coordinates captured, but reverse geocoding failed. Please select State, District, and City manually.'), 'warning', tr('Partial Location Data'));
               }
             }
 
@@ -836,17 +838,17 @@
             detectBtn.innerHTML = origHtml;
             if (window.lucide) lucide.createIcons();
 
-            let msg = 'Could not retrieve GPS coordinates. Please check location settings or enter address manually.';
-            let title = 'Location Unavailable';
+            let msg = tr('Could not retrieve GPS coordinates. Please check location settings or enter address manually.');
+            let title = tr('Location Unavailable');
             if (err && err.code === 1) {
-              title = 'Location Permission Denied';
-              msg = 'GPS location access was denied. Please enable location permission in browser settings or enter the address manually.';
+              title = tr('Location Permission Denied');
+              msg = tr('GPS location access was denied. Please enable location permission in browser settings or enter the address manually.');
             } else if (err && err.code === 2) {
-              title = 'Location Services Unavailable';
-              msg = 'Your device location services appear disabled or unavailable. Enable GPS or select the address manually.';
+              title = tr('Location Services Unavailable');
+              msg = tr('Your device location services appear disabled or unavailable. Enable GPS or select the address manually.');
             } else if (err && err.code === 3) {
-              title = 'Location Request Timed Out';
-              msg = 'GPS signal took too long to respond. Please retry or fill in the address manually.';
+              title = tr('Location Request Timed Out');
+              msg = tr('GPS signal took too long to respond. Please retry or fill in the address manually.');
             }
 
             if (gpsStatusText) {

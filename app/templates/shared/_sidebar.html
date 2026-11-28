@@ -1,17 +1,19 @@
-<aside class="dashboard-sidebar" id="dashboardSidebar" aria-label="Main Navigation">
+<aside class="dashboard-sidebar" id="dashboardSidebar" aria-label="{{ tr('Main Navigation') }}">
   <!-- Circular Blue Arrow Toggle Button OUTSIDE on the edge -->
-  <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="Toggle navigation menu"
-    aria-expanded="true" title="Collapse Menu">
+  <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="{{ tr('Toggle navigation menu') }}"
+    aria-expanded="true" title="{{ tr('Collapse Menu') }}">
     <i data-lucide="chevron-left" class="toggle-icon-expanded"></i>
     <i data-lucide="chevron-right" class="toggle-icon-collapsed"></i>
-    <span class="toggle-tooltip" id="sidebarToggleTooltip">Collapse Menu</span>
+    <span class="toggle-tooltip" id="sidebarToggleTooltip">{{ tr('Collapse Menu') }}</span>
   </button>
 
   <!-- 1. Fixed Top Branding Header -->
   <div class="sidebar-brand-header">
-    <a href="{{ url_for('public.index') }}" class="sidebar-brand-link" title="SCF (Smart Civic Flow)">
+    <a href="{{ url_for('public.index') }}" class="sidebar-brand-link" title="{{ tr('SCF (Smart Civic Flow)') }}">
       <div class="sidebar-brand-icon scf-sidebar-logo-frame">
-        <img src="{{ url_for('static', filename='img/scf-logo.webp', v='20261126f') }}" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='{{ url_for('static', filename='img/scf-logo.png', v='20261126f') }}';}" alt="SCF Logo" class="sidebar-logo-img" width="44" height="38">
+        <img src="{{ url_for('static', filename='img/scf-logo.webp', v='20261126f') }}"
+          onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='{{ url_for('static', filename='img/scf-logo.png', v='20261126f') }}';}"
+          alt="SCF Logo" class="sidebar-logo-img" width="44" height="38">
       </div>
       <div class="sidebar-brand-text">
         <span class="sidebar-brand-title">SCF</span>
@@ -20,18 +22,20 @@
     </a>
     <div class="sidebar-header-actions" style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
       {% if current_user %}
-      <button type="button" class="sidebar-header-theme-btn sidebar-header-notif-btn" id="notifToggleBtn" title="Notifications" aria-label="Notifications" style="position: relative;">
+      <button type="button" class="sidebar-header-theme-btn sidebar-header-notif-btn" id="notifToggleBtn"
+        title="{{ tr('Notifications') }}" aria-label="{{ tr('Notifications') }}" style="position: relative;">
         <i data-lucide="bell" class="icon-sm"></i>
-        <span id="notifBadge" class="notif-badge {% if unread_notifications_count > 0 %}badge-pulse{% endif %}" style="display: {% if unread_notifications_count > 0 %}inline-flex{% else %}none{% endif %}; position: absolute; top: -4px; right: -4px;">
-          {{ unread_notifications_count if unread_notifications_count <= 99 else '99+' }}
-        </span>
+        <span id="notifBadge" class="notif-badge {% if unread_notifications_count > 0 %}badge-pulse{% endif %}"
+          style="display: {% if unread_notifications_count > 0 %}inline-flex{% else %}none{% endif %}; position: absolute; top: -4px; right: -4px;">
+          {{ unread_notifications_count if unread_notifications_count <= 99 else '99+' }} </span>
       </button>
       {% endif %}
-      <button type="button" class="theme-toggle-btn sidebar-header-theme-btn" title="Toggle Theme" aria-label="Toggle Theme">
+      <button type="button" class="theme-toggle-btn sidebar-header-theme-btn" title="{{ tr('Toggle Theme') }}"
+        aria-label="{{ tr('Toggle Theme') }}">
         <i data-lucide="moon" class="icon-sm theme-icon"></i>
       </button>
       <button type="button" class="mobile-sidebar-close" onclick="toggleMobileSidebar(false)"
-        aria-label="Close mobile navigation">
+        aria-label="{{ tr('Close mobile navigation') }}">
         <i data-lucide="x" class="icon-sm"></i>
       </button>
     </div>
@@ -41,325 +45,347 @@
   <div class="sidebar-nav-container">
     <ul class="sidebar-menu">
       {% if current_user and current_user.is_admin %}
-      <li class="menu-label">Administration</li>
+      <li class="menu-label">{{ tr('Administration') }}</li>
       <li>
         <a href="{{ url_for('admin.dashboard') }}"
-          class="sidebar-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" title="Overview">
+          class="sidebar-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}"
+          title="{{ tr('Overview') }}">
           <i data-lucide="layout-dashboard" class="icon-sm"></i>
-          <span class="sidebar-label">Overview</span>
+          <span class="sidebar-label">{{ tr('Overview') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin.complaints') }}"
           class="sidebar-link {% if request.endpoint in ['admin.complaints', 'admin.complaint_detail'] %}active{% endif %}"
-          title="Complaint Management">
+          title="{{ tr('Complaint Management') }}">
           <i data-lucide="file-text" class="icon-sm"></i>
-          <span class="sidebar-label">Complaint Management</span>
+          <span class="sidebar-label">{{ tr('Complaint Management') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin.citizens') }}"
           class="sidebar-link {% if request.endpoint == 'admin.citizens' %}active{% endif %}"
-          title="Citizen Management">
+          title="{{ tr('Citizen Management') }}">
           <i data-lucide="users" class="icon-sm"></i>
-          <span class="sidebar-label">Citizen Management</span>
+          <span class="sidebar-label">{{ tr('Citizen Management') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin.departments') }}"
           class="sidebar-link {% if request.endpoint == 'admin.departments' %}active{% endif %}"
-          title="Department Management">
+          title="{{ tr('Department Management') }}">
           <i data-lucide="building-2" class="icon-sm"></i>
-          <span class="sidebar-label">Department Management</span>
+          <span class="sidebar-label">{{ tr('Department Management') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin.officers') }}"
           class="sidebar-link {% if request.endpoint == 'admin.officers' %}active{% endif %}"
-          title="Officer Management">
+          title="{{ tr('Officer Management') }}">
           <i data-lucide="user-check" class="icon-sm"></i>
-          <span class="sidebar-label">Officer Management</span>
+          <span class="sidebar-label">{{ tr('Officer Management') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin.workers') }}"
-          class="sidebar-link {% if request.endpoint == 'admin.workers' %}active{% endif %}" title="Worker Management">
+          class="sidebar-link {% if request.endpoint == 'admin.workers' %}active{% endif %}"
+          title="{{ tr('Worker Management') }}">
           <i data-lucide="hard-hat" class="icon-sm"></i>
-          <span class="sidebar-label">Worker Management</span>
+          <span class="sidebar-label">{{ tr('Worker Management') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin.assignments') }}"
-          class="sidebar-link {% if request.endpoint == 'admin.assignments' %}active{% endif %}" title="Assignments">
+          class="sidebar-link {% if request.endpoint == 'admin.assignments' %}active{% endif %}"
+          title="{{ tr('Assignments') }}">
           <i data-lucide="clipboard-list" class="icon-sm"></i>
-          <span class="sidebar-label">Assignments</span>
+          <span class="sidebar-label">{{ tr('Assignments') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin.analytics') }}"
           class="sidebar-link {% if request.endpoint == 'admin.analytics' %}active{% endif %}"
-          title="Reports and Analytics">
+          title="{{ tr('Reports and Analytics') }}">
           <i data-lucide="bar-chart-2" class="icon-sm"></i>
-          <span class="sidebar-label">Reports and Analytics</span>
+          <span class="sidebar-label">{{ tr('Reports and Analytics') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin.notifications') }}"
           class="sidebar-link {% if request.endpoint == 'admin.notifications' %}active{% endif %}"
-          title="Notifications">
+          title="{{ tr('Notifications') }}">
           <i data-lucide="bell" class="icon-sm"></i>
-          <span class="sidebar-label">Notifications</span>
+          <span class="sidebar-label">{{ tr('Notifications') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin.audit_logs') }}"
-          class="sidebar-link {% if request.endpoint == 'admin.audit_logs' %}active{% endif %}" title="Audit Logs">
+          class="sidebar-link {% if request.endpoint == 'admin.audit_logs' %}active{% endif %}"
+          title="{{ tr('Audit Logs') }}">
           <i data-lucide="shield-check" class="icon-sm"></i>
-          <span class="sidebar-label">Audit Logs</span>
+          <span class="sidebar-label">{{ tr('Audit Logs') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin.settings') }}"
-          class="sidebar-link {% if request.endpoint == 'admin.settings' %}active{% endif %}" title="Settings">
+          class="sidebar-link {% if request.endpoint == 'admin.settings' %}active{% endif %}"
+          title="{{ tr('Settings') }}">
           <i data-lucide="settings" class="icon-sm"></i>
-          <span class="sidebar-label">Settings</span>
+          <span class="sidebar-label">{{ tr('Settings') }}</span>
         </a>
       </li>
 
       {% elif current_user and current_user.is_officer %}
-      <li class="menu-label">Department Operations</li>
+      <li class="menu-label">{{ tr('Department Operations') }}</li>
       <li>
         <a href="{{ url_for('officer.dashboard') }}"
-          class="sidebar-link {% if request.endpoint == 'officer.dashboard' %}active{% endif %}" title="Dashboard">
+          class="sidebar-link {% if request.endpoint == 'officer.dashboard' %}active{% endif %}"
+          title="{{ tr('Dashboard') }}">
           <i data-lucide="layout-dashboard" class="icon-sm"></i>
-          <span class="sidebar-label">Dashboard</span>
+          <span class="sidebar-label">{{ tr('Dashboard') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('officer.incoming') }}"
           class="sidebar-link {% if request.endpoint == 'officer.incoming' %}active{% endif %}"
-          title="Incoming Complaints">
+          title="{{ tr('Incoming Complaints') }}">
           <i data-lucide="inbox" class="icon-sm"></i>
-          <span class="sidebar-label">Incoming Complaints</span>
+          <span class="sidebar-label">{{ tr('Incoming Complaints') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('officer.complaints') }}"
           class="sidebar-link {% if request.endpoint in ['officer.complaints', 'officer.complaint_detail'] %}active{% endif %}"
-          title="Department Complaints">
+          title="{{ tr('Department Complaints') }}">
           <i data-lucide="file-text" class="icon-sm"></i>
-          <span class="sidebar-label">Department Complaints</span>
+          <span class="sidebar-label">{{ tr('Department Complaints') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('officer.workers') }}"
           class="sidebar-link {% if request.endpoint == 'officer.workers' %}active{% endif %}"
-          title="Manage Workers">
+          title="{{ tr('Manage Workers') }}">
           <i data-lucide="hard-hat" class="icon-sm"></i>
-          <span class="sidebar-label">Manage Workers</span>
+          <span class="sidebar-label">{{ tr('Manage Workers') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('officer.assignments') }}"
           class="sidebar-link {% if request.endpoint == 'officer.assignments' %}active{% endif %}"
-          title="Worker Assignments">
+          title="{{ tr('Worker Assignments') }}">
           <i data-lucide="users" class="icon-sm"></i>
-          <span class="sidebar-label">Worker Assignments</span>
+          <span class="sidebar-label">{{ tr('Worker Assignments') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('officer.verification') }}"
           class="sidebar-link {% if request.endpoint == 'officer.verification' %}active{% endif %}"
-          title="Work Verification">
+          title="{{ tr('Work Verification') }}">
           <i data-lucide="check-square" class="icon-sm"></i>
-          <span class="sidebar-label">Work Verification</span>
+          <span class="sidebar-label">{{ tr('Work Verification') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('officer.escalations') }}"
-          class="sidebar-link {% if request.endpoint == 'officer.escalations' %}active{% endif %}" title="Escalations">
+          class="sidebar-link {% if request.endpoint == 'officer.escalations' %}active{% endif %}"
+          title="{{ tr('Escalations') }}">
           <i data-lucide="alert-octagon" class="icon-sm"></i>
-          <span class="sidebar-label">Escalations</span>
+          <span class="sidebar-label">{{ tr('Escalations') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('officer.reports') }}"
-          class="sidebar-link {% if request.endpoint == 'officer.reports' %}active{% endif %}" title="Reports">
+          class="sidebar-link {% if request.endpoint == 'officer.reports' %}active{% endif %}"
+          title="{{ tr('Reports') }}">
           <i data-lucide="file-bar-chart-2" class="icon-sm"></i>
-          <span class="sidebar-label">Reports</span>
+          <span class="sidebar-label">{{ tr('Reports') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('officer.notifications') }}"
           class="sidebar-link {% if request.endpoint == 'officer.notifications' %}active{% endif %}"
-          title="Notifications">
+          title="{{ tr('Notifications') }}">
           <i data-lucide="bell" class="icon-sm"></i>
-          <span class="sidebar-label">Notifications</span>
+          <span class="sidebar-label">{{ tr('Notifications') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('officer.profile') }}"
-          class="sidebar-link {% if request.endpoint == 'officer.profile' %}active{% endif %}" title="Profile">
+          class="sidebar-link {% if request.endpoint == 'officer.profile' %}active{% endif %}"
+          title="{{ tr('Profile') }}">
           <i data-lucide="user" class="icon-sm"></i>
-          <span class="sidebar-label">Profile</span>
+          <span class="sidebar-label">{{ tr('Profile') }}</span>
         </a>
       </li>
 
       {% elif current_user and current_user.is_worker %}
-      <li class="menu-label">Field Technician Work</li>
+      <li class="menu-label">{{ tr('Field Technician Work') }}</li>
       <li>
         <a href="{{ url_for('worker.dashboard') }}"
-          class="sidebar-link {% if request.endpoint == 'worker.dashboard' %}active{% endif %}" title="Dashboard">
+          class="sidebar-link {% if request.endpoint == 'worker.dashboard' %}active{% endif %}"
+          title="{{ tr('Dashboard') }}">
           <i data-lucide="layout-dashboard" class="icon-sm"></i>
-          <span class="sidebar-label">Dashboard</span>
+          <span class="sidebar-label">{{ tr('Dashboard') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('worker.tasks', status='Assigned') }}"
           class="sidebar-link {% if request.args.get('status') == 'Assigned' %}active{% endif %}"
-          title="Assigned Tasks">
+          title="{{ tr('Assigned Tasks') }}">
           <i data-lucide="inbox" class="icon-sm"></i>
-          <span class="sidebar-label">Assigned Tasks</span>
+          <span class="sidebar-label">{{ tr('Assigned Tasks') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('worker.tasks', status='In Progress') }}"
           class="sidebar-link {% if request.args.get('status') == 'In Progress' %}active{% endif %}"
-          title="In Progress">
+          title="{{ tr('In Progress') }}">
           <i data-lucide="wrench" class="icon-sm"></i>
-          <span class="sidebar-label">In Progress</span>
+          <span class="sidebar-label">{{ tr('In Progress') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('worker.tasks', status='Work Completed') }}"
           class="sidebar-link {% if request.args.get('status') == 'Work Completed' %}active{% endif %}"
-          title="Completed Tasks">
+          title="{{ tr('Completed Tasks') }}">
           <i data-lucide="check-circle" class="icon-sm"></i>
-          <span class="sidebar-label">Completed Tasks</span>
+          <span class="sidebar-label">{{ tr('Completed Tasks') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('worker.history') }}"
-          class="sidebar-link {% if request.endpoint == 'worker.history' %}active{% endif %}" title="Task History">
+          class="sidebar-link {% if request.endpoint == 'worker.history' %}active{% endif %}"
+          title="{{ tr('Task History') }}">
           <i data-lucide="history" class="icon-sm"></i>
-          <span class="sidebar-label">Task History</span>
+          <span class="sidebar-label">{{ tr('Task History') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('worker.notifications') }}"
           class="sidebar-link {% if request.endpoint == 'worker.notifications' %}active{% endif %}"
-          title="Notifications">
+          title="{{ tr('Notifications') }}">
           <i data-lucide="bell" class="icon-sm"></i>
-          <span class="sidebar-label">Notifications</span>
+          <span class="sidebar-label">{{ tr('Notifications') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('worker.profile') }}"
-          class="sidebar-link {% if request.endpoint == 'worker.profile' %}active{% endif %}" title="Profile">
+          class="sidebar-link {% if request.endpoint == 'worker.profile' %}active{% endif %}"
+          title="{{ tr('Profile') }}">
           <i data-lucide="user" class="icon-sm"></i>
-          <span class="sidebar-label">Profile</span>
+          <span class="sidebar-label">{{ tr('Profile') }}</span>
         </a>
       </li>
 
       {% elif current_user and current_user.role == 'citizen' %}
       <!-- Citizen Menu -->
-      <li class="menu-label">Citizen Services</li>
+      <li class="menu-label">{{ tr('Citizen Services') }}</li>
       <li>
         <a href="{{ url_for('citizen.dashboard') }}"
-          class="sidebar-link {% if request.endpoint == 'citizen.dashboard' %}active{% endif %}" title="My Dashboard">
+          class="sidebar-link {% if request.endpoint == 'citizen.dashboard' %}active{% endif %}"
+          title="{{ tr('My Dashboard') }}">
           <i data-lucide="layout-dashboard" class="icon-sm"></i>
-          <span class="sidebar-label">My Dashboard</span>
+          <span class="sidebar-label">{{ tr('My Dashboard') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('citizen.new_complaint') }}"
           class="sidebar-link {% if request.endpoint == 'citizen.new_complaint' %}active{% endif %}"
-          title="Register Complaint">
+          title="{{ tr('Register Complaint') }}">
           <i data-lucide="file-plus" class="icon-sm"></i>
-          <span class="sidebar-label">Register Complaint</span>
+          <span class="sidebar-label">{{ tr('Register Complaint') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('citizen.complaints') }}"
           class="sidebar-link {% if request.endpoint in ['citizen.complaints', 'citizen.complaint_detail'] and request.endpoint != 'citizen.new_complaint' %}active{% endif %}"
-          title="My Complaints">
+          title="{{ tr('My Complaints') }}">
           <i data-lucide="list-ordered" class="icon-sm"></i>
-          <span class="sidebar-label">My Complaints</span>
+          <span class="sidebar-label">{{ tr('My Complaints') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('citizen.track') }}"
-          class="sidebar-link {% if request.endpoint == 'citizen.track' %}active{% endif %}" title="Track Complaint">
+          class="sidebar-link {% if request.endpoint == 'citizen.track' %}active{% endif %}"
+          title="{{ tr('Track Complaint') }}">
           <i data-lucide="search" class="icon-sm"></i>
-          <span class="sidebar-label">Track Complaint</span>
+          <span class="sidebar-label">{{ tr('Track Complaint') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('citizen.notifications') }}"
           class="sidebar-link {% if request.endpoint == 'citizen.notifications' %}active{% endif %}"
-          title="Notifications">
+          title="{{ tr('Notifications') }}">
           <i data-lucide="bell" class="icon-sm"></i>
-          <span class="sidebar-label">Notifications</span>
+          <span class="sidebar-label">{{ tr('Notifications') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('citizen.feedback') }}"
-          class="sidebar-link {% if request.endpoint == 'citizen.feedback' %}active{% endif %}" title="Feedback">
+          class="sidebar-link {% if request.endpoint == 'citizen.feedback' %}active{% endif %}"
+          title="{{ tr('Feedback') }}">
           <i data-lucide="star" class="icon-sm"></i>
-          <span class="sidebar-label">Feedback</span>
+          <span class="sidebar-label">{{ tr('Feedback') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('citizen.profile') }}"
-          class="sidebar-link {% if request.endpoint == 'citizen.profile' %}active{% endif %}" title="My Profile">
+          class="sidebar-link {% if request.endpoint == 'citizen.profile' %}active{% endif %}"
+          title="{{ tr('My Profile') }}">
           <i data-lucide="user" class="icon-sm"></i>
-          <span class="sidebar-label">My Profile</span>
+          <span class="sidebar-label">{{ tr('My Profile') }}</span>
         </a>
       </li>
 
       {% else %}
       <!-- Public / Guest Services Menu -->
-      <li class="menu-label">Civic Redressal</li>
+      <li class="menu-label">{{ tr('Civic Redressal') }}</li>
       <li>
         <a href="{{ url_for('public.index') }}"
-          class="sidebar-link {% if request.endpoint == 'public.index' %}active{% endif %}" title="Home Portal">
+          class="sidebar-link {% if request.endpoint == 'public.index' %}active{% endif %}"
+          title="{{ tr('Home Portal') }}">
           <i data-lucide="home" class="icon-sm"></i>
-          <span class="sidebar-label">Home Portal</span>
+          <span class="sidebar-label">{{ tr('Home Portal') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('public.track') }}"
-          class="sidebar-link {% if request.endpoint == 'public.track' %}active{% endif %}" title="Track Complaint">
+          class="sidebar-link {% if request.endpoint == 'public.track' %}active{% endif %}"
+          title="{{ tr('Track Complaint') }}">
           <i data-lucide="search" class="icon-sm"></i>
-          <span class="sidebar-label">Track Complaint</span>
+          <span class="sidebar-label">{{ tr('Track Complaint') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('auth.login') }}"
-          class="sidebar-link {% if request.endpoint == 'auth.login' %}active{% endif %}" title="File Complaint">
+          class="sidebar-link {% if request.endpoint == 'auth.login' %}active{% endif %}"
+          title="{{ tr('File Complaint') }}">
           <i data-lucide="file-plus" class="icon-sm"></i>
-          <span class="sidebar-label">File Complaint</span>
+          <span class="sidebar-label">{{ tr('File Complaint') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('public.departments') }}"
-          class="sidebar-link {% if request.endpoint == 'public.departments' %}active{% endif %}" title="Departments">
+          class="sidebar-link {% if request.endpoint == 'public.departments' %}active{% endif %}"
+          title="{{ tr('Departments') }}">
           <i data-lucide="building-2" class="icon-sm"></i>
-          <span class="sidebar-label">Departments</span>
+          <span class="sidebar-label">{{ tr('Departments') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('public.how_it_works') }}"
-          class="sidebar-link {% if request.endpoint == 'public.how_it_works' %}active{% endif %}" title="How It Works">
+          class="sidebar-link {% if request.endpoint == 'public.how_it_works' %}active{% endif %}"
+          title="{{ tr('How It Works') }}">
           <i data-lucide="help-circle" class="icon-sm"></i>
-          <span class="sidebar-label">How It Works</span>
+          <span class="sidebar-label">{{ tr('How It Works') }}</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('public.contact') }}"
-          class="sidebar-link {% if request.endpoint == 'public.contact' %}active{% endif %}" title="Contact Support">
+          class="sidebar-link {% if request.endpoint == 'public.contact' %}active{% endif %}"
+          title="{{ tr('Contact Support') }}">
           <i data-lucide="phone" class="icon-sm"></i>
-          <span class="sidebar-label">Contact Support</span>
+          <span class="sidebar-label">{{ tr('Contact Support') }}</span>
         </a>
       </li>
       {% endif %}
@@ -370,7 +396,7 @@
   <div class="sidebar-profile-footer">
     {% if current_user %}
     <div class="sidebar-user-card" id="sidebarUserCard"
-      data-tooltip="{{ current_user.full_name }} ({{ current_user.role.title() }})">
+      data-tooltip="{{ current_user.full_name }} ({{ tr(current_user.role) }})">
       <div class="sidebar-avatar">
         {{ current_user.full_name[:2].upper() }}
       </div>
@@ -378,65 +404,92 @@
         <div class="sidebar-user-name" title="{{ current_user.full_name }}">{{ current_user.full_name }}</div>
         <div class="sidebar-user-meta">
           {% if current_user.department %}
-          {{ current_user.department.name }}
+          {{ td(current_user.department.name) }}
           {% elif current_user.role == 'citizen' %}
-          {{ current_user.city or 'Ward ' ~ (current_user.ward_number or '1') }}
+          {{ td(current_user.city or 'Ward ' ~ (current_user.ward_number or '1')) }}
           {% else %}
-          {{ current_user.role.title() }}
+          {{ tr(current_user.role) }}
           {% endif %}
         </div>
       </div>
-      <span class="sidebar-label">{{ current_user.full_name }} ({{ current_user.role.title() }})</span>
+      <span class="sidebar-label">{{ current_user.full_name }} ({{ tr(current_user.role) }})</span>
+    </div>
+
+    <div class="sidebar-lang-control" title="{{ tr('Select Language') }}">
+      <span class="sidebar-lang-collapsed-badge" aria-hidden="true">
+        <i data-lucide="languages" class="icon-xs"></i>
+        <span data-lang-badge-code>{{ 'த' if current_lang == 'ta' else ('हि' if current_lang == 'hi' else 'EN') }}</span>
+      </span>
+      <select class="lang-selector-select" data-lang-switcher aria-label="{{ tr('Select Language') }}" data-no-i18n>
+        <option value="en" {% if current_lang=='en' %}selected{% endif %}>English</option>
+        <option value="ta" {% if current_lang=='ta' %}selected{% endif %}>தமிழ்</option>
+        <option value="hi" {% if current_lang=='hi' %}selected{% endif %}>हिन्दी</option>
+      </select>
     </div>
 
     <div class="sidebar-footer-actions">
-      <button type="button" class="sidebar-link sidebar-footer-link theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme">
+      <button type="button" class="sidebar-link sidebar-footer-link theme-toggle-btn" title="{{ tr('Toggle Theme') }}"
+        aria-label="{{ tr('Toggle Theme') }}">
         <i data-lucide="moon" class="icon-sm theme-icon"></i>
-        <span class="sidebar-label theme-label-text">Toggle Theme</span>
+        <span class="sidebar-label theme-label-text">{{ tr('Toggle Theme') }}</span>
       </button>
-      <a href="{{ url_for('public.index') }}" class="sidebar-link sidebar-footer-link" title="Public Portal">
+      <a href="{{ url_for('public.index') }}" class="sidebar-link sidebar-footer-link"
+        title="{{ tr('Public Portal') }}">
         <i data-lucide="home" class="icon-sm"></i>
-        <span class="sidebar-label">Public Portal</span>
+        <span class="sidebar-label">{{ tr('Public Portal') }}</span>
       </a>
-      <a href="{{ url_for('auth.logout') }}" class="sidebar-link sidebar-footer-link link-signout" title="Sign Out"
-        data-confirm-title="Sign Out of Portal"
-        data-confirm="Are you sure you want to end your current session and sign out?"
-        data-confirm-btn="Sign Out"
-        data-confirm-variant="warning">
+      <a href="{{ url_for('auth.logout') }}" class="sidebar-link sidebar-footer-link link-signout"
+        title="{{ tr('Sign Out') }}" data-confirm-title="{{ dt('Sign Out of Portal') }}"
+        data-confirm="{{ dt('Are you sure you want to end your current session and sign out?') }}"
+        data-confirm-btn="{{ tr('Sign Out') }}" data-confirm-variant="warning">
         <i data-lucide="log-out" class="icon-sm"></i>
-        <span class="sidebar-label">Sign Out</span>
+        <span class="sidebar-label">{{ tr('Sign Out') }}</span>
       </a>
     </div>
     {% else %}
-    <div class="sidebar-user-card" id="sidebarUserCard" data-tooltip="Public Citizen Access">
+    <div class="sidebar-user-card" id="sidebarUserCard" data-tooltip="{{ tr('Public Citizen Access') }}">
       <div class="sidebar-avatar" style="background: rgba(37, 99, 235, 0.15); color: var(--civic-blue);">
         <i data-lucide="user" class="icon-sm"></i>
       </div>
       <div class="sidebar-user-details">
-        <div class="sidebar-user-name">Public Citizen</div>
-        <div class="sidebar-user-meta">Civic Portal</div>
+        <div class="sidebar-user-name">{{ tr('Public Citizen') }}</div>
+        <div class="sidebar-user-meta">{{ tr('Civic Portal') }}</div>
       </div>
-      <span class="sidebar-label">Public Citizen</span>
+      <span class="sidebar-label">{{ tr('Public Citizen') }}</span>
+    </div>
+
+    <div class="sidebar-lang-control" title="{{ tr('Select Language') }}">
+      <span class="sidebar-lang-collapsed-badge" aria-hidden="true">
+        <i data-lucide="languages" class="icon-xs"></i>
+        <span data-lang-badge-code>{{ 'த' if current_lang == 'ta' else ('हि' if current_lang == 'hi' else 'EN') }}</span>
+      </span>
+      <select class="lang-selector-select" data-lang-switcher aria-label="{{ tr('Select Language') }}" data-no-i18n>
+        <option value="en" {% if current_lang=='en' %}selected{% endif %}>English</option>
+        <option value="ta" {% if current_lang=='ta' %}selected{% endif %}>தமிழ்</option>
+        <option value="hi" {% if current_lang=='hi' %}selected{% endif %}>हिन्दी</option>
+      </select>
     </div>
 
     <div class="sidebar-footer-actions">
-      <button type="button" class="sidebar-link sidebar-footer-link theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme">
+      <button type="button" class="sidebar-link sidebar-footer-link theme-toggle-btn" title="{{ tr('Toggle Theme') }}"
+        aria-label="{{ tr('Toggle Theme') }}">
         <i data-lucide="moon" class="icon-sm theme-icon"></i>
-        <span class="sidebar-label theme-label-text">Toggle Theme</span>
+        <span class="sidebar-label theme-label-text">{{ tr('Toggle Theme') }}</span>
       </button>
-      <a href="{{ url_for('auth.login') }}" class="sidebar-link sidebar-footer-link" title="Sign In">
+      <a href="{{ url_for('auth.login') }}" class="sidebar-link sidebar-footer-link" title="{{ tr('Sign In') }}">
         <i data-lucide="log-in" class="icon-sm"></i>
-        <span class="sidebar-label">Sign In</span>
+        <span class="sidebar-label">{{ tr('Sign In') }}</span>
       </a>
-      <a href="{{ url_for('auth.register') }}" class="sidebar-link sidebar-footer-link" title="Sign Up">
+      <a href="{{ url_for('auth.register') }}" class="sidebar-link sidebar-footer-link" title="{{ tr('Sign Up') }}">
         <i data-lucide="user-plus" class="icon-sm"></i>
-        <span class="sidebar-label">Sign Up</span>
+        <span class="sidebar-label">{{ tr('Sign Up') }}</span>
       </a>
     </div>
     {% endif %}
   </div>
 </aside>
-<button type="button" class="mobile-sidebar-trigger" onclick="toggleMobileSidebar(true)" aria-label="Open mobile navigation">
+<button type="button" class="mobile-sidebar-trigger" onclick="toggleMobileSidebar(true)"
+  aria-label="{{ tr('Open mobile navigation') }}">
   <i data-lucide="menu" class="icon-md"></i>
 </button>
 <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleMobileSidebar(false)"></div>

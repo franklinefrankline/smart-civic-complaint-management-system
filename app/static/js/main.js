@@ -75,11 +75,25 @@
 
   window.formatLocalTimes = function(root) {
     const scope = root || document;
+    const lang = window.getPortalLanguage ? window.getPortalLanguage() : 'en';
+    const intlLocale = lang === 'ta' ? 'ta-IN' : (lang === 'hi' ? 'hi-IN' : null);
     scope.querySelectorAll('time[data-utc]').forEach(el => {
       const utcStr = el.getAttribute('data-utc');
       if (!utcStr) return;
       const d = new Date(utcStr);
       if (isNaN(d.getTime())) return;
+      if (intlLocale) {
+        try {
+          el.textContent = new Intl.DateTimeFormat(intlLocale, {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          }).format(d);
+          return;
+        } catch (_) {}
+      }
       const fmt = el.getAttribute('data-fmt') || '%d %b %Y, %I:%M %p';
       el.textContent = formatDateWithPattern(d, fmt);
     });
@@ -172,12 +186,13 @@
     persistentAlertPrevFocus = document.activeElement;
     persistentAlertOnClose = typeof opts.onClose === 'function' ? opts.onClose : null;
 
+    const tr = (s) => (window.scfT ? window.scfT(s) : s);
     const variant = opts.variant || 'danger';
-    titleEl.textContent = opts.title || (variant === 'success' ? 'Success' : 'Validation Alert');
-    msgEl.textContent = opts.message || '';
+    titleEl.textContent = tr(opts.title || (variant === 'success' ? 'Success' : 'Validation Alert'));
+    msgEl.textContent = tr(opts.message || '');
 
     if (footerBtn) {
-      footerBtn.textContent = opts.closeText || 'Close';
+      footerBtn.textContent = tr(opts.closeText || 'Close');
       footerBtn.className = 'btn btn-sm ' + (variant === 'success' ? 'btn-primary' : 'btn-danger');
     }
 
@@ -588,17 +603,18 @@ document.addEventListener('DOMContentLoaded', () => {
   initFormInteractions();
 
   function getFriendlyValidationMessage(el) {
+    const tr = (s) => (window.scfT ? window.scfT(s) : s);
     const labelEl = el.closest('.form-group, .auth-input-group')?.querySelector('label');
     const rawLabel = labelEl ? labelEl.textContent.replace(/\*/g, '').trim() : (el.getAttribute('name') || 'This field');
     const v = el.validity;
-    if (v.valueMissing) return `${rawLabel} is required.`;
-    if (v.typeMismatch && el.type === 'email') return 'Please enter a valid email address.';
-    if (v.tooShort) return `${rawLabel} must be at least ${el.minLength} characters.`;
-    if (v.tooLong) return `${rawLabel} must be no more than ${el.maxLength} characters.`;
-    if (v.patternMismatch) return `Please enter a valid ${rawLabel.toLowerCase()} format.`;
-    if (v.rangeUnderflow) return `${rawLabel} must be at least ${el.min}.`;
-    if (v.rangeOverflow) return `${rawLabel} must be at most ${el.max}.`;
-    return el.validationMessage || `Please check ${rawLabel}.`;
+    if (v.valueMissing) return tr(`${rawLabel} is required.`);
+    if (v.typeMismatch && el.type === 'email') return tr('Please enter a valid email address.');
+    if (v.tooShort) return tr(`${rawLabel} must be at least ${el.minLength} characters.`);
+    if (v.tooLong) return tr(`${rawLabel} must be no more than ${el.maxLength} characters.`);
+    if (v.patternMismatch) return tr(`Please enter a valid ${rawLabel.toLowerCase()} format.`);
+    if (v.rangeUnderflow) return tr(`${rawLabel} must be at least ${el.min}.`);
+    if (v.rangeOverflow) return tr(`${rawLabel} must be at most ${el.max}.`);
+    return tr(el.validationMessage || `Please check ${rawLabel}.`);
   }
 
   function clearFieldValidation(el) {
@@ -947,10 +963,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isNavTransition) {
       try { sessionStorage.setItem('scf_nav_transition', '1'); } catch (_) {}
     }
+    const tr = (s) => (window.scfT ? window.scfT(s) : s);
     const loader = document.getElementById('globalPageLoader');
     if (!loader) return;
     const textEl = document.getElementById('globalLoaderText');
-    if (textEl) textEl.textContent = message || 'Loading...';
+    if (textEl) textEl.textContent = tr(message || 'Loading...');
 
     const activate = () => {
       loader.classList.add('is-active');
@@ -1039,6 +1056,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (window.lucide) lucide.createIcons();
       if (window.formatLocalTimes) window.formatLocalTimes(dashContent);
+      if (window.applyI18nToDOM) window.applyI18nToDOM(dashContent);
       if (window.rebindUserCreateModalForms) window.rebindUserCreateModalForms();
       dashContent.scrollTop = prevScrollTop;
       window.scrollTo(0, prevWinY);
@@ -1139,12 +1157,13 @@ document.addEventListener('DOMContentLoaded', () => {
       activeConfirmResolve = null;
     }
 
+    const tr = (s) => (window.scfT ? window.scfT(s) : s);
     lastTriggerElement = document.activeElement;
     const variant = opts.variant || 'danger';
-    titleEl.textContent = opts.title || 'Confirm Action';
-    msgEl.textContent = opts.message || 'Are you sure you want to proceed?';
-    cancelBtn.textContent = opts.cancelText || 'Cancel';
-    okBtn.textContent = opts.confirmText || 'Confirm';
+    titleEl.textContent = tr(opts.title || 'Confirm Action');
+    msgEl.textContent = tr(opts.message || 'Are you sure you want to proceed?');
+    cancelBtn.textContent = tr(opts.cancelText || 'Cancel');
+    okBtn.textContent = tr(opts.confirmText || 'Confirm');
 
     // Reset button & icon classes
     okBtn.className = 'btn btn-sm ' + (
@@ -1241,16 +1260,17 @@ document.addEventListener('DOMContentLoaded', () => {
       info: 'Information'
     };
 
+    const tr = (s) => (window.scfT ? window.scfT(s) : s);
     const toast = document.createElement('div');
     toast.className = `toast toast-${normalizedType}`;
     toast.setAttribute('role', normalizedType === 'error' ? 'alert' : 'status');
     toast.innerHTML = `
       <div class="toast-icon"><i data-lucide="${iconMap[normalizedType] || 'info'}" class="icon-sm"></i></div>
       <div class="toast-content">
-        <div class="toast-title">${escapeHtml(title || titleMap[normalizedType] || 'Update')}</div>
-        <div>${escapeHtml(message)}</div>
+        <div class="toast-title">${escapeHtml(tr(title || titleMap[normalizedType] || 'Update'))}</div>
+        <div>${escapeHtml(tr(message))}</div>
       </div>
-      <button type="button" class="toast-close-btn" aria-label="Close notification">&times;</button>
+      <button type="button" class="toast-close-btn" aria-label="${escapeHtml(tr('Close notification'))}">&times;</button>
       <div class="toast-progress" style="animation-duration: ${finalDuration}ms;"></div>
     `;
 
@@ -1458,7 +1478,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.history && window.history.replaceState) {
         window.history.replaceState(null, '', '/auth/login');
       }
-      document.title = 'Sign In | Smart Civic Complaint Management System';
+      const tr = (s) => (window.scfT ? window.scfT(s) : s);
+      document.documentElement.dataset.i18nOrigTitle = 'Sign In | Smart Civic Complaint Management System';
+      document.title = tr('Sign In | Smart Civic Complaint Management System');
       if (window.lucide) lucide.createIcons();
     }
 
@@ -1468,7 +1490,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.history && window.history.replaceState) {
         window.history.replaceState(null, '', '/auth/register');
       }
-      document.title = 'Create Account | Smart Civic Complaint Management System';
+      const tr = (s) => (window.scfT ? window.scfT(s) : s);
+      document.documentElement.dataset.i18nOrigTitle = 'Create Account | Smart Civic Complaint Management System';
+      document.title = tr('Create Account | Smart Civic Complaint Management System');
       if (window.lucide) lucide.createIcons();
     }
 
@@ -1792,19 +1816,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Global Back Navigation & Consistent Top-Right Refresh Action Bar across ALL pages and roles
   function createGlobalRefreshButton() {
+    const tr = (s) => (window.scfT ? window.scfT(s) : s);
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'btn btn-secondary btn-sm global-refresh-btn';
     btn.setAttribute('data-global-refresh', '');
-    btn.setAttribute('title', 'Refresh current page');
-    btn.setAttribute('aria-label', 'Refresh current page');
-    btn.innerHTML = '<i data-lucide="refresh-cw" class="icon-xs global-refresh-icon"></i><span class="global-refresh-label">Refresh</span>';
+    btn.setAttribute('title', tr('Refresh current page'));
+    btn.setAttribute('aria-label', tr('Refresh current page'));
+    btn.innerHTML = `<i data-lucide="refresh-cw" class="icon-xs global-refresh-icon"></i><span class="global-refresh-label">${tr('Refresh')}</span>`;
     return btn;
   }
 
   window.performGlobalRefresh = async function(triggerBtn) {
     if (window.__scfRefreshInFlight) return;
     window.__scfRefreshInFlight = true;
+    const tr = (s) => (window.scfT ? window.scfT(s) : s);
 
     const setRefreshingState = (active) => {
       document.querySelectorAll('[data-global-refresh]').forEach(btn => {
@@ -1817,7 +1843,7 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.classList.remove('is-refreshing');
         }
         const label = btn.querySelector('.global-refresh-label');
-        if (label) label.textContent = active ? 'Refreshing...' : 'Refresh';
+        if (label) label.textContent = tr(active ? 'Refreshing...' : 'Refresh');
       });
     };
 
@@ -1865,8 +1891,16 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.ensureDashboardBackBar = function() {
+    const tr = (s) => (window.scfT ? window.scfT(s) : s);
     const dashContent = document.querySelector('.dashboard-content');
     let iconsChanged = false;
+
+    const appendTopRightControls = (container) => {
+      if (!container.querySelector('[data-global-refresh]')) {
+        container.appendChild(createGlobalRefreshButton());
+        iconsChanged = true;
+      }
+    };
 
     if (dashContent) {
       let bar = dashContent.querySelector('.page-back-bar');
@@ -1886,18 +1920,17 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.className = 'btn btn-secondary btn-sm page-back-btn';
         btn.setAttribute('data-back-nav', '');
         btn.setAttribute('data-fallback-url', fallbackUrl);
-        btn.innerHTML = '<i data-lucide="arrow-left" class="icon-xs"></i><span>Back</span>';
+        btn.innerHTML = `<i data-lucide="arrow-left" class="icon-xs"></i><span>${tr('Back')}</span>`;
         bar.appendChild(btn);
-        bar.appendChild(createGlobalRefreshButton());
+        appendTopRightControls(bar);
         dashContent.insertBefore(bar, dashContent.firstChild);
         iconsChanged = true;
-      } else if (bar && !bar.querySelector('[data-global-refresh]')) {
-        bar.appendChild(createGlobalRefreshButton());
-        iconsChanged = true;
+      } else if (bar) {
+        appendTopRightControls(bar);
       } else if (!dashContent.querySelector('[data-global-refresh]')) {
         const refreshBar = document.createElement('div');
         refreshBar.className = 'page-back-bar page-refresh-only-bar';
-        refreshBar.appendChild(createGlobalRefreshButton());
+        appendTopRightControls(refreshBar);
         dashContent.insertBefore(refreshBar, dashContent.firstChild);
         iconsChanged = true;
       }
@@ -1907,7 +1940,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const fallbackBar = document.createElement('div');
         fallbackBar.className = 'page-back-bar page-refresh-only-bar container';
         fallbackBar.style.marginTop = '1rem';
-        fallbackBar.appendChild(createGlobalRefreshButton());
+        appendTopRightControls(fallbackBar);
         mainEl.insertBefore(fallbackBar, mainEl.firstChild);
         iconsChanged = true;
       }

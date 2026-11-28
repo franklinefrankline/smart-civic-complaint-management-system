@@ -23,21 +23,30 @@
 
     <!-- Right Section: Action Controls -->
     <div class="nav-actions">
+      <!-- Language Switcher -->
+      <div class="lang-selector-wrap" title="{{ tr('Select Language') }}">
+        <select class="lang-selector-select" data-lang-switcher aria-label="{{ tr('Select Language') }}" data-no-i18n>
+          <option value="en" {% if current_lang == 'en' %}selected{% endif %}>English</option>
+          <option value="ta" {% if current_lang == 'ta' %}selected{% endif %}>தமிழ்</option>
+          <option value="hi" {% if current_lang == 'hi' %}selected{% endif %}>हिन्दी</option>
+        </select>
+      </div>
+
       <!-- Global Refresh Button -->
-      <button type="button" class="btn btn-secondary btn-sm nav-refresh-btn global-refresh-btn" data-global-refresh title="Refresh current page" aria-label="Refresh current page">
+      <button type="button" class="btn btn-secondary btn-sm nav-refresh-btn global-refresh-btn" data-global-refresh title="{{ tr('Refresh current page') }}" aria-label="{{ tr('Refresh current page') }}">
         <i data-lucide="refresh-cw" class="icon-sm global-refresh-icon"></i>
-        <span class="global-refresh-label nav-refresh-label">Refresh</span>
+        <span class="global-refresh-label nav-refresh-label">{{ tr('Refresh') }}</span>
       </button>
 
       <!-- Theme Toggle -->
-      <button type="button" class="theme-toggle-btn" id="themeToggle" title="Toggle Theme" aria-label="Toggle Theme">
+      <button type="button" class="theme-toggle-btn" id="themeToggle" title="{{ tr('Toggle Theme') }}" aria-label="{{ tr('Toggle Theme') }}">
         <i data-lucide="moon" class="icon-sm theme-icon"></i>
       </button>
 
       {% if current_user %}
         <!-- Notification Bell Dropdown -->
         <div class="notif-dropdown">
-          <button class="btn btn-secondary btn-sm notif-btn" id="notifToggleBtn" title="Notifications" aria-label="Notifications">
+          <button class="btn btn-secondary btn-sm notif-btn" id="notifToggleBtn" title="{{ tr('Notifications') }}" aria-label="{{ tr('Notifications') }}">
             <i data-lucide="bell" class="icon-sm"></i>
             <span id="notifBadge" class="notif-badge" style="display: {% if unread_notifications_count > 0 %}inline-flex{% else %}none{% endif %};">
               {{ unread_notifications_count }}
@@ -46,31 +55,31 @@
           
           <div class="notif-menu" id="notifMenu">
             <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-              <strong style="font-size: 0.85rem;">Notifications</strong>
-              <button id="markAllReadBtn" style="background: none; border: none; font-size: 0.78rem; color: var(--civic-blue); cursor: pointer;">Mark all read</button>
+              <strong style="font-size: 0.85rem;">{{ tr('Notifications') }}</strong>
+              <button id="markAllReadBtn" style="background: none; border: none; font-size: 0.78rem; color: var(--civic-blue); cursor: pointer;">{{ tr('Mark all read') }}</button>
             </div>
             <div id="notifList">
-              <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Loading...</div>
+              <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">{{ tr('Loading...') }}</div>
             </div>
           </div>
         </div>
 
         <!-- Role Portal Link (Dashboard Button) -->
         {% if current_user.is_admin %}
-          <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary btn-sm nav-dashboard-btn">Admin Console</a>
+          <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary btn-sm nav-dashboard-btn">{{ tr('Admin Console') }}</a>
         {% elif current_user.is_officer %}
-          <a href="{{ url_for('officer.dashboard') }}" class="btn btn-primary btn-sm nav-dashboard-btn">Officer Console</a>
+          <a href="{{ url_for('officer.dashboard') }}" class="btn btn-primary btn-sm nav-dashboard-btn">{{ tr('Officer Console') }}</a>
         {% elif current_user.is_worker %}
-          <a href="{{ url_for('worker.dashboard') }}" class="btn btn-primary btn-sm nav-dashboard-btn">Worker Console</a>
+          <a href="{{ url_for('worker.dashboard') }}" class="btn btn-primary btn-sm nav-dashboard-btn">{{ tr('Worker Console') }}</a>
         {% else %}
           <a href="{{ url_for('citizen.dashboard') }}" class="btn btn-primary btn-sm nav-dashboard-btn">{{ t('nav_dashboard') }}</a>
         {% endif %}
 
         <!-- Logout Button -->
-        <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary btn-sm nav-logout-btn" title="Sign Out" aria-label="Sign Out"
-          data-confirm-title="Sign Out of Portal"
-          data-confirm="Are you sure you want to end your current session and sign out?"
-          data-confirm-btn="Sign Out"
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary btn-sm nav-logout-btn" title="{{ tr('Sign Out') }}" aria-label="{{ tr('Sign Out') }}"
+          data-confirm-title="{{ dt('Sign Out of Portal') }}"
+          data-confirm="{{ dt('Are you sure you want to end your current session and sign out?') }}"
+          data-confirm-btn="{{ tr('Sign Out') }}"
           data-confirm-variant="warning">
           <i data-lucide="log-out" class="icon-sm"></i>
         </a>
@@ -81,7 +90,7 @@
       {% endif %}
 
       <!-- Mobile Hamburger Toggle -->
-      <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation" aria-controls="primaryPublicNavLinks" aria-expanded="false" title="Toggle navigation">
+      <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="{{ tr('Toggle navigation') }}" aria-controls="primaryPublicNavLinks" aria-expanded="false" title="{{ tr('Toggle navigation') }}">
         <i data-lucide="menu" class="icon-md"></i>
       </button>
     </div>

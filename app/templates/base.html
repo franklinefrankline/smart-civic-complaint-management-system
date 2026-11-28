@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}{{ t('app_name') }}{% endblock %} | SCF (Smart Civic Flow)</title>
+  <title>{% block title %}{{ t('app_name') }}{% endblock %} | {{ t('app_name') }}</title>
   <meta name="description" content="{{ t('app_subtitle') }}">
   <meta name="api-base-url" content="{{ api_base_url or '' }}">
+  <meta name="active-lang" content="{{ current_lang or 'en' }}">
+  <meta name="user-authenticated" content="{{ '1' if current_user else '0' }}">
   <script>
     (function () {
       try {
@@ -26,7 +28,7 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png', v='20261125g') }}">
 
   <!-- Master Stylesheet -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261127c') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v='20261128b') }}">
   
   <!-- Preconnect for Icon CDN -->
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
@@ -62,7 +64,7 @@
   <!-- Flash Messages Banner (Floating Toast Notifications - Never overlaps titles or sidebars) -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div id="flashToastContainer" class="flash-container toast-flash-wrapper" role="region" aria-label="Notifications" style="position: fixed; top: 1.5rem; right: 1.5rem; z-index: 99998; max-width: 440px; min-width: 300px; width: auto; pointer-events: none; display: flex; flex-direction: column; gap: 0.65rem;">
+      <div id="flashToastContainer" class="flash-container toast-flash-wrapper" role="region" aria-label="{{ tr('Notifications') }}" style="position: fixed; top: auto; bottom: 1.5rem; right: 1.5rem; z-index: 99998; max-width: 440px; min-width: 300px; width: auto; pointer-events: none; display: flex; flex-direction: column; gap: 0.65rem;">
         {% for category, message in messages %}
           {% set alert_cat = 'danger' if category == 'error' else category %}
           <div class="alert alert-{{ alert_cat }}" data-flash-category="{{ alert_cat }}" style="pointer-events: auto; margin-bottom: 0; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28); border-radius: var(--radius-sm, 8px); animation: slideInToast 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 1.15rem;">
@@ -112,18 +114,18 @@
         <div class="footer-col">
           <div class="brand-text-only" style="margin-bottom: 0.75rem;">
             <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em;">
-              Smart Civic Complaint Management System
+              {{ tr('Smart Civic Complaint Management System') }}
             </div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-              Enterprise Municipal Administration & Citizen Grievance Portal
+              {{ tr('Enterprise Municipal Administration & Citizen Grievance Portal') }}
             </div>
           </div>
           <p style="font-size: 0.84rem; color: var(--text-secondary); line-height: 1.5;">
-            An integrated civic engagement platform driving accountable, real-time grievance tracking and transparent municipal resolution.
+            {{ tr('An integrated civic engagement platform driving accountable, real-time grievance tracking and transparent municipal resolution.') }}
           </p>
         </div>
         <div class="footer-col">
-          <h4>Portal Navigation</h4>
+          <h4>{{ tr('Portal Navigation') }}</h4>
           <ul class="footer-links">
             <li><a href="{{ url_for('public.index') }}">{{ t('nav_home') }}</a></li>
             <li><a href="{{ url_for('public.about') }}">{{ t('nav_about') }}</a></li>
@@ -133,43 +135,43 @@
           </ul>
         </div>
         <div class="footer-col">
-          <h4>Municipal Units</h4>
+          <h4>{{ tr('Municipal Units') }}</h4>
           <ul class="footer-links">
-            <li><a href="{{ url_for('public.departments') }}">Water Supply & Drainage</a></li>
-            <li><a href="{{ url_for('public.departments') }}">Roads & Infrastructure</a></li>
-            <li><a href="{{ url_for('public.departments') }}">Sanitation & Waste Management</a></li>
-            <li><a href="{{ url_for('public.departments') }}">Public Health & Civic Services</a></li>
+            <li><a href="{{ url_for('public.departments') }}">{{ tr('Water Supply & Drainage') }}</a></li>
+            <li><a href="{{ url_for('public.departments') }}">{{ tr('Roads & Infrastructure') }}</a></li>
+            <li><a href="{{ url_for('public.departments') }}">{{ tr('Sanitation & Waste Management') }}</a></li>
+            <li><a href="{{ url_for('public.departments') }}">{{ tr('Public Health & Civic Services') }}</a></li>
           </ul>
         </div>
         <div class="footer-col">
-          <h4>Civic Help Desk</h4>
+          <h4>{{ tr('Civic Help Desk') }}</h4>
           <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.45rem;">
-            Municipal Control: <strong>1800-425-0000</strong>
+            {{ tr('Municipal Control:') }} <strong>1800-425-0000</strong>
           </p>
           <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.45rem;">
-            Support: <strong>civic-desk@gov.portal</strong>
+            {{ tr('Support:') }} <strong>civic-desk@gov.portal</strong>
           </p>
           <p style="font-size: 0.8rem; color: var(--text-muted);">
-            Available 24x7 for municipal grievance logging and emergency dispatch.
+            {{ tr('Available 24x7 for municipal grievance logging and emergency dispatch.') }}
           </p>
         </div>
         <div class="footer-col">
-          <h4>Legal & Policies</h4>
+          <h4>{{ tr('Legal & Policies') }}</h4>
           <ul class="footer-links">
-            <li><a href="{{ url_for('public.privacy') }}">Privacy Policy</a></li>
-            <li><a href="{{ url_for('public.cookies') }}">Cookie Policy</a></li>
-            <li><a href="javascript:void(0)" onclick="openCookieSettings()">Cookie Settings</a></li>
-            <li><a href="{{ url_for('public.terms') }}">Terms and Conditions</a></li>
+            <li><a href="{{ url_for('public.privacy') }}">{{ tr('Privacy Policy') }}</a></li>
+            <li><a href="{{ url_for('public.cookies') }}">{{ tr('Cookie Policy') }}</a></li>
+            <li><a href="javascript:void(0)" onclick="openCookieSettings()">{{ tr('Cookie Settings') }}</a></li>
+            <li><a href="{{ url_for('public.terms') }}">{{ tr('Terms and Conditions') }}</a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
-        <p>&copy; 2026 Smart Civic Complaint Management System. Enterprise Municipal Administration Platform.</p>
+        <p>{{ tr('© 2026 Smart Civic Complaint Management System. Enterprise Municipal Administration Platform.') }}</p>
         <div class="footer-legal-links" style="display: flex; flex-wrap: wrap; gap: 1.25rem; font-size: 0.85rem;">
-          <a href="{{ url_for('public.privacy') }}">Privacy Policy</a>
-          <a href="{{ url_for('public.cookies') }}">Cookie Policy</a>
-          <a href="javascript:void(0)" onclick="openCookieSettings()">Cookie Settings</a>
-          <a href="{{ url_for('public.terms') }}">Terms and Conditions</a>
+          <a href="{{ url_for('public.privacy') }}">{{ tr('Privacy Policy') }}</a>
+          <a href="{{ url_for('public.cookies') }}">{{ tr('Cookie Policy') }}</a>
+          <a href="javascript:void(0)" onclick="openCookieSettings()">{{ tr('Cookie Settings') }}</a>
+          <a href="{{ url_for('public.terms') }}">{{ tr('Terms and Conditions') }}</a>
         </div>
       </div>
     </div>
@@ -183,16 +185,16 @@
       <div class="cookie-banner-text">
         <h4 id="cookieBannerTitle" class="cookie-banner-title">
           <i data-lucide="cookie" class="icon-sm" style="color: var(--civic-blue);"></i>
-          Civic Portal Cookie Notice
+          {{ tr('Civic Portal Cookie Notice') }}
         </h4>
         <p id="cookieBannerDesc" class="cookie-banner-desc">
-          We use essential cookies to ensure secure user authentication and portal functionality. We also use functional and analytics cookies to remember your display preferences and improve municipal services. You can choose your preferences or read our <a href="{{ url_for('public.cookies') }}">Cookie Policy</a> and <a href="{{ url_for('public.privacy') }}">Privacy Policy</a>.
+          {{ tr('We use essential cookies to ensure secure user authentication and portal functionality. We also use functional and analytics cookies to remember your display preferences and improve municipal services. You can choose your preferences or read our') }} <a href="{{ url_for('public.cookies') }}">{{ tr('Cookie Policy') }}</a> &amp; <a href="{{ url_for('public.privacy') }}">{{ tr('Privacy Policy') }}</a>.
         </p>
       </div>
       <div class="cookie-banner-actions">
-        <button type="button" class="btn btn-secondary btn-sm" id="cookieRejectOptional">Reject Optional Cookies</button>
-        <button type="button" class="btn btn-secondary btn-sm" id="cookieCustomize">Customize Preferences</button>
-        <button type="button" class="btn btn-primary btn-sm" id="cookieAcceptAll">Accept All</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="cookieRejectOptional">{{ tr('Reject Optional Cookies') }}</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="cookieCustomize">{{ tr('Customize Preferences') }}</button>
+        <button type="button" class="btn btn-primary btn-sm" id="cookieAcceptAll">{{ tr('Accept All') }}</button>
       </div>
     </div>
   </div>
@@ -203,29 +205,29 @@
       <div class="card-header" style="margin-bottom: 0.75rem;">
         <h3 id="cookieModalTitle" class="card-title" style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;">
           <i data-lucide="sliders" class="icon-sm" style="color: var(--civic-blue);"></i>
-          Cookie Settings
+          {{ tr('Cookie Settings') }}
         </h3>
-        <button type="button" class="toast-close-btn" onclick="closeModal('cookieSettingsModal')" aria-label="Close modal">&times;</button>
+        <button type="button" class="toast-close-btn" onclick="closeModal('cookieSettingsModal')" aria-label="{{ tr('Close modal') }}">&times;</button>
       </div>
       <div class="cookie-settings-body">
         <p style="font-size: 0.86rem; color: var(--text-secondary); margin-bottom: 1rem;">
-          Manage your cookie choices. Essential cookies cannot be disabled as they are required for security, session verification, and core grievance redressal features.
+          {{ tr('Manage your cookie choices. Essential cookies cannot be disabled as they are required for security, session verification, and core grievance redressal features.') }}
         </p>
 
         <!-- 1. Essential Cookies -->
         <div class="cookie-pref-item">
           <div class="cookie-pref-info">
             <div class="cookie-pref-name">
-              Essential & Security Cookies
-              <span class="badge badge-submitted" style="font-size: 0.68rem; margin-left: 0.5rem;">Always Active</span>
+              {{ tr('Essential & Security Cookies') }}
+              <span class="badge badge-submitted" style="font-size: 0.68rem; margin-left: 0.5rem;">{{ tr('Always Active') }}</span>
             </div>
             <p class="cookie-pref-desc">
-              Necessary for user sign-in, session management, CSRF token security, and secure complaint submission.
+              {{ tr('Necessary for user sign-in, session management, CSRF token security, and secure complaint submission.') }}
             </p>
           </div>
           <div class="cookie-pref-toggle">
             <label class="switch-control">
-              <input type="checkbox" checked disabled aria-label="Essential Cookies">
+              <input type="checkbox" checked disabled aria-label="{{ tr('Essential Cookies') }}">
               <span class="switch-slider"></span>
             </label>
           </div>
@@ -234,14 +236,14 @@
         <!-- 2. Functional Cookies -->
         <div class="cookie-pref-item">
           <div class="cookie-pref-info">
-            <div class="cookie-pref-name">Functional & Preference Cookies</div>
+            <div class="cookie-pref-name">{{ tr('Functional & Preference Cookies') }}</div>
             <p class="cookie-pref-desc">
-              Remembers your theme selection (Dark/Light mode) and chosen language (English, Tamil, Hindi) across sessions.
+              {{ tr('Remembers your theme selection (Dark/Light mode) and chosen language (English, Tamil, Hindi) across sessions.') }}
             </p>
           </div>
           <div class="cookie-pref-toggle">
             <label class="switch-control">
-              <input type="checkbox" id="prefFunctional" class="cookie-switch" checked aria-label="Functional Cookies">
+              <input type="checkbox" id="prefFunctional" class="cookie-switch" checked aria-label="{{ tr('Functional Cookies') }}">
               <span class="switch-slider"></span>
             </label>
           </div>
@@ -250,37 +252,37 @@
         <!-- 3. Analytics Cookies -->
         <div class="cookie-pref-item">
           <div class="cookie-pref-info">
-            <div class="cookie-pref-name">Performance & Analytics Cookies</div>
+            <div class="cookie-pref-name">{{ tr('Performance & Analytics Cookies') }}</div>
             <p class="cookie-pref-desc">
-              Helps municipal administrators analyze aggregate, non-identifiable usage patterns to optimize complaint resolution workflows.
+              {{ tr('Helps municipal administrators analyze aggregate, non-identifiable usage patterns to optimize complaint resolution workflows.') }}
             </p>
           </div>
           <div class="cookie-pref-toggle">
             <label class="switch-control">
-              <input type="checkbox" id="prefAnalytics" class="cookie-switch" aria-label="Analytics Cookies">
+              <input type="checkbox" id="prefAnalytics" class="cookie-switch" aria-label="{{ tr('Analytics Cookies') }}">
               <span class="switch-slider"></span>
             </label>
           </div>
         </div>
       </div>
       <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('cookieSettingsModal')">Cancel</button>
-        <button type="button" class="btn btn-primary btn-sm" id="cookieSaveCustom">Save Preferences</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('cookieSettingsModal')">{{ tr('Cancel') }}</button>
+        <button type="button" class="btn btn-primary btn-sm" id="cookieSaveCustom">{{ tr('Save Preferences') }}</button>
       </div>
     </div>
   </div>
 
   <!-- Dashboard Notification Dropdown Panel (Shared across all authenticated role consoles without top navbar) -->
   {% if current_user and not (request.endpoint in public_nav_endpoints or (request.endpoint is none and code is defined)) %}
-  <div class="notif-menu dashboard-notif-menu" id="notifMenu" role="region" aria-label="Notifications Panel">
+  <div class="notif-menu dashboard-notif-menu" id="notifMenu" role="region" aria-label="{{ tr('Notifications Panel') }}">
     <div style="padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
       <strong style="font-size: 0.88rem; color: var(--text-primary); display: inline-flex; align-items: center; gap: 0.4rem;">
-        <i data-lucide="bell" class="icon-xs" style="color: var(--civic-blue);"></i> Notifications
+        <i data-lucide="bell" class="icon-xs" style="color: var(--civic-blue);"></i> {{ tr('Notifications') }}
       </strong>
-      <button type="button" id="markAllReadBtn" style="background: none; border: none; font-size: 0.78rem; font-weight: 600; color: var(--civic-blue); cursor: pointer;">Mark all read</button>
+      <button type="button" id="markAllReadBtn" style="background: none; border: none; font-size: 0.78rem; font-weight: 600; color: var(--civic-blue); cursor: pointer;">{{ tr('Mark all read') }}</button>
     </div>
     <div id="notifList">
-      <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Loading...</div>
+      <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">{{ tr('Loading...') }}</div>
     </div>
   </div>
   {% endif %}
@@ -293,13 +295,13 @@
           <i id="sccmtConfirmIcon" data-lucide="alert-triangle" class="icon-md"></i>
         </div>
         <div style="flex: 1;">
-          <h3 id="sccmtConfirmTitle" class="confirm-modal-title">Confirm Action</h3>
-          <p id="sccmtConfirmMessage" class="confirm-modal-desc">Are you sure you want to proceed?</p>
+          <h3 id="sccmtConfirmTitle" class="confirm-modal-title">{{ tr('Confirm Action') }}</h3>
+          <p id="sccmtConfirmMessage" class="confirm-modal-desc">{{ tr('Are you sure you want to proceed?') }}</p>
         </div>
       </div>
       <div class="confirm-modal-actions">
-        <button type="button" id="sccmtConfirmCancelBtn" class="btn btn-secondary btn-sm">Cancel</button>
-        <button type="button" id="sccmtConfirmOkBtn" class="btn btn-danger btn-sm">Confirm</button>
+        <button type="button" id="sccmtConfirmCancelBtn" class="btn btn-secondary btn-sm">{{ tr('Cancel') }}</button>
+        <button type="button" id="sccmtConfirmOkBtn" class="btn btn-danger btn-sm">{{ tr('Confirm') }}</button>
       </div>
     </div>
   </div>
@@ -313,14 +315,14 @@
             <i id="scfPersistentAlertIcon" data-lucide="alert-octagon" class="icon-md"></i>
           </div>
           <div style="flex: 1; min-width: 0;">
-            <h3 id="scfPersistentAlertTitle" class="confirm-modal-title">Validation Alert</h3>
+            <h3 id="scfPersistentAlertTitle" class="confirm-modal-title">{{ tr('Validation Alert') }}</h3>
             <p id="scfPersistentAlertMessage" class="confirm-modal-desc"></p>
           </div>
         </div>
-        <button type="button" id="scfPersistentAlertCloseBtn" class="persistent-alert-close" aria-label="Close alert" title="Close">&times;</button>
+        <button type="button" id="scfPersistentAlertCloseBtn" class="persistent-alert-close" aria-label="{{ tr('Close alert') }}" title="{{ tr('Close') }}">&times;</button>
       </div>
       <div class="confirm-modal-actions">
-        <button type="button" id="scfPersistentAlertFooterBtn" class="btn btn-primary btn-sm">OK, Got It</button>
+        <button type="button" id="scfPersistentAlertFooterBtn" class="btn btn-primary btn-sm">{{ tr('OK, Got It') }}</button>
       </div>
     </div>
   </div>
@@ -328,17 +330,20 @@
   <!-- Global Page Loading Overlay (uses /static/img/loader.gif) -->
   <div id="globalPageLoader" class="global-loader-overlay" role="status" aria-live="polite" aria-hidden="true">
     <div class="global-loader-card">
-      <img src="{{ url_for('static', filename='img/loader.gif', v='20261126d') }}" alt="Loading..." class="global-loader-gif" width="68" height="68">
-      <span id="globalLoaderText" class="global-loader-text">Loading...</span>
+      <img src="{{ url_for('static', filename='img/loader.gif', v='20261126d') }}" alt="{{ tr('Loading...') }}" class="global-loader-gif" width="68" height="68">
+      <span id="globalLoaderText" class="global-loader-text">{{ tr('Loading...') }}</span>
     </div>
   </div>
 
   <!-- Toast Container -->
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <!-- Master Application Scripts -->
-  <script src="{{ url_for('static', filename='js/main.js', v='20261127h') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/notifications.js', v='20261127b') }}" defer></script>
+  <!-- Master Application Scripts (i18next + Language Detector + App Controllers) -->
+  <script src="{{ url_for('static', filename='js/vendor/i18next.min.js', v='20261127a') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/vendor/i18nextBrowserLanguageDetector.min.js', v='20261127a') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/i18n.js', v='20261128b') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/main.js', v='20261127j') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/notifications.js', v='20261127c') }}" defer></script>
   
   {% block extra_scripts %}{% endblock %}
 </body>

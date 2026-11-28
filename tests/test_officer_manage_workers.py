@@ -363,6 +363,18 @@ class OfficerManageWorkersTestCase(unittest.TestCase):
         db.session.refresh(worker_user)
         self.assertTrue(worker_user.is_active)
 
+        # 11. Admin Dashboard displays Department Officer-added workers & attribution details
+        res_admin_dash = admin_client.get('/admin/dashboard')
+        self.assertEqual(res_admin_dash.status_code, 200)
+        admin_dash_html = res_admin_dash.get_data(as_text=True)
+        self.assertIn('officerAddedWorkersCard', admin_dash_html)
+        self.assertIn('Suresh Water Senior Tech', admin_dash_html)
+        self.assertIn('EMP-WTR-101', admin_dash_html)
+        self.assertIn('Senior Pipeline Specialist', admin_dash_html)
+        self.assertIn('suresh.water@civic.gov', admin_dash_html)
+        self.assertIn('Water Officer One', admin_dash_html)
+        self.assertIn('Added by Officer', admin_dash_html)
+
 
 if __name__ == '__main__':
     unittest.main()

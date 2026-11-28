@@ -135,12 +135,38 @@ def contact():
         return redirect(url_for('public.contact'))
     return render_template('public/contact.html')
 
-@public_bp.route('/set-language/<lang>')
+@public_bp.route('/set-language/<lang>', methods=['GET', 'POST'])
 def set_language(lang):
-    if lang in ['en', 'ta', 'hi']:
-        session['lang'] = lang
-    referer = request.headers.get('Referer')
-    return redirect(referer or url_for('public.index'))
+    from app.utils.translations import SUPPORTED_LANGUAGES
+    clean_lang = lang if lang in SUPPORTED_LANGUAGES else 'en'
+    session['lang'] = clean_lang
+    g.active_lang = clean_lang
+    uid = session.get('user_id')
+    if uid:
+        u = User.query.get(uid)
+        if u and u.preferred_language != clean_lang:
+            u.preferred_language = clean_lang
+            db.session.commit()
+    if _is_api_or_ajax() or request.method == 'POST':
+        resp = jsonify({'success': True, 'lang': clean_lang})
+    else:
+        referer = request.headers.get('Referer')
+        resp = redirect(referer or url_for('public.index'))
+    resp.set_cookie('sccmt_lang', clean_lang, max_age=31536000, path='/', samesite='Lax')
+    resp.set_cookie('sccmt_lang_explicit', '1', max_age=31536000, path='/', samesite='Lax')
+    return resp
+
+
+@public_bp.route('/locales/<lang>/translation.json')
+def serve_locale_json(lang):
+    import os
+    from flask import send_from_directory
+    from config import BASE_DIR
+    from app.utils.translations import SUPPORTED_LANGUAGES
+    if lang not in SUPPORTED_LANGUAGES:
+        return jsonify({'error': 'Unsupported language'}), 404
+    locale_dir = os.path.join(BASE_DIR, 'src', 'locales', lang)
+    return send_from_directory(locale_dir, 'translation.json', mimetype='application/json')
 
 @public_bp.route('/privacy')
 def privacy():

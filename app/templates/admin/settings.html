@@ -84,8 +84,7 @@
         <i data-lucide="alert-triangle" class="icon-sm"></i> {{ tr('Production Database Cleanup') }}
       </h3>
       <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 1.25rem; line-height: 1.5;">
-        Remove all test complaints, work assignments, notifications, proof attachments, and demo citizen accounts. 
-        Your official civic departments, categories, and administrator credentials will be preserved.
+        {{ tr('Remove all test complaints, work assignments, notifications, proof attachments, and demo citizen accounts. Your official civic departments, categories, and administrator credentials will be preserved.') }}
       </p>
       <form method="POST" action="{{ url_for('admin.clean_demo_data') }}"
         data-confirm-title="{{ tr('Purge Test & Demo Data') }}"

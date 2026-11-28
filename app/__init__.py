@@ -32,11 +32,13 @@ def _run_safe_schema_migrations(app):
             contact_idx = {idx['name'] for idx in inspector.get_indexes('contact_messages')}
             notif_idx = {idx['name'] for idx in inspector.get_indexes('notifications')}
             worker_cols = {c['name'] for c in inspector.get_columns('workers')}
+            user_cols = {c['name'] for c in inspector.get_columns('users')}
             if (
                 'idx_comp_updated' in comp_idx
                 and 'idx_contact_read_created' in contact_idx
                 and 'idx_notif_complaint' in notif_idx
                 and 'employee_id' in worker_cols
+                and 'preferred_language' in user_cols
             ):
                 return
         except Exception:
@@ -51,6 +53,10 @@ def _run_safe_schema_migrations(app):
             if 'is_password_reset_required' not in user_cols:
                 conn.execute(text(
                     'ALTER TABLE users ADD COLUMN is_password_reset_required BOOLEAN NOT NULL DEFAULT FALSE'
+                ))
+            if 'preferred_language' not in user_cols:
+                conn.execute(text(
+                    "ALTER TABLE users ADD COLUMN preferred_language VARCHAR(10) NOT NULL DEFAULT 'en'"
                 ))
             if 'password_changed_at' not in user_cols:
                 conn.execute(text(
@@ -295,8 +301,35 @@ def create_app(config_name=None):
                 resp.headers['Vary'] = 'Origin'
                 return resp
 
+    @app.before_request
+    def sync_active_language():
+        from app.utils.translations import normalize_lang, SUPPORTED_LANGUAGES
+        if request.path.startswith(('/static/', '/uploads/', '/proofs/', '/locales/')):
+            g.active_lang = 'en'
+            return
+
+        lang = None
+        if session.get('lang') in SUPPORTED_LANGUAGES:
+            lang = session.get('lang')
+        elif request.cookies.get('sccmt_lang') in SUPPORTED_LANGUAGES:
+            lang = request.cookies.get('sccmt_lang')
+            session['lang'] = lang
+        elif session.get('user_id'):
+            try:
+                from app.models.user import User
+                pref = db.session.query(User.preferred_language).filter_by(id=session.get('user_id')).scalar()
+                if pref in SUPPORTED_LANGUAGES:
+                    lang = pref
+                    session['lang'] = lang
+            except Exception:
+                db.session.rollback()
+
+        g.active_lang = normalize_lang(lang or 'en')
+
     @app.after_request
     def apply_cors_and_compression(response):
+        import json as _json
+        from app.utils.translations import translate_json_payload
         origin = request.headers.get('Origin', '').rstrip('/')
         allowed = app.config.get('CORS_ALLOWED_ORIGINS', [])
         if origin and origin in allowed:
@@ -305,6 +338,24 @@ def create_app(config_name=None):
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
             response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept'
             response.headers['Vary'] = 'Origin'
+
+        # Translate JSON response user-facing messages/errors/notifications cleanly
+        active_lang = getattr(g, 'active_lang', 'en')
+        if (
+            active_lang in ('ta', 'hi')
+            and response.mimetype == 'application/json'
+            and not response.direct_passthrough
+            and 'Content-Encoding' not in response.headers
+            and not request.path.startswith(('/locales/', '/static/', '/api/live-updates', '/api/admin/analytics-data'))
+        ):
+            try:
+                raw_json = response.get_data(as_text=True)
+                parsed = _json.loads(raw_json)
+                translated = translate_json_payload(parsed, active_lang)
+                if translated != parsed:
+                    response.set_data(_json.dumps(translated, ensure_ascii=False))
+            except Exception:
+                pass
 
         # Prevent HTTP 304 / stale CDN or browser caching on all dynamic HTML and API routes
         if not request.path.startswith(('/static/', '/uploads/', '/proofs/')):
@@ -340,11 +391,27 @@ def create_app(config_name=None):
                         response.headers['Vary'] = f"{existing_vary}, Accept-Encoding".strip(', ')
         return response
 
+    # Wrap flashed messages automatically in the active UI language
+    _orig_get_flashed = app.jinja_env.globals.get('get_flashed_messages')
+    if callable(_orig_get_flashed):
+        from app.utils.translations import translate_text as _trans_flash
+
+        def get_translated_flashed_messages(with_categories=False, category_filter=()):
+            msgs = _orig_get_flashed(with_categories=with_categories, category_filter=category_filter)
+            lang = getattr(g, 'active_lang', session.get('lang', 'en'))
+            if lang == 'en' or not msgs:
+                return msgs
+            if with_categories:
+                return [(cat, _trans_flash(msg, lang)) for cat, msg in msgs]
+            return [_trans_flash(msg, lang) for msg in msgs]
+
+        app.jinja_env.globals['get_flashed_messages'] = get_translated_flashed_messages
+
     # Context processor for templates
     @app.context_processor
     def inject_global_data():
-        from app.utils.translations import get_translation, translate_text
-        current_lang = session.get('lang', 'en')
+        from app.utils.translations import get_translation, translate_text, LANGUAGE_META
+        current_lang = getattr(g, 'active_lang', session.get('lang', 'en'))
 
         def t(key, default=None):
             return get_translation(key, current_lang, default)
@@ -356,7 +423,7 @@ def create_app(config_name=None):
             request.headers.get('X-Async-Partial') == '1'
             or request.headers.get('X-Live-Refresh') == '1'
         )
-        if request.path.startswith(('/api/', '/static/', '/health', '/uploads/', '/proofs/')) or is_partial_swap:
+        if request.path.startswith(('/api/', '/static/', '/health', '/uploads/', '/proofs/', '/locales/')) or is_partial_swap:
             return dict(
                 current_user=getattr(g, 'user', None) if is_partial_swap else None,
                 current_lang=current_lang,
@@ -366,11 +433,7 @@ def create_app(config_name=None):
                 dt=tr,
                 unread_notifications_count=0,
                 api_base_url=app.config.get('API_BASE_URL', ''),
-                available_languages=[
-                    {'code': 'en', 'name': 'English', 'native': 'English'},
-                    {'code': 'ta', 'name': 'Tamil', 'native': 'தமிழ்'},
-                    {'code': 'hi', 'name': 'Hindi', 'native': 'हिन्दी'}
-                ]
+                available_languages=LANGUAGE_META,
             )
 
         from app.models.user import User
